@@ -14,7 +14,13 @@ import {
   InputLabel, 
   Select, 
   MenuItem, 
-  CircularProgress 
+  CircularProgress,
+  Tabs,
+  Tab,
+  Divider,
+  Chip,
+  IconButton,
+  Tooltip as MuiTooltip
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -31,8 +37,14 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  LineChart,
+  Line
 } from 'recharts';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import FilterAltIcon from '@mui/icons-material/FilterAlt';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 
 const Historical = () => {
   const [loading, setLoading] = useState(false);
@@ -42,7 +54,7 @@ const Historical = () => {
   const [damageType, setDamageType] = useState('all');
   const [reports, setReports] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
-  const [view, setView] = useState('reports'); // 'reports', 'heatmap', 'trends'
+  const [view, setView] = useState('reports'); // 'reports', 'trends'
   
   // Mock data - replace with actual API calls
   useEffect(() => {
@@ -58,6 +70,7 @@ const Historical = () => {
             region: 'North',
             damageType: 'Water Damage', 
             status: 'Repaired',
+            severity: 'High',
             beforeImage: 'https://via.placeholder.com/300x200?text=Before',
             afterImage: 'https://via.placeholder.com/300x200?text=After',
             description: 'Ceiling leak causing water damage to floor and walls'
@@ -69,6 +82,7 @@ const Historical = () => {
             region: 'South',
             damageType: 'Structural', 
             status: 'Repaired',
+            severity: 'Medium',
             beforeImage: 'https://via.placeholder.com/300x200?text=Before',
             afterImage: 'https://via.placeholder.com/300x200?text=After',
             description: 'Cracks in support column'
@@ -80,11 +94,47 @@ const Historical = () => {
             region: 'East',
             damageType: 'Electrical', 
             status: 'Repaired',
+            severity: 'Low',
             beforeImage: 'https://via.placeholder.com/300x200?text=Before',
             afterImage: 'https://via.placeholder.com/300x200?text=After',
             description: 'Exposed wiring in wall socket'
           },
-          // Add more mock data as needed
+          { 
+            id: 4, 
+            date: '2023-04-05', 
+            location: 'West Building', 
+            region: 'West',
+            damageType: 'Water Damage', 
+            status: 'Pending',
+            severity: 'Medium',
+            beforeImage: 'https://via.placeholder.com/300x200?text=Before',
+            afterImage: 'https://via.placeholder.com/300x200?text=After',
+            description: 'Water leakage from pipes in the basement area affecting storage'
+          },
+          { 
+            id: 5, 
+            date: '2023-05-12', 
+            location: 'North Conference Room', 
+            region: 'North',
+            damageType: 'Other', 
+            status: 'Repaired',
+            severity: 'Low',
+            beforeImage: 'https://via.placeholder.com/300x200?text=Before',
+            afterImage: 'https://via.placeholder.com/300x200?text=After',
+            description: 'Damage to ceiling tiles from HVAC malfunction'
+          },
+          { 
+            id: 6, 
+            date: '2023-06-18', 
+            location: 'East Wing Bathroom', 
+            region: 'East',
+            damageType: 'Water Damage', 
+            status: 'In Progress',
+            severity: 'High',
+            beforeImage: 'https://via.placeholder.com/300x200?text=Before',
+            afterImage: 'https://via.placeholder.com/300x200?text=After',
+            description: 'Severe flooding from broken water main affecting multiple rooms'
+          },
         ];
         setReports(mockReports);
         setLoading(false);
@@ -105,7 +155,7 @@ const Historical = () => {
 
   const handleExportData = () => {
     // Create CSV content
-    const headers = ['ID', 'Date', 'Location', 'Region', 'Damage Type', 'Status', 'Description'];
+    const headers = ['ID', 'Date', 'Location', 'Region', 'Damage Type', 'Status', 'Severity', 'Description'];
     const csvContent = [
       headers.join(','),
       ...reports.map(report => [
@@ -115,6 +165,7 @@ const Historical = () => {
         report.region,
         report.damageType,
         report.status,
+        report.severity,
         `"${report.description.replace(/"/g, '""')}"`
       ].join(','))
     ].join('\n');
@@ -148,16 +199,65 @@ const Historical = () => {
     { name: 'West', value: 10 },
   ];
 
+  const severityData = [
+    { month: 'Jan', high: 3, medium: 4, low: 1 },
+    { month: 'Feb', high: 2, medium: 3, low: 3 },
+    { month: 'Mar', high: 1, medium: 4, low: 3 },
+    { month: 'Apr', high: 4, medium: 2, low: 3 },
+    { month: 'May', high: 2, medium: 5, low: 2 },
+    { month: 'Jun', high: 3, medium: 3, low: 4 },
+  ];
+
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+  const STATUS_COLORS = {
+    'Repaired': '#4caf50',
+    'Pending': '#ff9800',
+    'In Progress': '#2196f3'
+  };
+  
+  const SEVERITY_COLORS = {
+    'High': '#f44336',
+    'Medium': '#ff9800',
+    'Low': '#4caf50'
+  };
+
+  const getStatusChip = (status) => {
+    return (
+      <Chip 
+        label={status} 
+        size="small" 
+        sx={{ 
+          backgroundColor: STATUS_COLORS[status] || '#757575',
+          color: 'white',
+          fontWeight: 'bold'
+        }} 
+      />
+    );
+  };
+
+  const getSeverityChip = (severity) => {
+    return (
+      <Chip 
+        label={severity} 
+        size="small" 
+        sx={{ 
+          backgroundColor: SEVERITY_COLORS[severity] || '#757575',
+          color: 'white',
+          fontWeight: 'bold'
+        }} 
+      />
+    );
+  };
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" gutterBottom component="h1">
+      <Typography variant="h4" gutterBottom component="h1" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
         Historical Analysis
       </Typography>
       
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
+      <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: 3 }}>
+        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+          <FilterAltIcon sx={{ mr: 1 }} />
           Filter Reports
         </Typography>
         <Grid container spacing={3}>
@@ -168,6 +268,7 @@ const Historical = () => {
                 value={startDate}
                 onChange={(newValue) => setStartDate(newValue)}
                 renderInput={(params) => <TextField {...params} fullWidth />}
+                slotProps={{ textField: { fullWidth: true, variant: 'outlined' } }}
               />
             </LocalizationProvider>
           </Grid>
@@ -178,11 +279,12 @@ const Historical = () => {
                 value={endDate}
                 onChange={(newValue) => setEndDate(newValue)}
                 renderInput={(params) => <TextField {...params} fullWidth />}
+                slotProps={{ textField: { fullWidth: true, variant: 'outlined' } }}
               />
             </LocalizationProvider>
           </Grid>
           <Grid item xs={12} md={2}>
-            <FormControl fullWidth>
+            <FormControl fullWidth variant="outlined">
               <InputLabel>Region</InputLabel>
               <Select
                 value={region}
@@ -198,7 +300,7 @@ const Historical = () => {
             </FormControl>
           </Grid>
           <Grid item xs={12} md={2}>
-            <FormControl fullWidth>
+            <FormControl fullWidth variant="outlined">
               <InputLabel>Damage Type</InputLabel>
               <Select
                 value={damageType}
@@ -220,6 +322,7 @@ const Historical = () => {
               fullWidth 
               onClick={handleFilter}
               disabled={loading}
+              sx={{ height: '56px', borderRadius: 2 }}
             >
               {loading ? <CircularProgress size={24} /> : 'Apply Filters'}
             </Button>
@@ -228,33 +331,29 @@ const Historical = () => {
       </Paper>
 
       <Box sx={{ mb: 3 }}>
-        <Grid container spacing={2}>
-          <Grid item>
-            <Button 
-              variant={view === 'reports' ? 'contained' : 'outlined'} 
-              onClick={() => setView('reports')}
-            >
-              Archived Reports
-            </Button>
-          </Grid>
-          <Grid item>
-            <Button 
-              variant={view === 'trends' ? 'contained' : 'outlined'} 
-              onClick={() => setView('trends')}
-            >
-              Trend Analysis
-            </Button>
-          </Grid>
-          <Grid item>
-            <Button 
-              variant="outlined" 
-              color="secondary" 
-              onClick={handleExportData}
-            >
-              Export Data
-            </Button>
-          </Grid>
-        </Grid>
+        <Tabs 
+          value={view} 
+          onChange={(e, newValue) => setView(newValue)}
+          indicatorColor="primary"
+          textColor="primary"
+          variant="fullWidth"
+          sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}
+        >
+          <Tab label="Archived Reports" value="reports" />
+          <Tab label="Trend Analysis" value="trends" />
+        </Tabs>
+        
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Button 
+            variant="outlined" 
+            color="primary" 
+            onClick={handleExportData}
+            startIcon={<FileDownloadIcon />}
+            sx={{ borderRadius: 2 }}
+          >
+            Export Data
+          </Button>
+        </Box>
       </Box>
 
       {loading && (
@@ -266,52 +365,78 @@ const Historical = () => {
       {!loading && view === 'reports' && (
         <>
           {selectedReport ? (
-            <Paper sx={{ p: 3, mb: 3 }}>
+            <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: 3 }}>
               <Button 
                 variant="outlined" 
-                sx={{ mb: 2 }}
+                sx={{ mb: 3 }}
                 onClick={() => setSelectedReport(null)}
+                startIcon={<ArrowBackIcon />}
               >
                 Back to Reports
               </Button>
-              <Typography variant="h5" gutterBottom>
+              <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2' }}>
                 Report #{selectedReport.id} - {selectedReport.location}
               </Typography>
+              <Divider sx={{ mb: 3 }} />
               <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle1">Date: {selectedReport.date}</Typography>
-                  <Typography variant="subtitle1">Region: {selectedReport.region}</Typography>
-                  <Typography variant="subtitle1">Damage Type: {selectedReport.damageType}</Typography>
-                  <Typography variant="subtitle1">Status: {selectedReport.status}</Typography>
-                  <Typography variant="subtitle1" sx={{ mt: 2 }}>Description:</Typography>
-                  <Typography paragraph>{selectedReport.description}</Typography>
+                  <Box sx={{ mb: 3, p: 2, bgcolor: '#f5f5f5', borderRadius: 2 }}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={6}>
+                        <Typography variant="subtitle2" color="textSecondary">Date:</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>{selectedReport.date}</Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="subtitle2" color="textSecondary">Region:</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>{selectedReport.region}</Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="subtitle2" color="textSecondary">Damage Type:</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>{selectedReport.damageType}</Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="subtitle2" color="textSecondary">Status:</Typography>
+                        {getStatusChip(selectedReport.status)}
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="subtitle2" color="textSecondary">Severity:</Typography>
+                        {getSeverityChip(selectedReport.severity)}
+                      </Grid>
+                    </Grid>
+                  </Box>
+                  <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>Description:</Typography>
+                  <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                    <Typography paragraph>{selectedReport.description}</Typography>
+                  </Paper>
                 </Grid>
                 <Grid item xs={12} md={6}>
                   <Typography variant="h6" gutterBottom>Before/After Comparison</Typography>
                   <Grid container spacing={2}>
                     <Grid item xs={6}>
-                      <Card>
+                      <Card sx={{ boxShadow: 3, borderRadius: 2, overflow: 'hidden' }}>
                         <CardMedia
                           component="img"
                           height="200"
                           image={selectedReport.beforeImage}
                           alt="Before repair"
+                          sx={{ objectFit: 'cover' }}
                         />
-                        <CardContent>
-                          <Typography variant="body2">Before Repair</Typography>
+                        <CardContent sx={{ bgcolor: '#f5f5f5' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 'medium', textAlign: 'center' }}>Before Repair</Typography>
                         </CardContent>
                       </Card>
                     </Grid>
                     <Grid item xs={6}>
-                      <Card>
+                      <Card sx={{ boxShadow: 3, borderRadius: 2, overflow: 'hidden' }}>
                         <CardMedia
                           component="img"
                           height="200"
                           image={selectedReport.afterImage}
                           alt="After repair"
+                          sx={{ objectFit: 'cover' }}
                         />
-                        <CardContent>
-                          <Typography variant="body2">After Repair</Typography>
+                        <CardContent sx={{ bgcolor: '#f5f5f5' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 'medium', textAlign: 'center' }}>After Repair</Typography>
                         </CardContent>
                       </Card>
                     </Grid>
@@ -320,26 +445,65 @@ const Historical = () => {
               </Grid>
             </Paper>
           ) : (
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
+            <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
                 Archived Reports
               </Typography>
               <Grid container spacing={3}>
                 {reports.map((report) => (
                   <Grid item xs={12} md={4} key={report.id}>
-                    <Card sx={{ cursor: 'pointer' }} onClick={() => setSelectedReport(report)}>
+                    <Card 
+                      sx={{ 
+                        cursor: 'pointer', 
+                        transition: 'transform 0.2s, box-shadow 0.2s',
+                        borderRadius: 2,
+                        overflow: 'hidden',
+                        '&:hover': {
+                          transform: 'translateY(-4px)',
+                          boxShadow: 6
+                        }
+                      }} 
+                      onClick={() => setSelectedReport(report)}
+                    >
+                      <CardMedia
+                        component="img"
+                        height="140"
+                        image={report.beforeImage}
+                        alt={report.location}
+                        sx={{ objectFit: 'cover' }}
+                      />
                       <CardContent>
-                        <Typography variant="h6">
-                          {report.location} - {report.damageType}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                            {report.location}
+                          </Typography>
+                          <MuiTooltip title="View details">
+                            <IconButton size="small" color="primary">
+                              <VisibilityIcon />
+                            </IconButton>
+                          </MuiTooltip>
+                        </Box>
+                        <Typography color="textSecondary" variant="body2" sx={{ mb: 1 }}>
+                          ID: #{report.id} | {report.date}
                         </Typography>
-                        <Typography color="textSecondary">
-                          Date: {report.date}
-                        </Typography>
-                        <Typography color="textSecondary">
-                          Status: {report.status}
-                        </Typography>
-                        <Typography variant="body2" sx={{ mt: 1 }}>
-                          {report.description.substring(0, 100)}...
+                        <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+                          <Chip 
+                            label={report.damageType} 
+                            size="small" 
+                            sx={{ bgcolor: '#e3f2fd', color: '#1976d2' }} 
+                          />
+                          {getStatusChip(report.status)}
+                          {getSeverityChip(report.severity)}
+                        </Box>
+                        <Typography variant="body2" sx={{ 
+                          mt: 1, 
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                        }}>
+                          {report.description}
                         </Typography>
                       </CardContent>
                     </Card>
@@ -352,56 +516,120 @@ const Historical = () => {
       )}
 
       {!loading && view === 'trends' && (
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Damage Type Trends (2023)
+        <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
+          <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2', mb: 3 }}>
+            Damage Analysis Dashboard (2023)
           </Typography>
           <Grid container spacing={4}>
             <Grid item xs={12} md={8}>
-              <Box sx={{ height: 400, width: '100%' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={trendData}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="waterDamage" name="Water Damage" stackId="a" fill="#8884d8" />
-                    <Bar dataKey="structural" name="Structural" stackId="a" fill="#82ca9d" />
-                    <Bar dataKey="electrical" name="Electrical" stackId="a" fill="#ffc658" />
-                    <Bar dataKey="other" name="Other" stackId="a" fill="#ff8042" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Box>
+              <Paper sx={{ p: 2, borderRadius: 2, boxShadow: 1, mb: 3 }}>
+                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
+                  Damage Type Trends by Month
+                </Typography>
+                <Box sx={{ height: 350, width: '100%' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={trendData}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip contentStyle={{ borderRadius: 8 }} />
+                      <Legend />
+                      <Bar dataKey="waterDamage" name="Water Damage" stackId="a" fill="#8884d8" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="structural" name="Structural" stackId="a" fill="#82ca9d" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="electrical" name="Electrical" stackId="a" fill="#ffc658" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="other" name="Other" stackId="a" fill="#ff8042" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Box>
+              </Paper>
+              
+              <Paper sx={{ p: 2, borderRadius: 2, boxShadow: 1 }}>
+                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
+                  Severity Trends Over Time
+                </Typography>
+                <Box sx={{ height: 300, width: '100%' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={severityData}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip contentStyle={{ borderRadius: 8 }} />
+                      <Legend />
+                      <Line type="monotone" dataKey="high" name="High Severity" stroke="#f44336" strokeWidth={2} dot={{ r: 4 }} />
+                      <Line type="monotone" dataKey="medium" name="Medium Severity" stroke="#ff9800" strokeWidth={2} dot={{ r: 4 }} />
+                      <Line type="monotone" dataKey="low" name="Low Severity" stroke="#4caf50" strokeWidth={2} dot={{ r: 4 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </Box>
+              </Paper>
             </Grid>
             <Grid item xs={12} md={4}>
-              <Typography variant="subtitle1" gutterBottom>
-                Repairs by Region
-              </Typography>
-              <Box sx={{ height: 300, width: '100%' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={regionData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {regionData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </Box>
+              <Paper sx={{ p: 2, borderRadius: 2, boxShadow: 1, mb: 3 }}>
+                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
+                  Repairs by Region
+                </Typography>
+                <Box sx={{ height: 300, width: '100%' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={regionData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {regionData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ borderRadius: 8 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </Box>
+              </Paper>
+              
+              <Paper sx={{ p: 2, borderRadius: 2, boxShadow: 1 }}>
+                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
+                  Key Statistics
+                </Typography>
+                <Box sx={{ p: 2 }}>
+                  <Grid container spacing={2}>
+                    <Grid item xs={6}>
+                      <Paper sx={{ p: 2, bgcolor: '#e3f2fd', borderRadius: 2, textAlign: 'center' }}>
+                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#1976d2' }}>45</Typography>
+                        <Typography variant="body2">Total Reports</Typography>
+                      </Paper>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Paper sx={{ p: 2, bgcolor: '#e8f5e9', borderRadius: 2, textAlign: 'center' }}>
+                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#4caf50' }}>38</Typography>
+                        <Typography variant="body2">Repaired</Typography>
+                      </Paper>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Paper sx={{ p: 2, bgcolor: '#fff3e0', borderRadius: 2, textAlign: 'center' }}>
+                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#ff9800' }}>5</Typography>
+                        <Typography variant="body2">In Progress</Typography>
+                      </Paper>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Paper sx={{ p: 2, bgcolor: '#ffebee', borderRadius: 2, textAlign: 'center' }}>
+                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#f44336' }}>12</Typography>
+                        <Typography variant="body2">High Severity</Typography>
+                      </Paper>
+                    </Grid>
+                  </Grid>
+                </Box>
+              </Paper>
             </Grid>
           </Grid>
         </Paper>
