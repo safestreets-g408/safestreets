@@ -41,8 +41,7 @@ const uploadImage = async (req, res) => {
             res.status(500).json({ message: 'Error uploading road damage image. Please try again.' });
         }
     }
-}
-
+};
 const getImage = async (req, res) => {
     try {
         const { email } = req.params;
@@ -52,17 +51,37 @@ const getImage = async (req, res) => {
             return res.status(404).json({ message: 'Road damage image not found' });
         }
 
-        res.set('Content-Type', image.image.contentType);
-        res.send({
-            name: image.name,
-            imageData: image.image.data,
-            result: image.result,
-            createdAt: image.createdAt
+        // Send binary data directly
+        res.set({
+            'Content-Type': image.image.contentType,
+            'Content-Disposition': `inline; filename="${image.name}"`
         });
+        res.send(image.image.data);
     } catch (error) {
         console.error('Error retrieving image:', error);
         res.status(500).json({ message: 'Error retrieving road damage image. Please try again.' });
     }
-}
+};
 
-module.exports = { uploadImage, getImage };
+const getImageById = async (req, res) => {
+    try {
+        const { imageId } = req.params;
+        const image = await Image.findById(imageId);
+
+        if (!image) {
+            return res.status(404).json({ message: 'Road damage image not found' });
+        }
+
+        // Send binary data directly
+        res.set({
+            'Content-Type': image.image.contentType,
+            'Content-Disposition': `inline; filename="${image.name}"`
+        });
+        res.send(image.image.data);
+    } catch (error) {
+        console.error('Error retrieving image:', error);
+        res.status(500).json({ message: 'Error retrieving road damage image. Please try again.' });
+    }
+};
+
+module.exports = { uploadImage, getImage, getImageById };
