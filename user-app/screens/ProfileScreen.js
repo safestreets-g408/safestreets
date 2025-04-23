@@ -93,7 +93,7 @@ const ProfileScreen = ({ navigation }) => {
   return (
     <ScrollView style={styles.container}>
       <LinearGradient
-        colors={['#4c669f', '#3b5998', '#192f6a']}
+        colors={['#1a73e8', '#4285f4', '#5e97f6']}
         style={styles.headerGradient}
       >
         <View style={styles.profileHeader}>
@@ -133,7 +133,7 @@ const ProfileScreen = ({ navigation }) => {
               <IconButton 
                 icon="pencil" 
                 size={20} 
-                color="#4c669f" 
+                color="#4285f4" 
                 onPress={() => setEditing(true)}
                 style={styles.editIcon}
               />
@@ -148,7 +148,7 @@ const ProfileScreen = ({ navigation }) => {
                 onChangeText={(text) => handleInputChange('name', text)}
                 style={styles.input}
                 mode="outlined"
-                theme={{ colors: { primary: '#4c669f' } }}
+                theme={{ colors: { primary: '#4285f4' } }}
                 left={<TextInput.Icon name="account" color="#4c669f" />}
               />
               <TextInput
@@ -158,7 +158,7 @@ const ProfileScreen = ({ navigation }) => {
                 style={styles.input}
                 mode="outlined"
                 keyboardType="email-address"
-                theme={{ colors: { primary: '#4c669f' } }}
+                theme={{ colors: { primary: '#4285f4' } }}
                 left={<TextInput.Icon name="email" color="#4c669f" />}
               />
               <TextInput
@@ -168,7 +168,7 @@ const ProfileScreen = ({ navigation }) => {
                 style={styles.input}
                 mode="outlined"
                 keyboardType="phone-pad"
-                theme={{ colors: { primary: '#4c669f' } }}
+                theme={{ colors: { primary: '#4285f4' } }}
                 left={<TextInput.Icon name="phone" color="#4c669f" />}
               />
               <TextInput
@@ -178,7 +178,7 @@ const ProfileScreen = ({ navigation }) => {
                 style={styles.input}
                 mode="outlined"
                 multiline
-                theme={{ colors: { primary: '#4c669f' } }}
+                theme={{ colors: { primary: '#4285f4' } }}
                 left={<TextInput.Icon name="map-marker" color="#4c669f" />}
               />
               
@@ -205,7 +205,7 @@ const ProfileScreen = ({ navigation }) => {
             <View style={styles.infoContainer}>
               <View style={styles.infoRow}>
                 <View style={styles.infoIconContainer}>
-                  <IconButton icon="account" size={24} color="#4c669f" />
+                  <IconButton icon="account" size={24} color="##4285f4" />
                 </View>
                 <View style={styles.infoTextContainer}>
                   <Text style={styles.infoLabel}>Name</Text>
@@ -216,7 +216,7 @@ const ProfileScreen = ({ navigation }) => {
               
               <View style={styles.infoRow}>
                 <View style={styles.infoIconContainer}>
-                  <IconButton icon="email" size={24} color="#4c669f" />
+                  <IconButton icon="email" size={24} color="##4285f4" />
                 </View>
                 <View style={styles.infoTextContainer}>
                   <Text style={styles.infoLabel}>Email</Text>
@@ -227,7 +227,7 @@ const ProfileScreen = ({ navigation }) => {
               
               <View style={styles.infoRow}>
                 <View style={styles.infoIconContainer}>
-                  <IconButton icon="phone" size={24} color="#4c669f" />
+                  <IconButton icon="phone" size={24} color="##4285f4" />
                 </View>
                 <View style={styles.infoTextContainer}>
                   <Text style={styles.infoLabel}>Phone</Text>
@@ -238,7 +238,7 @@ const ProfileScreen = ({ navigation }) => {
               
               <View style={styles.infoRow}>
                 <View style={styles.infoIconContainer}>
-                  <IconButton icon="map-marker" size={24} color="#4c669f" />
+                  <IconButton icon="map-marker" size={24} color="##4285f4" />
                 </View>
                 <View style={styles.infoTextContainer}>
                   <Text style={styles.infoLabel}>Address</Text>
@@ -262,7 +262,7 @@ const ProfileScreen = ({ navigation }) => {
               onPress={() => navigation.navigate('Reports')}
             >
               <LinearGradient
-                colors={['#4c669f', '#3b5998']}
+                colors={['#4285f4', '#5e97f6']}
                 style={styles.actionGradient}
               >
                 <IconButton icon="file-document" color="#fff" size={24} />
@@ -275,7 +275,7 @@ const ProfileScreen = ({ navigation }) => {
               onPress={() => Alert.alert('Coming Soon', 'This feature is not yet available.')}
             >
               <LinearGradient
-                colors={['#4c669f', '#3b5998']}
+                colors={['#4285f4', '#5e97f6']}
                 style={styles.actionGradient}
               >
                 <IconButton icon="cog" color="#fff" size={24} />
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#4c669f',
+    color: '#4285f4',
   },
   editIcon: {
     backgroundColor: 'rgba(76, 102, 159, 0.1)',
@@ -465,14 +465,14 @@ const styles = StyleSheet.create({
   saveButton: {
     flex: 1,
     marginRight: 8,
-    backgroundColor: '#4c669f',
+    backgroundColor: '#4285f4',
     borderRadius: 8,
     paddingVertical: 6,
   },
   cancelButton: {
     flex: 1,
     marginLeft: 8,
-    borderColor: '#4c669f',
+    borderColor: '#4285f4',
     borderRadius: 8,
   },
   actionsCard: {
@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
   actionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#4c669f',
+    color: '#4285f4',
     marginBottom: 16,
   },
   actionButton: {

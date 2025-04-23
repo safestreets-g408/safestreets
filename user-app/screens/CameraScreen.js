@@ -22,6 +22,7 @@ const CameraScreen = ({ navigation }) => {
   const [hasLocationPermission, setHasLocationPermission] = useState(null);
   const [capturedImage, setCapturedImage] = useState(null);
   const [location, setLocation] = useState(null);
+  const [locationAddress, setLocationAddress] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [cameraFacing, setCameraFacing] = useState('back');
   const [fetchingLocation, setFetchingLocation] = useState(false);
@@ -70,6 +71,26 @@ const CameraScreen = ({ navigation }) => {
           accuracy: Location.Accuracy.High
         });
         setLocation(position);
+        
+        // Get address from coordinates
+        const addressResponse = await Location.reverseGeocodeAsync({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        });
+        
+        if (addressResponse && addressResponse.length > 0) {
+          const address = addressResponse[0];
+          const formattedAddress = [
+            address.street,
+            address.city,
+            address.region,
+          ].filter(Boolean).join(', ');
+          
+          setLocationAddress(formattedAddress);
+        } else {
+          setLocationAddress('Address not found');
+        }
+        
         setFetchingLocation(false);
       } catch (error) {
         console.error('Error getting location:', error);
@@ -137,6 +158,7 @@ const CameraScreen = ({ navigation }) => {
   const retakePicture = () => {
     setCapturedImage(null);
     setLocation(null);
+    setLocationAddress(null);
   };
 
   const submitReport = async () => {
@@ -153,8 +175,6 @@ const CameraScreen = ({ navigation }) => {
     setIsSubmitting(true);
 
     try {
-      // Here we would normally upload the image and data to a server
-      // For now, we're simulating a successful submission
       setTimeout(() => {
         Alert.alert(
           'Success',
@@ -238,7 +258,7 @@ const CameraScreen = ({ navigation }) => {
                 <View style={styles.locationContent}>
                   <Ionicons name="location" size={20} color="#3498db" />
                   <Paragraph style={styles.locationText}>
-                    {location.coords.latitude.toFixed(6)}, {location.coords.longitude.toFixed(6)}
+                    {locationAddress || 'Address not available'}
                   </Paragraph>
                 </View>
               </Card.Content>
@@ -431,6 +451,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 14,
     color: '#555',
+    flexShrink: 1,
   },
   buttonRow: {
     flexDirection: 'row',

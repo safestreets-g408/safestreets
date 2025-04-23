@@ -18,8 +18,8 @@ import * as Animatable from 'react-native-animatable';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import { Platform } from 'react-native';
 
-const { width, height } = Dimensions.get('window');
 
 const HomeScreen = ({ navigation }) => {
   const [notifications, setNotifications] = useState([]);
@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
-    marginTop: -50
+    marginTop: Platform.OS === 'ios' ? -50 : 0
   },
   headerContent: {
     flexDirection: 'row',
@@ -516,6 +516,7 @@ const styles = StyleSheet.create({
   },
   headerButton: {
     position: 'relative',
+    padding: 5,
   },
   notificationBadge: {
     position: 'absolute',
@@ -538,7 +539,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 16,
-    paddingBottom: 100, // Increased to avoid content being hidden by tab bar
+    paddingBottom: Platform.OS === 'ios' ? 120 : 100, // Adjusted for iOS
   },
   weatherCard: {
     marginVertical: 10,
@@ -546,6 +547,10 @@ const styles = StyleSheet.create({
     elevation: 4,
     overflow: 'hidden',
     borderWidth: 0,
+    shadowColor: '#1a73e8',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
   },
   weatherGradient: {
     borderRadius: 20,
@@ -585,11 +590,13 @@ const styles = StyleSheet.create({
   },
   weatherDetails: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   weatherDetailItem: {
     flexDirection: 'row',
     alignItems: 'center',
     marginLeft: 15,
+    marginTop: 5,
   },
   weatherDetailText: {
     color: '#fff',
@@ -603,6 +610,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(26, 115, 232, 0.2)',
     borderWidth: 1,
     backgroundColor: '#fff',
+    shadowColor: '#1a73e8',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
   },
   statsGradient: {
     borderRadius: 20,
@@ -614,6 +625,7 @@ const styles = StyleSheet.create({
   },
   statItem: {
     alignItems: 'center',
+    paddingHorizontal: 5,
   },
   statNumber: {
     fontSize: 26,
@@ -625,6 +637,7 @@ const styles = StyleSheet.create({
     color: '#4285f4',
     marginTop: 4,
     fontWeight: '500',
+    textAlign: 'center',
   },
   statDivider: {
     width: 1,
@@ -700,11 +713,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 15,
+    flexWrap: 'wrap',
   },
   cityStatItem: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '48%',
+    marginBottom: 10,
   },
   cityStatValue: {
     fontSize: 18,
@@ -839,6 +854,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
     color: '#0d47a1',
     fontWeight: 'bold',
+    flexShrink: 1,
   },
   badge: {
     backgroundColor: '#1a73e8',
@@ -846,6 +862,7 @@ const styles = StyleSheet.create({
   notificationTime: {
     fontSize: 12,
     color: '#4285f4',
+    marginLeft: 5,
   },
   notificationMessage: {
     fontSize: 14,
@@ -875,7 +892,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   spacer: {
-    height: 80, // Added to ensure content is not hidden by the tab bar
+    height: Platform.OS === 'ios' ? 100 : 80, 
   },
 });
 
