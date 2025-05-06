@@ -10,6 +10,7 @@ import Analytics from './pages/Analytics';
 import Repair from './pages/Repair';
 import Historical from './pages/Historical';
 import Login from './pages/Login';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path='/analytics' element={<Analytics/>} />
           <Route path='repairs' element={<Repair/>} />
           <Route path='/historical' element={<Historical/>} />
+          <Route path='/profile' element={<Profile/>} />
         </Route>
         <Route path='/login' element={<Login/>} />
       </Routes>

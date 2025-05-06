@@ -370,7 +370,7 @@ const Layout = () => {
                 <ListItemIcon>
                   <AccountCircleIcon fontSize="small" />
                 </ListItemIcon>
-                <Typography variant="body2">My Profile</Typography>
+                <Typography variant="body2" onClick={() => navigate('/profile')}>My Profile</Typography>
               </MenuItem>
               <MenuItem onClick={handleProfileMenuClose}>
                 <ListItemIcon>

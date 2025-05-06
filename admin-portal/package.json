@@ -13,6 +13,7 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
     "date-fns": "^2.30.0",
+    "framer-motion": "^12.8.0",
     "leaflet": "^1.9.4",
     "mapbox-gl": "^3.11.0",
     "react": "^19.1.0",
