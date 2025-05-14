@@ -70,6 +70,7 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
 
 const Profile = () => {
   const theme = useTheme();
+  // eslint-disable-next-line no-unused-vars
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [tabValue, setTabValue] = useState(0);
   const [editMode, setEditMode] = useState(false);
@@ -629,27 +630,6 @@ const TimelineItem = ({ title, time, description }) => (
     <Typography variant="body2" color="text.secondary">
       {description}
     </Typography>
-  </Box>
-);
-
-// Chip component for skills - replaced with MUI Chip
-const Chip = ({ label, ...props }) => (
-  <Box
-    component="span"
-    sx={{
-      px: 2,
-      py: 1,
-      borderRadius: 4,
-      bgcolor: "primary.light",
-      color: "primary.contrastText",
-      display: "inline-block",
-      fontSize: "0.875rem",
-      fontWeight: 500,
-      ...props.sx,
-    }}
-    {...props}
-  >
-    {label}
   </Box>
 );
 

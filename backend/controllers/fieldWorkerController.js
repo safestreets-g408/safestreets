@@ -1,23 +1,22 @@
 const FieldWorker = require('../models/FieldWorker');
 
-// Add new field worker
 const addFieldWorker = async (req, res) => {
     try {
         const { name, workerId, specialization, region } = req.body;
 
-        // Check if worker ID already exists
         const existingWorker = await FieldWorker.findOne({ workerId });
         if (existingWorker) {
             return res.status(400).json({ message: 'Worker ID already exists' });
         }
 
-        const fieldWorker = await FieldWorker.create({
+        const fieldWorker = new FieldWorker({
             name,
             workerId,
             specialization,
-            region,
-            activeAssignments: 0
+            region
         });
+
+        await fieldWorker.save();
 
         res.status(201).json(fieldWorker);
     } catch (error) {
@@ -25,7 +24,6 @@ const addFieldWorker = async (req, res) => {
     }
 };
 
-// Get all field workers
 const getFieldWorkers = async (req, res) => {
     try {
         const fieldWorkers = await FieldWorker.find();

@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { 
-  Box, Typography, Paper, Grid, TextField, Button, 
-  Select, MenuItem, FormControl, InputLabel, Divider,
-  Card, CardContent, CardActions, Chip, Avatar, 
-  IconButton, Tooltip, Tab, Tabs, Badge, 
+  Box, Typography,  TextField, Button, 
+  Select, MenuItem, FormControl, InputLabel,Avatar, 
+   Tab, Tabs, Badge, 
   Dialog, DialogTitle, DialogContent, DialogActions,
-  FormHelperText, useTheme, alpha
+  FormHelperText, useTheme,
 } from '@mui/material';
 import { 
   Build as BuildIcon,
@@ -14,16 +13,12 @@ import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
   Pending as PendingIcon,
-  Search as SearchIcon,
   Person as PersonIcon,
-  LocationOn as LocationOnIcon,
-  AccessTime as AccessTimeIcon,
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Refresh as RefreshIcon,
-  MoreVert as MoreVertIcon
 } from '@mui/icons-material';
+
+import ActiveRepairs from '../components/RepairManagement/ActiveRepairs';
+import PendingAssignments from '../components/RepairManagement/PendingAssignments';
+import FieldWorker from '../components/RepairManagement/FieldWorker';
 
 function Repair() {
   const theme = useTheme();
@@ -175,405 +170,39 @@ function Repair() {
       
       {/* Pending Assignments Tab */}
       {tabValue === 0 && (
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
-            <Paper sx={{ p: 2, borderRadius: 2, boxShadow: 3 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6">
-                  Pending Damage Reports
-                </Typography>
-                <Tooltip title="Refresh">
-                  <IconButton>
-                    <RefreshIcon />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-              <Divider sx={{ mb: 2 }} />
-              
-              {pendingRepairs.length === 0 ? (
-                <Box sx={{ textAlign: 'center', py: 3 }}>
-                  <CheckCircleIcon color="success" sx={{ fontSize: 48, mb: 2 }} />
-                  <Typography variant="h6">No pending repairs</Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    All damage reports have been assigned
-                  </Typography>
-                </Box>
-              ) : (
-                <Grid container spacing={2}>
-                  {pendingRepairs.map((repair) => (
-                    <Grid item xs={12} md={6} lg={4} key={repair.id}>
-                      <Card 
-                        sx={{ 
-                          height: '100%', 
-                          display: 'flex', 
-                          flexDirection: 'column',
-                          borderLeft: `4px solid ${getSeverityColor(repair.severity)}`,
-                          transition: 'transform 0.2s',
-                          '&:hover': {
-                            transform: 'translateY(-4px)',
-                            boxShadow: 4
-                          }
-                        }}
-                      >
-                        <CardContent sx={{ flexGrow: 1 }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                            <Typography variant="subtitle1" fontWeight="bold">
-                              {repair.id}
-                            </Typography>
-                            <Chip 
-                              size="small" 
-                              label={repair.severity} 
-                              sx={{ 
-                                bgcolor: alpha(getSeverityColor(repair.severity), 0.1),
-                                color: getSeverityColor(repair.severity),
-                                fontWeight: 'bold'
-                              }} 
-                            />
-                          </Box>
-                          
-                          <Typography variant="body2" color="text.secondary" gutterBottom>
-                            <LocationOnIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5 }} />
-                            {repair.region} Region
-                          </Typography>
-                          
-                          <Typography variant="body2" color="text.secondary" gutterBottom>
-                            <AccessTimeIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5 }} />
-                            Reported: {new Date(repair.dateReported).toLocaleDateString()}
-                          </Typography>
-                          
-                          <Divider sx={{ my: 1 }} />
-                          
-                          <Typography variant="body2" sx={{ mb: 1 }}>
-                            <strong>Type:</strong> {repair.damageType}
-                          </Typography>
-                          
-                          <Typography variant="body2" sx={{ mb: 1 }}>
-                            <strong>Reporter:</strong> {repair.reporter}
-                          </Typography>
-                          
-                          <Typography variant="body2">
-                            <strong>Description:</strong>
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                            {repair.description}
-                          </Typography>
-                        </CardContent>
-                        <CardActions>
-                          <Button 
-                            variant="contained" 
-                            startIcon={<AssignmentIndIcon />}
-                            fullWidth
-                            onClick={() => handleAssignDialogOpen(repair)}
-                          >
-                            Assign Repair
-                          </Button>
-                        </CardActions>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-              )}
-            </Paper>
-          </Grid>
-        </Grid>
+        <PendingAssignments 
+          pendingRepairs={pendingRepairs}
+          getSeverityColor={getSeverityColor}
+          handleAssignDialogOpen={handleAssignDialogOpen}
+        />
       )}
       
       {/* Active Repairs Tab */}
       {tabValue === 1 && (
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
-            <Paper sx={{ p: 2, borderRadius: 2, boxShadow: 3 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6">
-                  Active Repair Tasks
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <TextField
-                    placeholder="Search repairs..."
-                    size="small"
-                    InputProps={{
-                      startAdornment: <SearchIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />,
-                    }}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    sx={{ width: 200 }}
-                  />
-                  <Tooltip title="Refresh">
-                    <IconButton>
-                      <RefreshIcon />
-                    </IconButton>
-                  </Tooltip>
-                </Box>
-              </Box>
-              
-              <Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                <FormControl size="small" sx={{ minWidth: 150 }}>
-                  <InputLabel>Status</InputLabel>
-                  <Select
-                    value={statusFilter}
-                    label="Status"
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                  >
-                    <MenuItem value="all">All Statuses</MenuItem>
-                    <MenuItem value="Assigned">Assigned</MenuItem>
-                    <MenuItem value="In-Progress">In Progress</MenuItem>
-                    <MenuItem value="On Hold">On Hold</MenuItem>
-                    <MenuItem value="Resolved">Resolved</MenuItem>
-                    <MenuItem value="Rejected">Rejected</MenuItem>
-                  </Select>
-                </FormControl>
-                
-                <FormControl size="small" sx={{ minWidth: 150 }}>
-                  <InputLabel>Field Worker</InputLabel>
-                  <Select
-                    value={workerFilter}
-                    label="Field Worker"
-                    onChange={(e) => setWorkerFilter(e.target.value)}
-                  >
-                    <MenuItem value="all">All Workers</MenuItem>
-                    {fieldWorkers.map(worker => (
-                      <MenuItem key={worker.id} value={worker.name}>{worker.name}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                
-                <FormControl size="small" sx={{ minWidth: 150 }}>
-                  <InputLabel>Region</InputLabel>
-                  <Select
-                    value={regionFilter}
-                    label="Region"
-                    onChange={(e) => setRegionFilter(e.target.value)}
-                  >
-                    <MenuItem value="all">All Regions</MenuItem>
-                    <MenuItem value="North">North</MenuItem>
-                    <MenuItem value="South">South</MenuItem>
-                    <MenuItem value="East">East</MenuItem>
-                    <MenuItem value="West">West</MenuItem>
-                    <MenuItem value="Central">Central</MenuItem>
-                  </Select>
-                </FormControl>
-              </Box>
-              
-              <Divider sx={{ mb: 2 }} />
-              
-              {filteredAssignedRepairs.length === 0 ? (
-                <Box sx={{ textAlign: 'center', py: 3 }}>
-                  <SearchIcon color="action" sx={{ fontSize: 48, mb: 2 }} />
-                  <Typography variant="h6">No matching repairs found</Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Try adjusting your search or filter criteria
-                  </Typography>
-                </Box>
-              ) : (
-                <Grid container spacing={2}>
-                  {filteredAssignedRepairs.map((repair) => (
-                    <Grid item xs={12} md={6} lg={4} key={repair.id}>
-                      <Card 
-                        sx={{ 
-                          height: '100%', 
-                          display: 'flex', 
-                          flexDirection: 'column',
-                          borderLeft: `4px solid ${getStatusColor(repair.status)}`,
-                          transition: 'transform 0.2s',
-                          '&:hover': {
-                            transform: 'translateY(-4px)',
-                            boxShadow: 4
-                          }
-                        }}
-                      >
-                        <CardContent sx={{ flexGrow: 1 }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                            <Typography variant="subtitle1" fontWeight="bold">
-                              {repair.id}
-                            </Typography>
-                            <Chip 
-                              size="small" 
-                              icon={getStatusIcon(repair.status)}
-                              label={repair.status} 
-                              sx={{ 
-                                bgcolor: alpha(getStatusColor(repair.status), 0.1),
-                                color: getStatusColor(repair.status),
-                                fontWeight: 'bold'
-                              }} 
-                            />
-                          </Box>
-                          
-                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                            <Avatar sx={{ width: 24, height: 24, mr: 1, bgcolor: theme.palette.primary.main }}>
-                              <PersonIcon sx={{ fontSize: 16 }} />
-                            </Avatar>
-                            <Typography variant="body2">
-                              {repair.assignedTo}
-                            </Typography>
-                          </Box>
-                          
-                          <Typography variant="body2" color="text.secondary" gutterBottom>
-                            <LocationOnIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5 }} />
-                            {repair.region} Region
-                          </Typography>
-                          
-                          <Typography variant="body2" color="text.secondary" gutterBottom>
-                            <AccessTimeIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5 }} />
-                            Assigned: {new Date(repair.assignedDate).toLocaleDateString()}
-                          </Typography>
-                          
-                          <Divider sx={{ my: 1 }} />
-                          
-                          <Typography variant="body2" sx={{ mb: 1 }}>
-                            <strong>Type:</strong> {repair.damageType}
-                          </Typography>
-                          
-                          <Typography variant="body2" sx={{ mb: 1 }}>
-                            <strong>Severity:</strong> {repair.severity}
-                          </Typography>
-                          
-                          <Typography variant="body2">
-                            <strong>Notes:</strong>
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                            {repair.notes}
-                          </Typography>
-                        </CardContent>
-                        <CardActions sx={{ justifyContent: 'space-between' }}>
-                          <FormControl size="small" sx={{ minWidth: 120 }}>
-                            <InputLabel>Update Status</InputLabel>
-                            <Select
-                              label="Update Status"
-                              defaultValue=""
-                              onChange={(e) => handleStatusChange(repair.id, e.target.value)}
-                            >
-                              <MenuItem value="Assigned">Assigned</MenuItem>
-                              <MenuItem value="In-Progress">In Progress</MenuItem>
-                              <MenuItem value="On Hold">On Hold</MenuItem>
-                              <MenuItem value="Resolved">Resolved</MenuItem>
-                              <MenuItem value="Rejected">Rejected</MenuItem>
-                            </Select>
-                          </FormControl>
-                          <Tooltip title="View Details">
-                            <IconButton color="primary">
-                              <MoreVertIcon />
-                            </IconButton>
-                          </Tooltip>
-                        </CardActions>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-              )}
-            </Paper>
-          </Grid>
-        </Grid>
+        <ActiveRepairs 
+          assignedRepairs={filteredAssignedRepairs}
+          fieldWorkers={fieldWorkers}
+          statusFilter={statusFilter}
+          workerFilter={workerFilter}
+          regionFilter={regionFilter}
+          searchQuery={searchQuery}
+          setStatusFilter={setStatusFilter}
+          setWorkerFilter={setWorkerFilter}
+          setRegionFilter={setRegionFilter}
+          setSearchQuery={setSearchQuery}
+          getStatusColor={getStatusColor}
+          getStatusIcon={getStatusIcon}
+          handleStatusChange={handleStatusChange}
+          theme={theme}
+        />
       )}
       
       {/* Field Workers Tab */}
       {tabValue === 2 && (
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
-            <Paper sx={{ p: 2, borderRadius: 2, boxShadow: 3 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6">
-                  Field Worker Management
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button 
-                    variant="contained" 
-                    startIcon={<AddIcon />}
-                    size="small"
-                  >
-                    Add Worker
-                  </Button>
-                  <Tooltip title="Refresh">
-                    <IconButton>
-                      <RefreshIcon />
-                    </IconButton>
-                  </Tooltip>
-                </Box>
-              </Box>
-              <Divider sx={{ mb: 2 }} />
-              
-              <Grid container spacing={2}>
-                {fieldWorkers.map((worker) => (
-                  <Grid item xs={12} sm={6} md={4} key={worker.id}>
-                    <Card 
-                      sx={{ 
-                        height: '100%', 
-                        display: 'flex', 
-                        flexDirection: 'column',
-                        transition: 'transform 0.2s',
-                        '&:hover': {
-                          transform: 'translateY(-4px)',
-                          boxShadow: 4
-                        }
-                      }}
-                    >
-                      <CardContent sx={{ flexGrow: 1 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                          <Avatar 
-                            sx={{ 
-                              bgcolor: theme.palette.primary.main, 
-                              width: 56, 
-                              height: 56,
-                              mr: 2
-                            }}
-                          >
-                            {worker.name.split(' ').map(n => n[0]).join('')}
-                          </Avatar>
-                          <Box>
-                            <Typography variant="h6">{worker.name}</Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              ID: {worker.id}
-                            </Typography>
-                            <Chip 
-                              size="small" 
-                              label={worker.status} 
-                              color={worker.status === 'Available' ? 'success' : 'warning'}
-                              sx={{ mt: 0.5 }}
-                            />
-                          </Box>
-                        </Box>
-                        
-                        <Divider sx={{ my: 1 }} />
-                        
-                        <Typography variant="body2" sx={{ mb: 1 }}>
-                          <strong>Specialization:</strong> {worker.specialization}
-                        </Typography>
-                        
-                        <Typography variant="body2" sx={{ mb: 1 }}>
-                          <strong>Region:</strong> {worker.region}
-                        </Typography>
-                        
-                        <Typography variant="body2" sx={{ mb: 1 }}>
-                          <strong>Active Assignments:</strong> {worker.activeAssignments}
-                        </Typography>
-                      </CardContent>
-                      <CardActions sx={{ justifyContent: 'space-between' }}>
-                        <Button 
-                          size="small" 
-                          startIcon={<AssignmentIcon />}
-                          disabled={worker.status !== 'Available'}
-                        >
-                          View Assignments
-                        </Button>
-                        <Box>
-                          <Tooltip title="Edit">
-                            <IconButton size="small">
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Delete">
-                            <IconButton size="small" color="error">
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                      </CardActions>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            </Paper>
-          </Grid>
-        </Grid>
+        <FieldWorker 
+          fieldWorkers={fieldWorkers}
+          theme={theme}
+        />
       )}
       
       {/* Assignment Dialog */}
