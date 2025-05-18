@@ -5,6 +5,7 @@ const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
 const imageRoutes = require('./routes/ImageRoutes');
 const fieldWorkerRoutes = require('./routes/fieldRoutes');
+const damageRoutes = require('./routes/damageRoutes')
 const path = require('path');
 
 dotenv.config();
@@ -19,6 +20,7 @@ app.use('/api/fieldworker', fieldWorkerRoutes);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/images', imageRoutes);
+app.use('/api/damage', damageRoutes)
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

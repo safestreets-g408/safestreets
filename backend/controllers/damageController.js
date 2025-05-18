@@ -1,5 +1,6 @@
 const DamageReport = require('../models/DamageReport');
 const multer = require('multer');
+const { arch } = require('os');
 const path = require('path');
 
 // Configure Multer Storage
@@ -55,4 +56,13 @@ const getDamageHistory = async (req, res) => {
   }
 };
 
-module.exports = { uploadDamageReport, getDamageHistory, upload };
+const getReports = async (req, res) => {
+  try {
+    const reports = await DamageReport.find({});
+    res.status(200).json(reports);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+module.exports = { uploadDamageReport, getDamageHistory, upload, getReports };

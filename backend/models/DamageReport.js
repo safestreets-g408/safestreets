@@ -1,13 +1,13 @@
 const mongoose = require('mongoose');
 
 const DamageReportSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  imagePath: { type: String, required: true },
+  reportId : {type: String, required: true},
+  region : { type: String, required: true},
+  imagePath: { type: String },
   damageType: { type: String, required: true },       
   severity: { type: String, required: true },         
   priority: { type: String, required: true },         
   action: { type: String, required: true }, 
-  region : { type: String, required: true},
   description: { type: String },
   reporter: { type: String, required: true },
   location: { type: String, required: true },          
