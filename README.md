@@ -14,7 +14,6 @@ A comprehensive system for detecting, reporting, and managing road damages using
 - [API Documentation](#api-documentation)
 - [Machine Learning Model](#machine-learning-model)
 - [Security](#security)
-- [Contributing](#contributing)
 
 ## Overview
 
@@ -221,14 +220,6 @@ The Vision Transformer (ViT) model is trained on a diverse dataset of road damag
 - **Data Protection**: Input validation and sanitization
 - **API Security**: Rate limiting and CORS policies
 - **Image Storage**: Secure cloud storage with controlled access
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ## Contact
 
