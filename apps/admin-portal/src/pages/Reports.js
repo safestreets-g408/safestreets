@@ -14,7 +14,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PendingIcon from '@mui/icons-material/Pending';
 import BuildIcon from '@mui/icons-material/Build';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
-// import ReportDataTable from '../components/ReportDataTable'; // Not used in this rewrite
+// import ReportDataTable from '../components/ReportDataTable'; 
 
 const API_URL = 'http://localhost:5030/api/damage/reports';
 

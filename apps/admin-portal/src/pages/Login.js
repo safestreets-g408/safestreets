@@ -35,14 +35,6 @@ const Login = () => {
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError('Please enter a valid email address');
-      setShowError(true);
-      return;
-    }
-
-    // Simple validation for demo purposes
     if (email === 'admin@gmail.com' && password === 'admin') {
       navigate('/');
     } else {
@@ -150,10 +142,6 @@ const Login = () => {
               onChange={(e) => setEmail(e.target.value)}
               variant="outlined"
               sx={{ mb: 3 }}
-              inputProps={{
-                maxLength: 50,
-                pattern: "[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$"
-              }}
             />
 
             <TextField
@@ -168,10 +156,6 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               variant="outlined"
               sx={{ mb: 4 }}
-              inputProps={{
-                minLength: 8,
-                maxLength: 50
-              }}
             />
 
             <Stack spacing={2}>

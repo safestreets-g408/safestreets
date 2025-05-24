@@ -1,8 +1,16 @@
 import React from 'react';
-import './App.css';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider, CssBaseline } from '@mui/material';
+import { LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 
-import Layout from './pages/Layout'; 
+// Theme
+import theme from './theme';
+
+// Layout
+import MainLayout from './components/layout/MainLayout';
+
+// Pages
 import Dashboard from './pages/Dashboard';
 import Reports from './pages/Reports';
 import MapView from './pages/MapView';
@@ -15,18 +23,27 @@ import Profile from './pages/Profile';
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route element={<Layout/>}>
-          <Route index element={<Dashboard/>}/>
-          <Route path='/reports' element={<Reports/>} />
-          <Route path='/map' element={<MapView/>} />
-          <Route path='/analytics' element={<Analytics/>} />
-          <Route path='repairs' element={<Repair/>} />
-          <Route path='/historical' element={<Historical/>} />
-          <Route path='/profile' element={<Profile/>} />
-        </Route>
-        <Route path='/login' element={<Login/>} />
-      </Routes>
+      <ThemeProvider theme={theme}>
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <CssBaseline />
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            
+            <Route element={<MainLayout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/map" element={<MapView />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/repairs" element={<Repair />} />
+              <Route path="/historical" element={<Historical />} />
+              <Route path="/profile" element={<Profile />} />
+            </Route>
+
+            {/* Catch all route */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </LocalizationProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }
