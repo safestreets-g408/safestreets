@@ -4,12 +4,13 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Provider as PaperProvider, DefaultTheme, FAB, Portal, Modal, Button as PaperButton } from 'react-native-paper';
-import { View, Text, StatusBar, StyleSheet, ActivityIndicator, Dimensions, TouchableOpacity, Animated, Easing } from 'react-native';
+import { View, Text, StatusBar, StyleSheet, ActivityIndicator, Dimensions, TouchableOpacity, Animated, Easing, LogBox } from 'react-native';
 import { Camera, User, Clipboard, Home, Bell, Settings, HelpCircle } from 'react-native-feather';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Animatable from 'react-native-animatable';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
+import ErrorBoundary from 'react-native-error-boundary';
 
 // Import screens
 import CameraScreen from './screens/CameraScreen';
@@ -19,6 +20,8 @@ import ProfileScreen from './screens/ProfileScreen';
 import LoginScreen from './screens/LoginScreen';
 import TaskManagement from './screens/TaskManagement';
 import HomeScreen from './screens/HomeScreen';
+
+LogBox.ignoreLogs(['non-serializable values']);
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -44,6 +47,21 @@ const theme = {
     scale: 1.0,
   },
 };
+
+// Create a custom fallback component
+const ErrorFallback = ({ error, resetError }) => (
+  <View style={styles.errorContainer}>
+    <Text style={styles.errorText}>Something went wrong!</Text>
+    <Text style={styles.errorMessage}>{error.message}</Text>
+    <PaperButton 
+      mode="contained" 
+      onPress={resetError}
+      style={styles.errorButton}
+    >
+      Try Again
+    </PaperButton>
+  </View>
+);
 
 // Main Tab Navigation
 const MainTabs = () => {
@@ -300,7 +318,7 @@ const MainTabs = () => {
       </Modal>
     </>
   );
-};
+}
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -336,122 +354,131 @@ export default function App() {
     setIsLoggedIn(true);
   };
 
+  const handleError = (error) => {
+    console.log('Caught error:', error);
+    // Add any error reporting service here
+  };
+
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Animatable.View 
-          animation="pulse" 
-          easing="ease-out" 
-          iterationCount="infinite"
-          style={styles.indicatorContainer}
-        >
-          <View style={styles.progressBarContainer}>
-            <Animated.View 
-              style={[
-                styles.progressBar, 
-                { width: loadingProgress * (width - 80) }
-              ]} 
-            />
-          </View>
-        </Animatable.View>
-        <Animatable.Text 
-          animation="fadeIn" 
-          delay={400}
-          duration={800}
-          style={styles.loadingText}
-        >
-          Road Damage Reporter
-        </Animatable.Text>
-        <Animatable.Text 
-          animation="fadeIn" 
-          delay={800}
-          duration={800}
-          style={styles.loadingSubText}
-        >
-          Making roads safer together
-        </Animatable.Text>
-        <Animatable.Text 
-          animation="fadeIn" 
-          delay={1200}
-          duration={800}
-          style={styles.versionText}
-        >
-          v2.0.1
-        </Animatable.Text>
-      </View>
+      <ErrorBoundary FallbackComponent={ErrorFallback} onError={handleError}>
+        <View style={styles.loadingContainer}>
+          <Animatable.View 
+            animation="pulse" 
+            easing="ease-out" 
+            iterationCount="infinite"
+            style={styles.indicatorContainer}
+          >
+            <View style={styles.progressBarContainer}>
+              <Animated.View 
+                style={[
+                  styles.progressBar, 
+                  { width: loadingProgress * (width - 80) }
+                ]} 
+              />
+            </View>
+          </Animatable.View>
+          <Animatable.Text 
+            animation="fadeIn" 
+            delay={400}
+            duration={800}
+            style={styles.loadingText}
+          >
+            Road Damage Reporter
+          </Animatable.Text>
+          <Animatable.Text 
+            animation="fadeIn" 
+            delay={800}
+            duration={800}
+            style={styles.loadingSubText}
+          >
+            Making roads safer together
+          </Animatable.Text>
+          <Animatable.Text 
+            animation="fadeIn" 
+            delay={1200}
+            duration={800}
+            style={styles.versionText}
+          >
+            v2.0.1
+          </Animatable.Text>
+        </View>
+      </ErrorBoundary>
     );
   }
 
   return (
-    <SafeAreaProvider>
-      <PaperProvider theme={theme}>
-        <NavigationContainer>
-          <StatusBar barStyle="light-content" backgroundColor="#0d47a1" />
-          <Stack.Navigator
-            screenOptions={{
-              headerStyle: {
-                elevation: 0,
-                shadowOpacity: 0,
-              },
-              cardStyle: { backgroundColor: '#f5f8ff' },
-              headerTitleStyle: {
-                fontWeight: 'bold',
-              },
-              headerBackTitleVisible: false,
-              cardStyleInterpolator: ({ current, layouts }) => {
-                return {
-                  cardStyle: {
-                    transform: [
-                      {
-                        translateX: current.progress.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [layouts.screen.width, 0],
-                        }),
-                      },
-                    ],
-                  },
-                };
-              },
-            }}
-          >
-            {!isLoggedIn ? (
-              <Stack.Screen 
-                name="Login" 
-                component={LoginScreen}
-                options={{ headerShown: false }}
-                initialParams={{ onLogin: handleLogin }}
-              />
-            ) : (
-              <>
+    <ErrorBoundary FallbackComponent={ErrorFallback} onError={handleError}>
+      <SafeAreaProvider>
+        <PaperProvider theme={theme}>
+          <NavigationContainer>
+            <StatusBar barStyle="light-content" backgroundColor="#0d47a1" />
+            <Stack.Navigator
+              screenOptions={{
+                headerStyle: {
+                  elevation: 0,
+                  shadowOpacity: 0,
+                },
+                cardStyle: { backgroundColor: '#f5f8ff' },
+                headerTitleStyle: {
+                  fontWeight: 'bold',
+                },
+                headerBackTitleVisible: false,
+                cardStyleInterpolator: ({ current, layouts }) => {
+                  return {
+                    cardStyle: {
+                      transform: [
+                        {
+                          translateX: current.progress.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [layouts.screen.width, 0],
+                          }),
+                        },
+                      ],
+                    },
+                  };
+                },
+              }}
+            >
+              {!isLoggedIn ? (
                 <Stack.Screen 
-                  name="Main" 
-                  component={MainTabs} 
+                  name="Login" 
+                  component={LoginScreen}
                   options={{ headerShown: false }}
+                  initialParams={{ onLogin: handleLogin }}
                 />
-                <Stack.Screen
-                  name="ViewReport"
-                  component={ViewReportScreen}
-                  options={{ 
-                    title: "Report Details",
-                    headerTitleAlign: 'center',
-                    headerBackground: () => (
-                      <LinearGradient
-                        colors={['#2196f3', '#1976d2', '#0d47a1']}
-                        style={{ flex: 1 }}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                      />
-                    ),
-                    headerTintColor: '#ffffff',
-                    headerBackTitleVisible: false,
-                  }}
-                />
-              </>
-            )}
-          </Stack.Navigator>
-        </NavigationContainer>
-      </PaperProvider>
-    </SafeAreaProvider>
+              ) : (
+                <>
+                  <Stack.Screen 
+                    name="Main" 
+                    component={MainTabs} 
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="ViewReport"
+                    component={ViewReportScreen}
+                    options={{ 
+                      title: "Report Details",
+                      headerTitleAlign: 'center',
+                      headerBackground: () => (
+                        <LinearGradient
+                          colors={['#2196f3', '#1976d2', '#0d47a1']}
+                          style={{ flex: 1 }}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                        />
+                      ),
+                      headerTintColor: '#ffffff',
+                      headerBackTitleVisible: false,
+                    }}
+                  />
+                </>
+              )}
+            </Stack.Navigator>
+          </NavigationContainer>
+        </PaperProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 
@@ -608,5 +635,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a73e8',
     paddingHorizontal: 30,
     borderRadius: 8,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#f5f8ff',
+  },
+  errorText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#d32f2f',
+    marginBottom: 10,
+  },
+  errorMessage: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  errorButton: {
+    backgroundColor: '#1a73e8',
+    paddingHorizontal: 30,
   },
 });
