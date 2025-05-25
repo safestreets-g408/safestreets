@@ -4,13 +4,14 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Provider as PaperProvider, DefaultTheme, FAB, Portal, Modal, Button as PaperButton } from 'react-native-paper';
-import { View, Text, StatusBar, StyleSheet, ActivityIndicator, Dimensions, TouchableOpacity, Animated, Easing, LogBox } from 'react-native';
+import { View, Text, StatusBar, StyleSheet, ActivityIndicator, Dimensions, TouchableOpacity, Animated, Easing, LogBox, AppState, Alert } from 'react-native';
 import { Camera, User, Clipboard, Home, Bell, Settings, HelpCircle } from 'react-native-feather';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Animatable from 'react-native-animatable';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import ErrorBoundary from 'react-native-error-boundary';
+import * as Updates from 'expo-updates';
 
 // Import screens
 import CameraScreen from './screens/CameraScreen';
@@ -142,14 +143,16 @@ const MainTabs = () => {
           component={HomeScreen} 
           options={{
             tabBarIcon: ({ color, focused }) => (
-              <Animatable.View
-                animation={focused ? 'pulse' : undefined}
-                iterationCount={focused ? 'infinite' : 1}
-                duration={2000}
-              >
-                <Home color={color} size={24} />
-                {renderTabBarBadge(3)}
-              </Animatable.View>
+              <View style={styles.tabIconContainer}>
+                <Animatable.View
+                  animation={focused ? 'pulse' : undefined}
+                  iterationCount={focused ? 'infinite' : 1}
+                  duration={2000}
+                >
+                  <Home color={color} size={24} />
+                  {renderTabBarBadge(3)}
+                </Animatable.View>
+              </View>
             ),
             headerTitle: "Road Damage Reporter",
             headerTitleAlign: 'center',
@@ -177,13 +180,15 @@ const MainTabs = () => {
           component={CameraScreen} 
           options={{
             tabBarIcon: ({ color, focused }) => (
-              <Animatable.View
-                animation={focused ? 'pulse' : undefined}
-                iterationCount={focused ? 'infinite' : 1}
-                duration={2000}
-              >
-                <Camera color={color} size={24} />
-              </Animatable.View>
+              <View style={styles.tabIconContainer}>
+                <Animatable.View
+                  animation={focused ? 'pulse' : undefined}
+                  iterationCount={focused ? 'infinite' : 1}
+                  duration={2000}
+                >
+                  <Camera color={color} size={24} />
+                </Animatable.View>
+              </View>
             ),
             headerTitle: "Report Damage",
             headerTitleAlign: 'center',
@@ -203,14 +208,16 @@ const MainTabs = () => {
           component={ReportsScreen}
           options={{
             tabBarIcon: ({ color, focused }) => (
-              <Animatable.View
-                animation={focused ? 'pulse' : undefined}
-                iterationCount={focused ? 'infinite' : 1}
-                duration={2000}
-              >
-                <Clipboard color={color} size={24} />
-                {renderTabBarBadge(2)}
-              </Animatable.View>
+              <View style={styles.tabIconContainer}>
+                <Animatable.View
+                  animation={focused ? 'pulse' : undefined}
+                  iterationCount={focused ? 'infinite' : 1}
+                  duration={2000}
+                >
+                  <Clipboard color={color} size={24} />
+                  {renderTabBarBadge(2)}
+                </Animatable.View>
+              </View>
             ),
             headerTitle: "My Reports",
             headerTitleAlign: 'center',
@@ -230,19 +237,21 @@ const MainTabs = () => {
           component={TaskManagement}
           options={{
             tabBarIcon: ({ color, focused }) => (
-              <Animatable.View
-                animation={focused ? 'pulse' : undefined}
-                iterationCount={focused ? 'infinite' : 1}
-                duration={2000}
-              >
-                <Animatable.Text 
-                  animation={focused ? "bounceIn" : undefined}
-                  style={{fontSize: 22, color: color}}
+              <View style={styles.tabIconContainer}>
+                <Animatable.View
+                  animation={focused ? 'pulse' : undefined}
+                  iterationCount={focused ? 'infinite' : 1}
+                  duration={2000}
                 >
-                  📋
-                </Animatable.Text>
-                {renderTabBarBadge(1)}
-              </Animatable.View>
+                  <Animatable.Text 
+                    animation={focused ? "bounceIn" : undefined}
+                    style={{fontSize: 22, color: color}}
+                  >
+                    📋
+                  </Animatable.Text>
+                  {renderTabBarBadge(1)}
+                </Animatable.View>
+              </View>
             ),
             headerTitle: "Task Management",
             headerTitleAlign: 'center',
@@ -262,13 +271,15 @@ const MainTabs = () => {
           component={ProfileScreen}
           options={{
             tabBarIcon: ({ color, focused }) => (
-              <Animatable.View
-                animation={focused ? 'pulse' : undefined}
-                iterationCount={focused ? 'infinite' : 1}
-                duration={2000}
-              >
-                <User color={color} size={24} />
-              </Animatable.View>
+              <View style={styles.tabIconContainer}>
+                <Animatable.View
+                  animation={focused ? 'pulse' : undefined}
+                  iterationCount={focused ? 'infinite' : 1}
+                  duration={2000}
+                >
+                  <User color={color} size={24} />
+                </Animatable.View>
+              </View>
             ),
             headerTitle: "My Profile",
             headerTitleAlign: 'center',
@@ -324,95 +335,93 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
-  const animationRef = useRef(null);
-  
-  // Enhanced loading with progress
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 3000);
-    
-    // Simulate loading progress
-    const interval = setInterval(() => {
-      setLoadingProgress(prev => {
-        const newProgress = prev + 0.1;
-        return newProgress > 1 ? 1 : newProgress;
-      });
-    }, 300);
-    
-    if (animationRef.current) {
-      animationRef.current.play();
-    }
-    
-    return () => {
-      clearTimeout(timer);
-      clearInterval(interval);
-    };
-  }, []);
-  
+  const appState = useRef(AppState.currentState);
+
   const handleLogin = () => {
     setIsLoggedIn(true);
+    // The navigation will happen automatically due to conditional rendering
   };
 
-  const handleError = (error) => {
-    console.log('Caught error:', error);
-    // Add any error reporting service here
+  // Initialize app with error handling
+  const initializeApp = async () => {
+    try {
+      // Only check for updates in production
+      if (!__DEV__) {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          await Updates.reloadAsync();
+        }
+      }
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Initialization error:', error);
+      setIsLoading(false);
+    }
+  };
+
+  // Handle app state changes
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        initializeApp();
+      }
+      appState.current = nextAppState;
+    });
+
+    initializeApp();
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  // Global error handler
+  const handleError = (error, isFatal) => {
+    console.error('Global error:', error);
+    if (isFatal) {
+      Alert.alert(
+        'Unexpected Error',
+        'The app encountered a serious error and needs to restart.',
+        [
+          {
+            text: 'Restart',
+            onPress: () => {
+              Updates.reloadAsync();
+            }
+          }
+        ]
+      );
+    }
   };
 
   if (isLoading) {
     return (
-      <ErrorBoundary FallbackComponent={ErrorFallback} onError={handleError}>
+      <ErrorBoundary 
+        FallbackComponent={ErrorFallback}
+        onError={handleError}
+      >
         <View style={styles.loadingContainer}>
-          <Animatable.View 
-            animation="pulse" 
-            easing="ease-out" 
-            iterationCount="infinite"
-            style={styles.indicatorContainer}
-          >
-            <View style={styles.progressBarContainer}>
-              <Animated.View 
-                style={[
-                  styles.progressBar, 
-                  { width: loadingProgress * (width - 80) }
-                ]} 
-              />
-            </View>
-          </Animatable.View>
-          <Animatable.Text 
-            animation="fadeIn" 
-            delay={400}
-            duration={800}
-            style={styles.loadingText}
-          >
-            Road Damage Reporter
-          </Animatable.Text>
-          <Animatable.Text 
-            animation="fadeIn" 
-            delay={800}
-            duration={800}
-            style={styles.loadingSubText}
-          >
-            Making roads safer together
-          </Animatable.Text>
-          <Animatable.Text 
-            animation="fadeIn" 
-            delay={1200}
-            duration={800}
-            style={styles.versionText}
-          >
-            v2.0.1
-          </Animatable.Text>
+          <ActivityIndicator size="large" color="#1a73e8" />
+          <Text style={styles.loadingText}>Loading...</Text>
         </View>
       </ErrorBoundary>
     );
   }
 
   return (
-    <ErrorBoundary FallbackComponent={ErrorFallback} onError={handleError}>
+    <ErrorBoundary 
+      FallbackComponent={ErrorFallback}
+      onError={handleError}
+    >
       <SafeAreaProvider>
         <PaperProvider theme={theme}>
-          <NavigationContainer>
-            <StatusBar barStyle="light-content" backgroundColor="#0d47a1" />
+          <NavigationContainer
+            onStateChange={(state) => {
+              // Add navigation state tracking if needed
+            }}
+            fallback={<ActivityIndicator size="large" color="#1a73e8" />}
+          >
             <Stack.Navigator
               screenOptions={{
                 headerStyle: {
@@ -445,35 +454,35 @@ export default function App() {
                   name="Login" 
                   component={LoginScreen}
                   options={{ headerShown: false }}
-                  initialParams={{ onLogin: handleLogin }}
+                  initialParams={{ 
+                    onLogin: handleLogin 
+                  }}
                 />
               ) : (
-                <>
-                  <Stack.Screen 
-                    name="Main" 
-                    component={MainTabs} 
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="ViewReport"
-                    component={ViewReportScreen}
-                    options={{ 
-                      title: "Report Details",
-                      headerTitleAlign: 'center',
-                      headerBackground: () => (
-                        <LinearGradient
-                          colors={['#2196f3', '#1976d2', '#0d47a1']}
-                          style={{ flex: 1 }}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                        />
-                      ),
-                      headerTintColor: '#ffffff',
-                      headerBackTitleVisible: false,
-                    }}
-                  />
-                </>
+                <Stack.Screen 
+                  name="MainTabs" // Changed from "Main" to "MainTabs"
+                  component={MainTabs} 
+                  options={{ headerShown: false }}
+                />
               )}
+              <Stack.Screen
+                name="ViewReport"
+                component={ViewReportScreen}
+                options={{ 
+                  title: "Report Details",
+                  headerTitleAlign: 'center',
+                  headerBackground: () => (
+                    <LinearGradient
+                      colors={['#2196f3', '#1976d2', '#0d47a1']}
+                      style={{ flex: 1 }}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    />
+                  ),
+                  headerTintColor: '#ffffff',
+                  headerBackTitleVisible: false,
+                }}
+              />
             </Stack.Navigator>
           </NavigationContainer>
         </PaperProvider>
@@ -658,5 +667,9 @@ const styles = StyleSheet.create({
   errorButton: {
     backgroundColor: '#1a73e8',
     paddingHorizontal: 30,
+  },
+  tabIconContainer: {
+    padding: 2,
+    overflow: 'visible',
   },
 });
