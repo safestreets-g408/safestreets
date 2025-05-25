@@ -47,6 +47,11 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
     }
   };
 
+  const handleLogout = () => {
+    onLogout();
+    navigate('/login');
+  }
+
   const drawer = (
     <Box sx={{
       height: '100%',
@@ -134,7 +139,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
       <List sx={{ px: 2, pb: 2 }}>
         <ListItem disablePadding>
           <ListItemButton
-            onClick={onLogout}
+            onClick={handleLogout}
             sx={{
               borderRadius: 2,
               color: theme.palette.error.main,

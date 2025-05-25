@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import React, { useState,  } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { 
   Box, 
   Toolbar,
@@ -14,11 +14,17 @@ import Header from './Header';
 const MainLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const theme = useTheme();
+  const navigate = useNavigate();
+  // Uncomment if using authentication
   //const { logout } = useAuth();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
+
+  const handleLogout = () => {
+    navigate('/')
+  }
 
   return (
     <Box 
@@ -32,6 +38,7 @@ const MainLayout = () => {
       <Sidebar 
         mobileOpen={mobileOpen} 
         onDrawerToggle={handleDrawerToggle}
+        onLogout={handleLogout}
       />
       <Box
         component="main"
