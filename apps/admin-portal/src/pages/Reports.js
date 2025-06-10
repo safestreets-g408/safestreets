@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Box, Paper, Typography, Grid, TextField, MenuItem, 
   Button, FormControl, InputLabel, Select, Chip, Stack,
   Card, CardContent, IconButton, Tooltip,
-  Pagination, Menu, ListItemIcon, ListItemText, CircularProgress
+  Pagination, Menu, ListItemIcon, ListItemText, CircularProgress,
+  Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import SortIcon from '@mui/icons-material/Sort';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
@@ -14,6 +16,8 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PendingIcon from '@mui/icons-material/Pending';
 import BuildIcon from '@mui/icons-material/Build';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
+import CloseIcon from '@mui/icons-material/Close';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import ViewDamageReport from '../components/reports/ViewDamageReport';
 import { api } from '../utils/api';
 
@@ -31,13 +35,15 @@ function Reports() {
   const [sortField, setSortField] = useState('createdAt');
   const [sortDirection, setSortDirection] = useState('desc');
   const [anchorEl, setAnchorEl] = useState(null);
-  const exportMenuOpen = Boolean(anchorEl);
-
+  const [filtersDialogOpen, setFiltersDialogOpen] = useState(false);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState(null);
   const [selectedReport, setSelectedReport] = useState(null);
   const [viewReportOpen, setViewReportOpen] = useState(false);
+
+  const theme = useTheme();
+  const exportMenuOpen = Boolean(anchorEl);
 
   // Pagination
   const pageSize = 6;
@@ -71,6 +77,37 @@ function Reports() {
 
     fetchReports();
   }, [filters]); 
+
+  // Utility functions
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'completed':
+        return 'success';
+      case 'in progress':
+        return 'info';
+      case 'pending':
+        return 'warning';
+      case 'failed':
+        return 'error';
+      default:
+        return 'default';
+    }
+  };
+
+  const getSeverityColor = (severity) => {
+    switch (severity?.toLowerCase()) {
+      case 'critical':
+        return 'error';
+      case 'high':
+        return 'error';
+      case 'medium':
+        return 'warning';
+      case 'low':
+        return 'success';
+      default:
+        return 'default';
+    }
+  };
 
   function filteredReports() {
     return reports.filter(report => {
@@ -137,23 +174,22 @@ function Reports() {
     }
   };
 
-  const handleExportClick = (event) => {
+  const handleExportMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
   };
 
-  const handleExportClose = () => {
+  const handleExportMenuClose = () => {
     setAnchorEl(null);
   };
 
   const handleExport = (format) => {
-    // Export logic would go here
-    // For now, just log
+    // Export logic implementation
     console.log(`Exporting as ${format}`);
-    handleExportClose();
+    handleExportMenuClose();
   };
 
-  const handlePageChange = (event, value) => {
-    setPage(value);
+  const handlePageChange = (event, newPage) => {
+    setPage(newPage);
   };
 
   const handleViewReport = (report) => {
@@ -164,6 +200,13 @@ function Reports() {
   const handleCloseReport = () => {
     setViewReportOpen(false);
     setSelectedReport(null);
+  };
+
+  const handleFilterDelete = (key) => {
+    setFilters({
+      ...filters,
+      [key]: '',
+    });
   };
 
   // Build options from data
@@ -182,86 +225,55 @@ function Reports() {
     return <PendingIcon color="disabled" />;
   };
 
-  const getSeverityColor = (severity) => {
-    switch(severity) {
-      case 'Mild': return '#2196f3'; // blue
-      case 'Moderate': return '#ff9800'; // orange
-      case 'Severe': return '#f44336'; // red
-      default: return '#757575'; // grey
-    }
-  };
-
-  return (
-    <>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h4" gutterBottom sx={{fontWeight: 'semi-bold'}}>
-          Damage Reports
-        </Typography>
-        <Box>
-          <Tooltip title="Export Reports">
-            <IconButton onClick={handleExportClick}>
-              <FileDownloadIcon />
-            </IconButton>
-          </Tooltip>
-          <Menu
-            anchorEl={anchorEl}
-            open={exportMenuOpen}
-            onClose={handleExportClose}
-          >
-            <MenuItem onClick={() => handleExport('csv')}>
-              <ListItemIcon>
-                <FileDownloadIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Export as CSV</ListItemText>
-            </MenuItem>
-            <MenuItem onClick={() => handleExport('excel')}>
-              <ListItemIcon>
-                <FileDownloadIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Export as Excel</ListItemText>
-            </MenuItem>
-          </Menu>
-          <Tooltip title="Toggle View">
-            <IconButton onClick={() => setViewMode(viewMode === 'table' ? 'card' : 'table')}>
-              {viewMode === 'table' ? <GridViewIcon /> : <TableRowsIcon />}
-            </IconButton>
-          </Tooltip>
-        </Box>
-      </Box>
-      
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <FilterListIcon sx={{ mr: 1 }} />
-          <Typography variant="h6">Filters</Typography>
-        </Box>
-        
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} md={2}>
+  // Filter Dialog
+  const FilterDialog = () => (
+    <Dialog 
+      open={filtersDialogOpen} 
+      onClose={() => setFiltersDialogOpen(false)}
+      maxWidth="sm"
+      fullWidth
+    >
+      <DialogTitle sx={{ 
+        pb: 2, 
+        display: 'flex', 
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <Typography variant="h6">Filter Reports</Typography>
+        <IconButton 
+          onClick={() => setFiltersDialogOpen(false)}
+          size="small"
+          sx={{
+            color: theme.palette.text.secondary,
+            '&:hover': { color: theme.palette.text.primary }
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent dividers>
+        <Grid container spacing={3}>
+          <Grid item xs={12} sm={6}>
             <TextField
-              label="From Date"
+              fullWidth
+              label="Date From"
               type="date"
               value={filters.dateFrom || ''}
               onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
-              InputLabelProps={{
-                shrink: true,
-              }}
-              fullWidth
+              InputLabelProps={{ shrink: true }}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={2}>
+          <Grid item xs={12} sm={6}>
             <TextField
-              label="To Date"
+              fullWidth
+              label="Date To"
               type="date"
               value={filters.dateTo || ''}
               onChange={(e) => handleFilterChange('dateTo', e.target.value)}
-              InputLabelProps={{
-                shrink: true,
-              }}
-              fullWidth
+              InputLabelProps={{ shrink: true }}
             />
           </Grid>
-          
-          <Grid item xs={12} sm={6} md={2}>
+          <Grid item xs={12} sm={6}>
             <FormControl fullWidth>
               <InputLabel>Severity</InputLabel>
               <Select
@@ -276,8 +288,7 @@ function Reports() {
               </Select>
             </FormControl>
           </Grid>
-          
-          <Grid item xs={12} sm={6} md={2}>
+          <Grid item xs={12} sm={6}>
             <FormControl fullWidth>
               <InputLabel>Region</InputLabel>
               <Select
@@ -292,8 +303,7 @@ function Reports() {
               </Select>
             </FormControl>
           </Grid>
-          
-          <Grid item xs={12} sm={6} md={2}>
+          <Grid item xs={12} sm={6}>
             <FormControl fullWidth>
               <InputLabel>Damage Type</InputLabel>
               <Select
@@ -308,8 +318,7 @@ function Reports() {
               </Select>
             </FormControl>
           </Grid>
-          
-          <Grid item xs={12} sm={6} md={2}>
+          <Grid item xs={12} sm={6}>
             <FormControl fullWidth>
               <InputLabel>Priority</InputLabel>
               <Select
@@ -325,249 +334,476 @@ function Reports() {
             </FormControl>
           </Grid>
         </Grid>
-        
-        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between' }}>
-          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-            {filters.dateFrom && (
-              <Chip 
-                label={`From: ${filters.dateFrom}`} 
-                onDelete={() => handleFilterChange('dateFrom', null)}
-              />
+      </DialogContent>
+      <DialogActions sx={{ px: 3, py: 2 }}>
+        <Button 
+          onClick={() => {
+            clearFilters();
+            setFiltersDialogOpen(false);
+          }}
+          color="inherit"
+          sx={{ mr: 1 }}
+        >
+          Clear All
+        </Button>
+        <Button 
+          variant="contained" 
+          onClick={() => setFiltersDialogOpen(false)}
+        >
+          Apply Filters
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+
+  const renderTable = () => (
+    <Paper 
+      elevation={0}
+      sx={{ 
+        borderRadius: 2,
+        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+        overflow: 'hidden',
+      }}
+    >
+      <Box sx={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Report ID</th>
+              <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Date</th>
+              <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Region</th>
+              <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Type</th>
+              <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Severity</th>
+              <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Status</th>
+              <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedReports().map((report, index) => (
+              <tr 
+                key={report.id}
+                style={{
+                  transition: 'background-color 0.2s ease-in-out',
+                  '&:hover': {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                  },
+                  backgroundColor: index % 2 === 0 ? alpha(theme.palette.background.default, 0.5) : 'inherit'
+                }}
+              >
+                <td style={{ padding: 8, fontWeight: 500, color: theme.palette.primary.main }}>
+                  {report.id}
+                </td>
+                <td style={{ padding: 8 }}>
+                  {new Date(report.createdAt).toLocaleDateString()}
+                </td>
+                <td style={{ padding: 8 }}>{report.region}</td>
+                <td style={{ padding: 8 }}>{report.damageType}</td>
+                <td style={{ padding: 8 }}>
+                  <Chip 
+                    label={report.severity}
+                    color={getSeverityColor(report.severity)}
+                    size="small"
+                    sx={{
+                      fontWeight: 600,
+                      borderRadius: 1,
+                    }}
+                  />
+                </td>
+                <td style={{ padding: 8 }}>
+                  <Chip 
+                    label={report.status}
+                    color={getStatusColor(report.status)}
+                    size="small"
+                    sx={{
+                      fontWeight: 600,
+                      borderRadius: 1,
+                    }}
+                  />
+                </td>
+                <td style={{ padding: 8 }}>
+                  <Stack direction="row" spacing={1}>
+                    <Tooltip title="View Details" arrow>
+                      <IconButton 
+                        size="small"
+                        onClick={() => handleViewReport(report)}
+                        sx={{ 
+                          color: theme.palette.primary.main,
+                          '&:hover': { 
+                            backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                          }
+                        }}
+                      >
+                        <VisibilityIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    {/* Add more action buttons as needed */}
+                  </Stack>
+                </td>
+              </tr>
+            ))}
+            {paginatedReports().length === 0 && (
+              <tr>
+                <td colSpan={7} style={{ textAlign: 'center', padding: 24, color: '#888' }}>
+                  No reports found.
+                </td>
+              </tr>
             )}
-            {filters.dateTo && (
-              <Chip 
-                label={`To: ${filters.dateTo}`} 
-                onDelete={() => handleFilterChange('dateTo', null)}
-              />
-            )}
-            {filters.severity && (
-              <Chip 
-                label={`Severity: ${filters.severity}`} 
-                onDelete={() => handleFilterChange('severity', '')}
-              />
-            )}
-            {filters.region && (
-              <Chip 
-                label={`Region: ${filters.region}`} 
-                onDelete={() => handleFilterChange('region', '')}
-              />
-            )}
-            {filters.damageType && (
-              <Chip 
-                label={`Type: ${filters.damageType}`} 
-                onDelete={() => handleFilterChange('damageType', '')}
-              />
-            )}
-            {filters.priority && (
-              <Chip 
-                label={`Priority: ${filters.priority}`} 
-                onDelete={() => handleFilterChange('priority', '')}
-              />
-            )}
+          </tbody>
+        </table>
+      </Box>
+    </Paper>
+  );
+
+  const renderGrid = () => (
+    <Grid container spacing={3}>
+      {paginatedReports().map(report => (
+        <Grid item xs={12} sm={6} md={4} key={report.id}>
+          <Card 
+            sx={{ 
+              height: '100%',
+              borderRadius: 2,
+              transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: theme.shadows[8],
+              },
+              display: 'flex',
+              flexDirection: 'column',
+              position: 'relative',
+              overflow: 'visible',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '4px',
+                background: `linear-gradient(90deg, ${theme.palette[getSeverityColor(report.severity)].main}, ${theme.palette[getSeverityColor(report.severity)].light})`,
+                borderRadius: '8px 8px 0 0',
+              }
+            }}
+          >
+            <CardContent sx={{ flex: 1 }}>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="h6" component="div" gutterBottom>
+                  {report.id}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {new Date(report.createdAt).toLocaleDateString()}
+                </Typography>
+              </Box>
+              
+              <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+                <Chip 
+                  label={report.severity}
+                  color={getSeverityColor(report.severity)}
+                  size="small"
+                  sx={{ fontWeight: 600 }}
+                />
+                <Chip 
+                  label={report.status}
+                  color={getStatusColor(report.status)}
+                  size="small"
+                  sx={{ fontWeight: 600 }}
+                />
+              </Stack>
+
+              <Typography variant="body2" paragraph>
+                {report.description}
+              </Typography>
+
+              <Box sx={{ mt: 'auto' }}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  {report.region} • {report.damageType}
+                </Typography>
+              </Box>
+            </CardContent>
+
+            <Box 
+              sx={{ 
+                p: 2, 
+                pt: 0,
+                borderTop: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                display: 'flex',
+                justifyContent: 'flex-end'
+              }}
+            >
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() => handleViewReport(report)}
+                sx={{
+                  bgcolor: alpha(theme.palette.primary.main, 0.1),
+                  color: theme.palette.primary.main,
+                  '&:hover': {
+                    bgcolor: alpha(theme.palette.primary.main, 0.2),
+                  },
+                }}
+              >
+                View Details
+              </Button>
+            </Box>
+          </Card>
+        </Grid>
+      ))}
+    </Grid>
+  );
+
+  return (
+    <>
+      <Box sx={{ py: 3 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'stretch', md: 'center' },
+            mb: 4,
+            gap: 2,
+          }}
+        >
+          <Typography
+            variant="h4"
+            sx={{
+              fontSize: { xs: '1.5rem', sm: '1.875rem' },
+              fontWeight: 700,
+              color: theme.palette.text.primary,
+              letterSpacing: '-0.5px',
+            }}
+          >
+            Damage Reports
+          </Typography>
+
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={2}
+            sx={{ minWidth: { sm: '400px' } }}
+          >
+            <Button
+              variant="contained"
+              startIcon={<FilterListIcon />}
+              onClick={() => setFiltersDialogOpen(true)}
+              sx={{
+                bgcolor: alpha(theme.palette.primary.main, 0.1),
+                color: theme.palette.primary.main,
+                '&:hover': {
+                  bgcolor: alpha(theme.palette.primary.main, 0.2),
+                },
+                px: 3,
+              }}
+            >
+              Filters
+            </Button>
+
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant={viewMode === 'grid' ? 'contained' : 'outlined'}
+                onClick={() => setViewMode('grid')}
+                sx={{
+                  minWidth: 'auto',
+                  px: 2,
+                  ...(viewMode === 'grid' ? {
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                    color: theme.palette.primary.main,
+                    '&:hover': {
+                      bgcolor: alpha(theme.palette.primary.main, 0.2),
+                    },
+                  } : {
+                    borderColor: alpha(theme.palette.divider, 0.2),
+                  })
+                }}
+              >
+                <GridViewIcon />
+              </Button>
+              <Button
+                variant={viewMode === 'table' ? 'contained' : 'outlined'}
+                onClick={() => setViewMode('table')}
+                sx={{
+                  minWidth: 'auto',
+                  px: 2,
+                  ...(viewMode === 'table' ? {
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                    color: theme.palette.primary.main,
+                    '&:hover': {
+                      bgcolor: alpha(theme.palette.primary.main, 0.2),
+                    },
+                  } : {
+                    borderColor: alpha(theme.palette.divider, 0.2),
+                  })
+                }}
+              >
+                <TableRowsIcon />
+              </Button>
+            </Box>
+
+            <Button
+              variant="contained"
+              startIcon={<FileDownloadIcon />}
+              onClick={(e) => setAnchorEl(e.currentTarget)}
+              sx={{
+                bgcolor: theme.palette.success.main,
+                '&:hover': {
+                  bgcolor: theme.palette.success.dark,
+                },
+              }}
+            >
+              Export
+            </Button>
           </Stack>
-          
-          <Button variant="outlined" onClick={clearFilters}>
-            Clear Filters
-          </Button>
         </Box>
-      </Paper>
-      
-      <ViewDamageReport
-        open={viewReportOpen}
-        onClose={handleCloseReport}
-        report={selectedReport}
-      />
-      <Paper sx={{ p: 2 }}>
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
-            <CircularProgress />
-          </Box>
-        ) : fetchError ? (
-          <Box sx={{ color: 'error.main', textAlign: 'center', py: 4 }}>
-            <Typography color="error">Error: {fetchError}</Typography>
-          </Box>
-        ) : (
-          <>
-            {viewMode === 'table' ? (
-              <>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                  <FormControl variant="outlined" size="small" sx={{ minWidth: 200, mr: 2 }}>
-                    <InputLabel>Sort By</InputLabel>
-                    <Select
-                      value={sortField}
-                      label="Sort By"
-                      onChange={(e) => handleSortChange(e.target.value)}
-                      startAdornment={<SortIcon sx={{ mr: 1 }} />}
-                    >
-                      <MenuItem value="createdAt">Date Reported</MenuItem>
-                      <MenuItem value="severity">Severity</MenuItem>
-                      <MenuItem value="region">Region</MenuItem>
-                      <MenuItem value="priority">Priority</MenuItem>
-                    </Select>
-                  </FormControl>
-                  <Button 
-                    variant="outlined" 
-                    startIcon={<SortIcon />}
-                    onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
-                  >
-                    {sortDirection === 'asc' ? 'Ascending' : 'Descending'}
-                  </Button>
-                </Box>
-                {/* Table View */}
-                <Box sx={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr>
-                        <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Report ID</th>
-                        <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Date</th>
-                        <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Region</th>
-                        <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Type</th>
-                        <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Severity</th>
-                        <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Priority</th>
-                        <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Action</th>
-                        <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Reporter</th>
-                        <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Status</th>
-                        <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Details</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paginatedReports().map(report => (
-                        <tr key={report._id}>
-                          <td style={{ padding: 8 }}>{report.reportId}</td>
-                          <td style={{ padding: 8 }}>{new Date(report.createdAt).toLocaleDateString()}</td>
-                          <td style={{ padding: 8 }}>{report.region}</td>
-                          <td style={{ padding: 8 }}>{report.damageType}</td>
-                          <td style={{ padding: 8 }}>
-                            <Chip 
-                              label={report.severity} 
-                              size="small" 
-                              sx={{ bgcolor: getSeverityColor(report.severity), color: 'white' }} 
-                            />
-                          </td>
-                          <td style={{ padding: 8 }}>{report.priority}</td>
-                          <td style={{ padding: 8 }}>{report.action}</td>
-                          <td style={{ padding: 8 }}>{report.reporter}</td>
-                          <td style={{ padding: 8 }}>
-                            {getStatusIcon(report.priority, report.action)}
-                          </td>
-                          <td style={{ padding: 8 }}>
-                            <Button 
-                              size="small" 
-                              color="primary"
-                              onClick={() => handleViewReport(report)}
-                            >
-                              View
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                      {paginatedReports().length === 0 && (
-                        <tr>
-                          <td colSpan={10} style={{ textAlign: 'center', padding: 24, color: '#888' }}>
-                            No reports found.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-                  <Pagination 
-                    count={totalPages || 1} 
-                    page={page} 
-                    onChange={handlePageChange} 
-                    color="primary" 
-                    showFirstButton 
-                    showLastButton
-                  />
-                </Box>
-              </>
-            ) : (
-              <>
-                <Grid container spacing={3}>
-                  {paginatedReports().map(report => (
-                    <Grid item xs={12} sm={6} md={4} key={report._id}>
-                      <Card sx={{ 
-                        height: '100%', 
-                        position: 'relative',
-                        borderLeft: `4px solid ${getSeverityColor(report.severity)}`,
-                        transition: 'transform 0.2s',
-                        '&:hover': {
-                          transform: 'translateY(-4px)',
-                          boxShadow: 4
-                        }
-                      }}>
-                        <CardContent>
-                          <Box sx={{ position: 'absolute', top: 12, right: 12 }}>
-                            {getStatusIcon(report.priority, report.action)}
-                          </Box>
-                          <Typography variant="h6" component="div" gutterBottom>
-                            {report.reportId}
-                          </Typography>
-                          <Typography color="text.secondary" gutterBottom>
-                            Reported: {new Date(report.createdAt).toLocaleDateString()}
-                          </Typography>
-                          <Box sx={{ mb: 1.5 }}>
-                            <Chip 
-                              label={report.severity} 
-                              size="small" 
-                              sx={{ 
-                                bgcolor: getSeverityColor(report.severity),
-                                color: 'white',
-                                mr: 1
-                              }} 
-                            />
-                            <Chip label={report.region} size="small" sx={{ mr: 1 }} />
-                            <Chip label={report.damageType} size="small" />
-                          </Box>
-                          <Typography variant="body2" sx={{ mb: 1.5 }}>
-                            {report.description}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Reporter: {report.reporter}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Priority: {report.priority}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Action: {report.action}
-                          </Typography>
-                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                            <Button 
-                              size="small" 
-                              color="primary"
-                              onClick={() => handleViewReport(report)}
-                            >
-                              View Details
-                            </Button>
-                          </Box>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  ))}
-                  {paginatedReports().length === 0 && (
-                    <Grid item xs={12}>
-                      <Box sx={{ textAlign: 'center', color: '#888', py: 4 }}>
-                        No reports found.
-                      </Box>
-                    </Grid>
-                  )}
-                </Grid>
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-                  <Pagination 
-                    count={totalPages || 1} 
-                    page={page} 
-                    onChange={handlePageChange} 
-                    color="primary" 
-                    showFirstButton 
-                    showLastButton
-                  />
-                </Box>
-              </>
-            )}
-          </>
-        )}
-      </Paper>
+
+        {/* Active Filters */}
+        <Box sx={{ mb: 3 }}>
+          <Stack
+            direction="row"
+            spacing={1}
+            flexWrap="wrap"
+            sx={{ gap: 1 }}
+          >
+            {Object.entries(filters).map(([key, value]) => {
+              if (!value) return null;
+              return (
+                <Chip
+                  key={key}
+                  label={`${key}: ${value}`}
+                  onDelete={() => handleFilterDelete(key)}
+                  sx={{
+                    bgcolor: alpha(theme.palette.primary.main, 0.08),
+                    color: theme.palette.primary.main,
+                    '& .MuiChip-deleteIcon': {
+                      color: theme.palette.primary.main,
+                    },
+                    fontWeight: 500,
+                  }}
+                />
+              );
+            })}
+          </Stack>
+        </Box>
+
+        {/* Main Content */}
+        <Box sx={{ position: 'relative' }}>
+          {loading ? (
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minHeight: '400px',
+              }}
+            >
+              <CircularProgress />
+            </Box>
+          ) : fetchError ? (
+            <Paper
+              sx={{
+                p: 3,
+                textAlign: 'center',
+                bgcolor: alpha(theme.palette.error.main, 0.05),
+                border: `1px solid ${alpha(theme.palette.error.main, 0.1)}`,
+                borderRadius: 2,
+              }}
+            >
+              <Typography color="error.main">{fetchError}</Typography>
+            </Paper>
+          ) : (
+            <>
+              <Box sx={{ mb: 3 }}>
+                {viewMode === 'table' ? renderTable() : renderGrid()}
+              </Box>
+              
+              <Box 
+                sx={{ 
+                  display: 'flex', 
+                  justifyContent: 'center',
+                  mt: 4,
+                }}
+              >
+                <Pagination
+                  count={totalPages}
+                  page={page}
+                  onChange={handlePageChange}
+                  color="primary"
+                  size="large"
+                  showFirstButton
+                  showLastButton
+                  siblingCount={1}
+                  boundaryCount={1}
+                  sx={{
+                    '& .MuiPaginationItem-root': {
+                      borderRadius: 1,
+                    },
+                  }}
+                />
+              </Box>
+            </>
+          )}
+        </Box>
+
+        {/* Filters Dialog */}
+        <FilterDialog />
+
+        {/* Render Export Menu */}
+        <Menu
+          anchorEl={anchorEl}
+          open={exportMenuOpen}
+          onClose={handleExportMenuClose}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+        >
+          <MenuItem onClick={() => handleExport('csv')}>
+            <ListItemIcon>
+              <FileDownloadIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Export as CSV</ListItemText>
+          </MenuItem>
+          <MenuItem onClick={() => handleExport('pdf')}>
+            <ListItemIcon>
+              <FileDownloadIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Export as PDF</ListItemText>
+          </MenuItem>
+        </Menu>
+
+        {/* Render View Report Dialog */}
+        <Dialog
+          open={viewReportOpen}
+          onClose={handleCloseReport}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle sx={{ 
+            pb: 2, 
+            display: 'flex', 
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <Typography variant="h6">Report Details</Typography>
+            <IconButton 
+              onClick={handleCloseReport}
+              size="small"
+              sx={{
+                color: theme.palette.text.secondary,
+                '&:hover': { color: theme.palette.text.primary }
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent dividers>
+            {selectedReport && <ViewDamageReport report={selectedReport} />}
+          </DialogContent>
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            <Button onClick={handleCloseReport}>Close</Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
     </>
   );
 }

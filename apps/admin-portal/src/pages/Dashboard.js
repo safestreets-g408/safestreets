@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Grid, Paper, Typography, Box, Card, CardContent, 
   LinearProgress, IconButton, Avatar, List, ListItem,
   ListItemText, ListItemAvatar, Divider, Chip, Button,
-  useTheme, alpha
+  useTheme, alpha, CircularProgress
 } from '@mui/material';
 import ReportIcon from '@mui/icons-material/Report';
 import BuildIcon from '@mui/icons-material/Build';
@@ -14,6 +14,7 @@ import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { styled } from '@mui/material/styles';
+import { api } from '../utils/api';
 
 const StyledCard = styled(Card)(({ theme }) => ({
   height: '100%',
@@ -59,49 +60,124 @@ const StatusChip = styled(Chip)(({ theme, status }) => ({
 
 const Dashboard = () => {
   const theme = useTheme();
-  
-  const dashboardData = {
-    totalReports: 237,
-    pendingRepairs: 42,
-    completedRepairs: 195,
-    criticalDamages: 18,
-    recentReports: [
-      {
-        id: 'RPT-001',
-        title: 'Water Damage in Building A',
-        severity: 'High',
-        location: 'North Wing',
-        timestamp: '2 hours ago',
-        status: 'Pending'
-      },
-      {
-        id: 'RPT-002', 
-        title: 'Structural Damage',
-        severity: 'Critical',
-        location: 'South Tower',
-        timestamp: '4 hours ago',
-        status: 'In Progress'
-      },
-      {
-        id: 'RPT-003',
-        title: 'Window Repairs Needed',
-        severity: 'Medium',
-        location: 'West Block',
-        timestamp: '6 hours ago',
-        status: 'Completed'
-      }
-    ]
-  };
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [dashboardData, setDashboardData] = useState({
+    totalReports: 0,
+    pendingRepairs: 0,
+    completedRepairs: 0,
+    criticalDamages: 0,
+    recentReports: []
+  });
 
   const getSeverityColor = (severity) => {
-    const colors = {
-      Low: theme.palette.success.main,
-      Medium: theme.palette.warning.main,
-      High: theme.palette.error.main,
-      Critical: theme.palette.error.dark
-    };
-    return colors[severity] || theme.palette.grey[500];
+    switch(severity.toLowerCase()) {
+      case 'critical':
+        return theme.palette.error.main;
+      case 'high':
+        return theme.palette.warning.main;
+      case 'medium':
+        return theme.palette.info.main;
+      case 'low':
+        return theme.palette.success.main;
+      default:
+        return theme.palette.grey[500];
+    }
   };
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Get all reports from the last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const response = await api.get('/damage/reports', {
+        params: {
+          startDate: thirtyDaysAgo.toISOString(),
+          endDate: new Date().toISOString()
+        }
+      });
+
+      // Process the response data
+      const totalReports = response.length;
+      const pendingRepairs = response.filter(report => report.status === 'Pending').length;
+      const completedRepairs = response.filter(report => report.status === 'Completed').length;
+      const criticalDamages = response.filter(report => report.severity === 'Critical').length;
+
+      // Get the 3 most recent reports
+      const recentReports = response
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 3)
+        .map(report => ({
+          id: report.id,
+          title: report.description || 'No description',
+          severity: report.severity || 'Low',
+          location: report.region || 'Unknown Location',
+          timestamp: formatTimestamp(report.createdAt),
+          status: report.status || 'Pending'
+        }));
+
+      setDashboardData({
+        totalReports,
+        pendingRepairs,
+        completedRepairs,
+        criticalDamages,
+        recentReports
+      });
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const formatTimestamp = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
+    
+    if (diffInHours < 24) {
+      return `${diffInHours} hours ago`;
+    } else {
+      const diffInDays = Math.floor(diffInHours / 24);
+      return `${diffInDays} days ago`;
+    }
+  };
+
+  // Add a refresh handler
+  const handleRefresh = () => {
+    fetchDashboardData();
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3, textAlign: 'center' }}>
+        <Typography color="error" variant="h6">
+          Error loading dashboard: {error}
+        </Typography>
+        <Button onClick={handleRefresh} sx={{ mt: 2 }}>
+          Try Again
+        </Button>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: { xs: 2, md: 4 }, bgcolor: 'background.default', borderRadius: 3 }}>
@@ -130,6 +206,7 @@ const Dashboard = () => {
               textTransform: 'none',
               fontWeight: 600
             }}
+            onClick={handleRefresh}
           >
             Refresh
           </Button>

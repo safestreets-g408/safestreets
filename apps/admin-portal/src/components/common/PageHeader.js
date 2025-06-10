@@ -13,11 +13,31 @@ const PageHeader = ({
   const theme = useTheme();
 
   return (
-    <Box sx={{ mb: 4, ...sx }}>
+    <Box 
+      sx={{ 
+        mb: 4,
+        position: 'relative',
+        ...sx 
+      }}
+    >
       {breadcrumbs.length > 0 && (
         <Breadcrumbs
-          separator={<NavigateNextIcon fontSize="small" />}
-          sx={{ mb: 2 }}
+          separator={
+            <NavigateNextIcon 
+              fontSize="small" 
+              sx={{ 
+                color: theme.palette.text.disabled,
+                fontSize: '1.2rem' 
+              }} 
+            />
+          }
+          sx={{ 
+            mb: 2.5,
+            '& .MuiBreadcrumbs-li': {
+              display: 'flex',
+              alignItems: 'center',
+            }
+          }}
         >
           {breadcrumbs.map((crumb, index) => {
             const isLast = index === breadcrumbs.length - 1;
@@ -28,6 +48,10 @@ const PageHeader = ({
                   key={crumb.label}
                   color="text.secondary"
                   variant="body2"
+                  sx={{ 
+                    fontSize: '0.875rem',
+                    fontWeight: isLast ? 500 : 400 
+                  }}
                 >
                   {crumb.label}
                 </Typography>

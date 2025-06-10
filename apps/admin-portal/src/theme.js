@@ -4,113 +4,91 @@ const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#2196f3',
-      light: '#64b5f6',
-      dark: '#1976d2',
+      main: '#1a73e8',
+      light: '#4791db',
+      dark: '#115293',
+      contrastText: '#ffffff',
     },
     secondary: {
-      main: '#f50057',
-      light: '#ff4081',
-      dark: '#c51162',
+      main: '#41b883',
+      light: '#69c49a',
+      dark: '#2d805c',
+      contrastText: '#ffffff',
     },
     error: {
-      main: '#f44336',
-      light: '#e57373',
-      dark: '#d32f2f',
+      main: '#ef476f',
+      light: '#f27491',
+      dark: '#a73250',
     },
     warning: {
-      main: '#ff9800',
-      light: '#ffb74d',
-      dark: '#f57c00',
+      main: '#ffd166',
+      light: '#ffdc85',
+      dark: '#b29247',
     },
     info: {
-      main: '#00bcd4',
-      light: '#4dd0e1',
-      dark: '#0097a7',
+      main: '#118ab2',
+      light: '#41a1c2',
+      dark: '#0b617d',
     },
     success: {
-      main: '#4caf50',
-      light: '#81c784',
-      dark: '#388e3c',
+      main: '#06d6a0',
+      light: '#39dfb8',
+      dark: '#049570',
     },
     background: {
-      default: '#f5f5f5',
+      default: '#f8f9fa',
       paper: '#ffffff',
+    },
+    text: {
+      primary: '#2c3e50',
+      secondary: '#546e7a',
     },
   },
   typography: {
-    fontFamily: [
-      'Inter',
-      '-apple-system',
-      'BlinkMacSystemFont',
-      '"Segoe UI"',
-      'Roboto',
-      '"Helvetica Neue"',
-      'Arial',
-      'sans-serif',
-    ].join(','),
+    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
     h1: {
-      fontWeight: 700,
+      fontWeight: 600,
       fontSize: '2.5rem',
+      lineHeight: 1.2,
     },
     h2: {
       fontWeight: 600,
       fontSize: '2rem',
+      lineHeight: 1.3,
     },
     h3: {
       fontWeight: 600,
-      fontSize: '1.75rem',
+      fontSize: '1.5rem',
+      lineHeight: 1.4,
     },
     h4: {
       fontWeight: 600,
-      fontSize: '1.5rem',
-    },
-    h5: {
-      fontWeight: 600,
       fontSize: '1.25rem',
-    },
-    h6: {
-      fontWeight: 600,
-      fontSize: '1rem',
-    },
-    subtitle1: {
-      fontSize: '1rem',
-      fontWeight: 500,
-    },
-    subtitle2: {
-      fontSize: '0.875rem',
-      fontWeight: 500,
+      lineHeight: 1.4,
     },
     body1: {
       fontSize: '1rem',
-    },
-    body2: {
-      fontSize: '0.875rem',
+      lineHeight: 1.5,
     },
     button: {
       textTransform: 'none',
-      fontWeight: 600,
+      fontWeight: 500,
     },
-  },
-  shape: {
-    borderRadius: 8,
   },
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
           borderRadius: 8,
-          textTransform: 'none',
-          fontWeight: 600,
+          padding: '8px 16px',
           boxShadow: 'none',
           '&:hover': {
-            boxShadow: 'none',
+            boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
           },
         },
         contained: {
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
           '&:hover': {
-            boxShadow: '0 2px 4px 0 rgba(0, 0, 0, 0.15)',
+            boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
           },
         },
       },
@@ -119,7 +97,10 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 12,
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+          '&:hover': {
+            boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+          },
         },
       },
     },
@@ -130,18 +111,17 @@ const theme = createTheme({
         },
       },
     },
-    MuiTableCell: {
-      styleOverrides: {
-        root: {
-          borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
-        },
-        head: {
-          fontWeight: 600,
-          backgroundColor: 'rgba(0, 0, 0, 0.02)',
-        },
-      },
-    },
   },
+  shape: {
+    borderRadius: 8,
+  },
+  shadows: [
+    'none',
+    '0 2px 4px rgba(0,0,0,0.05)',
+    '0 4px 8px rgba(0,0,0,0.08)',
+    '0 8px 16px rgba(0,0,0,0.1)',
+    // ...rest of the shadows array
+  ],
 });
 
-export default theme; 
+export default theme;

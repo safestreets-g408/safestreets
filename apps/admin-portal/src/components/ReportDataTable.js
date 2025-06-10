@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { 
   Table, TableBody, TableCell, TableContainer, TableHead, 
-  TableRow, TablePagination, Chip, IconButton, Tooltip, Box
+  TableRow, TablePagination, Chip, IconButton, Tooltip, Box,
+  useTheme, alpha, Paper
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
@@ -10,6 +11,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 function ReportDataTable({ filters }) {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const theme = useTheme();
 
   // Sample data - in a real app, this would be fetched based on filters
   const reports = [
@@ -76,27 +78,77 @@ function ReportDataTable({ filters }) {
   };
 
   return (
-    <>
+    <Paper 
+      elevation={0} 
+      sx={{ 
+        borderRadius: 2,
+        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+        overflow: 'hidden',
+      }}
+    >
       <TableContainer>
         <Table aria-label="damage reports table">
           <TableHead>
             <TableRow>
-              <TableCell>Report ID</TableCell>
-              <TableCell>Location</TableCell>
-              <TableCell>Region</TableCell>
-              <TableCell>Damage Type</TableCell>
-              <TableCell>Severity</TableCell>
-              <TableCell>Date Reported</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Actions</TableCell>
+              <TableCell sx={{ 
+                fontWeight: 600, 
+                bgcolor: alpha(theme.palette.primary.main, 0.04),
+                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`
+              }}>Report ID</TableCell>
+              <TableCell sx={{ 
+                fontWeight: 600,
+                bgcolor: alpha(theme.palette.primary.main, 0.04),
+                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`
+              }}>Location</TableCell>
+              <TableCell sx={{ 
+                fontWeight: 600,
+                bgcolor: alpha(theme.palette.primary.main, 0.04),
+                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`
+              }}>Region</TableCell>
+              <TableCell sx={{ 
+                fontWeight: 600,
+                bgcolor: alpha(theme.palette.primary.main, 0.04),
+                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`
+              }}>Damage Type</TableCell>
+              <TableCell sx={{ 
+                fontWeight: 600,
+                bgcolor: alpha(theme.palette.primary.main, 0.04),
+                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`
+              }}>Severity</TableCell>
+              <TableCell sx={{ 
+                fontWeight: 600,
+                bgcolor: alpha(theme.palette.primary.main, 0.04),
+                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`
+              }}>Date Reported</TableCell>
+              <TableCell sx={{ 
+                fontWeight: 600,
+                bgcolor: alpha(theme.palette.primary.main, 0.04),
+                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`
+              }}>Status</TableCell>
+              <TableCell sx={{ 
+                fontWeight: 600,
+                bgcolor: alpha(theme.palette.primary.main, 0.04),
+                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`
+              }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {reports
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map((report) => (
-                <TableRow key={report.id}>
-                  <TableCell>{report.id}</TableCell>
+              .map((report, index) => (
+                <TableRow 
+                  key={report.id}
+                  sx={{
+                    transition: 'background-color 0.2s ease-in-out',
+                    '&:hover': {
+                      bgcolor: alpha(theme.palette.primary.main, 0.04),
+                    },
+                    bgcolor: index % 2 === 0 ? alpha(theme.palette.background.default, 0.5) : 'inherit'
+                  }}
+                >
+                  <TableCell sx={{ fontWeight: 500, color: theme.palette.primary.main }}>
+                    {report.id}
+                  </TableCell>
                   <TableCell>{report.location}</TableCell>
                   <TableCell>{report.region}</TableCell>
                   <TableCell>{report.damageType}</TableCell>
@@ -105,6 +157,11 @@ function ReportDataTable({ filters }) {
                       label={report.severity} 
                       color={getSeverityColor(report.severity)} 
                       size="small"
+                      sx={{
+                        fontWeight: 600,
+                        borderRadius: 1,
+                        px: 1,
+                      }}
                     />
                   </TableCell>
                   <TableCell>{report.reportDate}</TableCell>
@@ -113,22 +170,51 @@ function ReportDataTable({ filters }) {
                       label={report.status} 
                       color={getStatusColor(report.status)} 
                       size="small"
+                      sx={{
+                        fontWeight: 600,
+                        borderRadius: 1,
+                        px: 1,
+                      }}
                     />
                   </TableCell>
                   <TableCell>
-                    <Box>
-                      <Tooltip title="View Details">
-                        <IconButton size="small">
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Tooltip title="View Details" arrow>
+                        <IconButton 
+                          size="small"
+                          sx={{ 
+                            color: theme.palette.primary.main,
+                            '&:hover': { 
+                              bgcolor: alpha(theme.palette.primary.main, 0.08),
+                            }
+                          }}
+                        >
                           <VisibilityIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Edit Report">
-                        <IconButton size="small">
+                      <Tooltip title="Edit Report" arrow>
+                        <IconButton 
+                          size="small"
+                          sx={{ 
+                            color: theme.palette.warning.main,
+                            '&:hover': { 
+                              bgcolor: alpha(theme.palette.warning.main, 0.08),
+                            }
+                          }}
+                        >
                           <EditIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Delete Report">
-                        <IconButton size="small">
+                      <Tooltip title="Delete Report" arrow>
+                        <IconButton 
+                          size="small"
+                          sx={{ 
+                            color: theme.palette.error.main,
+                            '&:hover': { 
+                              bgcolor: alpha(theme.palette.error.main, 0.08),
+                            }
+                          }}
+                        >
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -147,8 +233,14 @@ function ReportDataTable({ filters }) {
         page={page}
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
+        sx={{
+          borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          '& .MuiTablePagination-select': {
+            borderRadius: 1,
+          },
+        }}
       />
-    </>
+    </Paper>
   );
 }
 

@@ -57,38 +57,42 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
       height: '100%',
       display: 'flex',
       flexDirection: 'column',
-      background: theme.palette.background.default,
+      background: alpha(theme.palette.background.paper, 0.8),
+      backdropFilter: 'blur(20px)',
+      borderRight: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
     }}>
       <Toolbar sx={{
         display: 'flex',
         alignItems: 'center',
         gap: 2,
         px: 3,
-        minHeight: 70,
+        minHeight: { xs: 60, sm: 60 },
         background: alpha(theme.palette.primary.main, 0.03)
       }}>
         <Avatar sx={{
-          bgcolor: theme.palette.primary.main,
-          width: 40,
-          height: 40,
+          background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+          width: 42,
+          height: 42,
           fontSize: '1.2rem',
-          fontWeight: 600
+          fontWeight: 600,
+          boxShadow: `0 2px 10px ${alpha(theme.palette.primary.main, 0.2)}`,
         }}>
-          DC
+          SS
         </Avatar>
         <Typography variant="h6" noWrap sx={{
-          fontWeight: 600,
-          background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.primary.light})`,
+          fontWeight: 700,
+          letterSpacing: '-0.5px',
+          background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent'
         }}>
-          Damage Control
+          SafeStreets
         </Typography>
       </Toolbar>
 
       <Divider sx={{ mx: 2, my: 1 }} />
 
-      <List sx={{ flex: 1, px: 2 }}>
+      <List sx={{ flex: 1, px: 2, py: 2 }}>
         {menuItems.map((item) => (
           <ListItem key={item.text} disablePadding sx={{ mb: 1 }}>
             <ListItemButton
@@ -96,8 +100,29 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
               selected={location.pathname === item.path}
               sx={{
                 borderRadius: 2,
+                minHeight: 48,
+                position: 'relative',
+                overflow: 'hidden',
+                '&:before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)}, ${alpha(theme.palette.secondary.main, 0.08)})`,
+                  opacity: 0,
+                  transition: 'opacity 0.2s ease-in-out',
+                },
+                '&:hover:before': {
+                  opacity: 1,
+                },
                 '&.Mui-selected': {
-                  bgcolor: alpha(theme.palette.primary.main, 0.08),
+                  bgcolor: 'transparent',
+                  '&:before': {
+                    opacity: 1,
+                    background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.12)}, ${alpha(theme.palette.secondary.main, 0.12)})`,
+                  },
                   '&:hover': {
                     bgcolor: alpha(theme.palette.primary.main, 0.12),
                   },

@@ -55,49 +55,73 @@ const Header = ({ onDrawerToggle }) => {
   return (
     <AppBar
       position="fixed"
+      elevation={0}
       sx={{
         width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` },
         ml: { sm: `${DRAWER_WIDTH}px` },
         boxShadow: 'none',
-        backdropFilter: 'blur(8px)',
-        backgroundColor: alpha(theme.palette.background.default, 0.7),
+        backdropFilter: 'blur(20px)',
+        backgroundColor: alpha(theme.palette.background.default, 0.9),
         borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+        transition: theme.transitions.create(['width', 'margin'], {
+          easing: theme.transitions.easing.sharp,
+          duration: theme.transitions.duration.leavingScreen,
+        }),
       }}
     >
-      <Toolbar sx={{ justifyContent: 'space-between' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+      <Toolbar 
+        sx={{ 
+          justifyContent: 'space-between',
+          minHeight: { xs: 64, sm: 70 },
+          px: { xs: 2, sm: 3, md: 4 },
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <IconButton
-            color="inherit"
+            color="primary"
             edge="start"
             onClick={onDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
+            sx={{ 
+              mr: 2, 
+              display: { sm: 'none' },
+              bgcolor: alpha(theme.palette.primary.main, 0.08),
+              '&:hover': {
+                bgcolor: alpha(theme.palette.primary.main, 0.12),
+              }
+            }}
           >
             <MenuIcon />
           </IconButton>
         </Box>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <IconButton 
-            color="inherit" 
+            color="primary"
             onClick={() => window.location.reload()}
             sx={{ 
-              bgcolor: alpha(theme.palette.primary.main, 0.1),
+              width: 40,
+              height: 40,
+              bgcolor: alpha(theme.palette.primary.main, 0.08),
               '&:hover': {
-                bgcolor: alpha(theme.palette.primary.main, 0.2),
-              }
+                bgcolor: alpha(theme.palette.primary.main, 0.12),
+              },
+              transition: 'all 0.2s ease-in-out',
             }}
           >
             <RefreshIcon />
           </IconButton>
 
           <IconButton 
-            color="inherit" 
+            color="primary"
             onClick={handleNotificationOpen}
             sx={{ 
-              bgcolor: alpha(theme.palette.primary.main, 0.1),
+              width: 40,
+              height: 40,
+              bgcolor: alpha(theme.palette.primary.main, 0.08),
               '&:hover': {
-                bgcolor: alpha(theme.palette.primary.main, 0.2),
-              }
+                bgcolor: alpha(theme.palette.primary.main, 0.12),
+              },
+              transition: 'all 0.2s ease-in-out',
             }}
           >
             <Badge badgeContent={notifications.length} color="error">
