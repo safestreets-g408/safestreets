@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, Typography,  TextField, Button, 
   Select, MenuItem, FormControl, InputLabel,Avatar, 
    Tab, Tabs, Badge, 
   Dialog, DialogTitle, DialogContent, DialogActions,
-  FormHelperText, useTheme,
+  FormHelperText, useTheme, CircularProgress
 } from '@mui/material';
 import { 
   Build as BuildIcon,
@@ -15,6 +15,7 @@ import {
   Pending as PendingIcon,
   Person as PersonIcon,
 } from '@mui/icons-material';
+import { api } from '../utils/api';
 
 import ActiveRepairs from '../components/RepairManagement/ActiveRepairs';
 import PendingAssignments from '../components/RepairManagement/PendingAssignments';
@@ -31,8 +32,11 @@ function Repair() {
   const [workerFilter, setWorkerFilter] = useState('all');
   const [regionFilter, setRegionFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [fieldWorkers, setFieldWorkers] = useState([]);
 
-  // Mock data - would be replaced with API calls
+  // Mock data for pending and assigned repairs - would be replaced with API calls
   const pendingRepairs = [
     { id: 'DR-2023-001', dateReported: '2023-06-15', severity: 'High', region: 'North', damageType: 'Structural', reporter: 'John Doe', status: 'Pending', description: 'Major structural damage to building facade' },
     { id: 'DR-2023-003', dateReported: '2023-06-17', severity: 'Critical', region: 'Central', damageType: 'Flooding', reporter: 'Mike Johnson', status: 'Pending', description: 'Severe flooding in basement level' },
@@ -46,13 +50,32 @@ function Repair() {
     { id: 'DR-2023-007', dateReported: '2023-06-21', severity: 'Critical', region: 'North', damageType: 'Fire', reporter: 'Emily Davis', status: 'On Hold', assignedTo: 'Robert Chen', assignedDate: '2023-06-22', notes: 'Waiting for safety inspection' },
   ];
 
-  const fieldWorkers = [
-    { id: 'FW-001', name: 'Robert Chen', specialization: 'Electrical', activeAssignments: 2, region: 'North', status: 'Available' },
-    { id: 'FW-002', name: 'Maria Garcia', specialization: 'Plumbing', activeAssignments: 1, region: 'East', status: 'Busy' },
-    { id: 'FW-003', name: 'James Wilson', specialization: 'Structural', activeAssignments: 0, region: 'Central', status: 'Available' },
-    { id: 'FW-004', name: 'Sarah Johnson', specialization: 'General', activeAssignments: 3, region: 'South', status: 'Busy' },
-    { id: 'FW-005', name: 'Michael Brown', specialization: 'Electrical', activeAssignments: 0, region: 'West', status: 'Available' },
-  ];
+  useEffect(() => {
+    const fetchFieldWorkers = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get('/fieldworker');
+        
+        const transformedWorkers = response.map(worker => ({
+          id: worker.workerId,
+          name: worker.name,
+          specialization: worker.specialization,
+          region: worker.region,
+          activeAssignments: worker.activeAssignments,
+          status: worker.activeAssignments >= 3 ? 'Busy' : 'Available'
+        }));
+        
+        setFieldWorkers(transformedWorkers);
+      } catch (err) {
+        console.error('Error fetching field workers:', err);
+        setError(err.message || 'Failed to fetch field workers');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFieldWorkers();
+  }, []);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -199,10 +222,29 @@ function Repair() {
       
       {/* Field Workers Tab */}
       {tabValue === 2 && (
-        <FieldWorker 
-          fieldWorkers={fieldWorkers}
-          theme={theme}
-        />
+        <>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
+              <CircularProgress />
+            </Box>
+          ) : error ? (
+            <Box sx={{ textAlign: 'center', color: 'error.main', py: 3 }}>
+              <Typography>{error}</Typography>
+              <Button 
+                variant="contained" 
+                sx={{ mt: 2 }}
+                onClick={() => window.location.reload()}
+              >
+                Retry
+              </Button>
+            </Box>
+          ) : (
+            <FieldWorker 
+              fieldWorkers={fieldWorkers}
+              theme={theme}
+            />
+          )}
+        </>
       )}
       
       {/* Assignment Dialog */}

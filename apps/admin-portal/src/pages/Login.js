@@ -16,17 +16,19 @@ import {
 } from '@mui/material';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import HomeIcon from '@mui/icons-material/Home';
+import { api } from '../utils/api';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showError, setShowError] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!email || !password) {
@@ -35,11 +37,16 @@ const Login = () => {
       return;
     }
 
-    if (email === 'admin@gmail.com' && password === 'admin') {
+    try {
+      setLoading(true);
+      const response = await api.post('/auth/login', { email, password });
+      localStorage.setItem('auth_token', response.token);
       navigate('/');
-    } else {
-      setError('Invalid credentials');
+    } catch (err) {
+      setError(err.message || 'Login failed. Please check your credentials.');
       setShowError(true);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -163,7 +170,7 @@ const Login = () => {
                 type="submit"
                 fullWidth
                 variant="contained"
-                disabled={ !email || !password}
+                disabled={!email || !password || loading}
                 sx={{
                   py: 1.8,
                   borderRadius: '12px',
@@ -176,7 +183,7 @@ const Login = () => {
                   }
                 }}
               >
-                Sign In to Dashboard
+                {loading ? 'Signing in...' : 'Sign In to Dashboard'}
               </Button>
             </Stack>
 
