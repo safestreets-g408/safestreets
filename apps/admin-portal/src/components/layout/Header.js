@@ -13,14 +13,12 @@ import {
   Box,
   useTheme,
   alpha,
-  Button,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
-import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { DRAWER_WIDTH } from '../../config/constants';
 //import { useAuth } from '../../hooks/useAuth';
@@ -79,21 +77,6 @@ const Header = ({ onDrawerToggle }) => {
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            sx={{
-              mr: 2,
-              bgcolor: theme.palette.primary.main,
-              color: 'white',
-              '&:hover': {
-                bgcolor: theme.palette.primary.dark,
-              },
-            }}
-          >
-            New Report
-          </Button>
-
           <IconButton 
             color="inherit" 
             onClick={() => window.location.reload()}
