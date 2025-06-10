@@ -1,26 +1,22 @@
 const multer = require('multer');
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/');
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname); 
-  }
-});
+const storage = multer.memoryStorage(); 
 
 const fileFilter = (req, file, cb) => {
   const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('MulterError: Unexpected field'), false); 
+    cb(new Error('MulterError: Unexpected file type'), false);
   }
 };
 
 const upload = multer({ 
-  storage: storage,
-  fileFilter: fileFilter
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024 
+  }
 });
 
 module.exports = upload;

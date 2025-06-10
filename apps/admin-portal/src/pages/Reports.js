@@ -14,9 +14,8 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PendingIcon from '@mui/icons-material/Pending';
 import BuildIcon from '@mui/icons-material/Build';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
-// import ReportDataTable from '../components/ReportDataTable'; 
-
-const API_URL = 'http://localhost:5030/api/damage/reports';
+import ViewDamageReport from '../components/reports/ViewDamageReport';
+import { api } from '../utils/api';
 
 function Reports() {
   const [filters, setFilters] = useState({
@@ -37,6 +36,8 @@ function Reports() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState(null);
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [viewReportOpen, setViewReportOpen] = useState(false);
 
   // Pagination
   const pageSize = 6;
@@ -44,36 +45,40 @@ function Reports() {
 
   // Fetch reports from API
   useEffect(() => {
-    setLoading(true);
-    setFetchError(null);
-    fetch(API_URL)
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to fetch reports');
-        return res.json();
-      })
-      .then(data => {
-        setReports(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        setFetchError(err.message);
-        setLoading(false);
-      });
-  }, []);
+    const fetchReports = async () => {
+      try {
+        setLoading(true);
+        setFetchError(null);
 
-  // Filtering logic
+        const queryParams = new URLSearchParams();
+        if (filters.dateFrom) queryParams.append('startDate', filters.dateFrom);
+        if (filters.dateTo) queryParams.append('endDate', filters.dateTo);
+        if (filters.severity) queryParams.append('severity', filters.severity);
+        if (filters.region) queryParams.append('region', filters.region);
+        if (filters.priority) queryParams.append('priority', filters.priority);
+        
+        const query = queryParams.toString();
+        const endpoint = `/damage/reports${query ? `?${query}` : ''}`;
+        const data = await api.get(endpoint);
+        setReports(data);
+      } catch (err) {
+        console.error('Error fetching reports:', err);
+        setFetchError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReports();
+  }, [filters]); 
+
   function filteredReports() {
     return reports.filter(report => {
-      // Date filter
       if (filters.dateFrom && new Date(report.createdAt) < new Date(filters.dateFrom)) return false;
       if (filters.dateTo && new Date(report.createdAt) > new Date(filters.dateTo)) return false;
-      // Severity filter
       if (filters.severity && report.severity !== filters.severity) return false;
-      // Region filter
       if (filters.region && report.region !== filters.region) return false;
-      // Damage Type filter
       if (filters.damageType && report.damageType !== filters.damageType) return false;
-      // Priority filter
       if (filters.priority && report.priority !== filters.priority) return false;
       return true;
     });
@@ -149,6 +154,16 @@ function Reports() {
 
   const handlePageChange = (event, value) => {
     setPage(value);
+  };
+
+  const handleViewReport = (report) => {
+    setSelectedReport(report);
+    setViewReportOpen(true);
+  };
+
+  const handleCloseReport = () => {
+    setViewReportOpen(false);
+    setSelectedReport(null);
   };
 
   // Build options from data
@@ -357,6 +372,11 @@ function Reports() {
         </Box>
       </Paper>
       
+      <ViewDamageReport
+        open={viewReportOpen}
+        onClose={handleCloseReport}
+        report={selectedReport}
+      />
       <Paper sx={{ p: 2 }}>
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
@@ -431,7 +451,13 @@ function Reports() {
                             {getStatusIcon(report.priority, report.action)}
                           </td>
                           <td style={{ padding: 8 }}>
-                            <Button size="small" color="primary">View</Button>
+                            <Button 
+                              size="small" 
+                              color="primary"
+                              onClick={() => handleViewReport(report)}
+                            >
+                              View
+                            </Button>
                           </td>
                         </tr>
                       ))}
@@ -507,7 +533,13 @@ function Reports() {
                             Action: {report.action}
                           </Typography>
                           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                            <Button size="small" color="primary">View Details</Button>
+                            <Button 
+                              size="small" 
+                              color="primary"
+                              onClick={() => handleViewReport(report)}
+                            >
+                              View Details
+                            </Button>
                           </Box>
                         </CardContent>
                       </Card>

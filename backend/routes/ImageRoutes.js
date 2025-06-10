@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { uploadImage, getImage, getImageById } = require('../controllers/ImageController');
-const upload = require('../middleware/multerConfig');
 const protect = require('../middleware/authMiddleware');
+const upload = require('../middleware/multerConfig');
 
 // Protected routes
 router.post('/upload', protect, upload.single('image'), uploadImage);

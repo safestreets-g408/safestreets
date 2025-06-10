@@ -35,46 +35,59 @@ function Repair() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [fieldWorkers, setFieldWorkers] = useState([]);
+  const [pendingRepairs, setPendingRepairs] = useState([]);
+  const [assignedRepairs, setAssignedRepairs] = useState([]);
 
-  // Mock data for pending and assigned repairs - would be replaced with API calls
-  const pendingRepairs = [
-    { id: 'DR-2023-001', dateReported: '2023-06-15', severity: 'High', region: 'North', damageType: 'Structural', reporter: 'John Doe', status: 'Pending', description: 'Major structural damage to building facade' },
-    { id: 'DR-2023-003', dateReported: '2023-06-17', severity: 'Critical', region: 'Central', damageType: 'Flooding', reporter: 'Mike Johnson', status: 'Pending', description: 'Severe flooding in basement level' },
-    { id: 'DR-2023-005', dateReported: '2023-06-19', severity: 'Medium', region: 'West', damageType: 'Electrical', reporter: 'Lisa Brown', status: 'Pending', description: 'Electrical outage affecting multiple units' },
-  ];
+  const fetchRepairs = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch pending reports (status: Pending)
+      const pendingResponse = await api.get('/damage/reports?status=Pending');
+      setPendingRepairs(pendingResponse);
 
-  const assignedRepairs = [
-    { id: 'DR-2023-002', dateReported: '2023-06-16', severity: 'Medium', region: 'South', damageType: 'Electrical', reporter: 'Jane Smith', status: 'Assigned', assignedTo: 'Robert Chen', assignedDate: '2023-06-17', notes: 'Check all circuit breakers' },
-    { id: 'DR-2023-006', dateReported: '2023-06-20', severity: 'High', region: 'East', damageType: 'Plumbing', reporter: 'David Wilson', status: 'In-Progress', assignedTo: 'Maria Garcia', assignedDate: '2023-06-21', notes: 'Bring extra pipe fittings' },
-    { id: 'DR-2023-004', dateReported: '2023-06-18', severity: 'Low', region: 'East', damageType: 'Plumbing', reporter: 'Sarah Williams', status: 'Resolved', assignedTo: 'James Wilson', assignedDate: '2023-06-19', completedDate: '2023-06-22', notes: 'Minor repair completed' },
-    { id: 'DR-2023-007', dateReported: '2023-06-21', severity: 'Critical', region: 'North', damageType: 'Fire', reporter: 'Emily Davis', status: 'On Hold', assignedTo: 'Robert Chen', assignedDate: '2023-06-22', notes: 'Waiting for safety inspection' },
-  ];
+      // Fetch all assigned reports (status: not Pending)
+      const assignedResponse = await api.get('/damage/reports?status=!Pending');
+      setAssignedRepairs(assignedResponse);
+    } catch (err) {
+      console.error('Error fetching repairs:', err);
+      setError(err.message || 'Failed to fetch repairs');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchFieldWorkers = async () => {
+    const fetchAllData = async () => {
       try {
         setLoading(true);
-        const response = await api.get('/fieldworker');
         
-        const transformedWorkers = response.map(worker => ({
-          id: worker.workerId,
-          name: worker.name,
-          specialization: worker.specialization,
-          region: worker.region,
-          activeAssignments: worker.activeAssignments,
-          status: worker.activeAssignments >= 3 ? 'Busy' : 'Available'
-        }));
-        
-        setFieldWorkers(transformedWorkers);
+        // Fetch both field workers and repairs in parallel
+        await Promise.all([
+          (async () => {
+            const response = await api.get('/fieldworker');
+            const transformedWorkers = response.map(worker => ({
+              id: worker.workerId,
+              name: worker.name,
+              specialization: worker.specialization,
+              region: worker.region,
+              activeAssignments: worker.activeAssignments,
+              status: worker.activeAssignments >= 3 ? 'Busy' : 'Available'
+            }));
+            setFieldWorkers(transformedWorkers);
+          })(),
+          fetchRepairs()
+        ]);
       } catch (err) {
-        console.error('Error fetching field workers:', err);
-        setError(err.message || 'Failed to fetch field workers');
+        console.error('Error fetching data:', err);
+        setError(err.message || 'Failed to fetch data');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchFieldWorkers();
+    fetchAllData();
   }, []);
 
   const handleTabChange = (event, newValue) => {
