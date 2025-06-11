@@ -1,141 +1,212 @@
-import React from 'react';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Typography,
-  Grid,
-  Box,
-  Chip,
+import React, { useEffect, useState } from 'react';
+import { 
+  Box, 
+  Typography, 
+  Grid, 
+  Chip, 
   Divider,
-  IconButton
+  Paper,
+  CircularProgress
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
+import { alpha, useTheme } from '@mui/material/styles';
+import {api} from '../../utils/api';
 
-function ViewDamageReport({ open, onClose, report }) {
-  if (!report) return null;
+const ViewDamageReport = ({ report }) => {
+  const theme = useTheme();
+  const [imageUrl, setImageUrl] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchImage = async () => {
+      if (report.beforeImage?._id) {
+        try {
+          const response = await api.get(
+            `/damage/report/${report.reportId}/image/before`,
+            { responseType: 'blob' }
+          );
+          setImageUrl(URL.createObjectURL(response.data));
+        } catch (error) {
+          console.error('Error fetching image:', error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchImage();
+    return () => {
+      // Cleanup URL object on unmount
+      if (imageUrl) {
+        URL.revokeObjectURL(imageUrl);
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report]);
+
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'completed': return 'success';
+      case 'in progress': return 'info';
+      case 'pending': return 'warning';
+      case 'failed': return 'error';
+      default: return 'default';
+    }
+  };
 
   const getSeverityColor = (severity) => {
-    switch(severity) {
-      case 'Mild': return '#2196f3';
-      case 'Moderate': return '#ff9800';
-      case 'Severe': return '#f44336';
-      default: return '#757575';
+    switch (severity?.toLowerCase()) {
+      case 'critical': return 'error';
+      case 'high': return 'error';
+      case 'medium': return 'warning';
+      case 'low': return 'success';
+      default: return 'default';
     }
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="md"
-      fullWidth
-      scroll="paper"
-    >
-      <DialogTitle>
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="h6">Damage Report Details</Typography>
-          <IconButton onClick={onClose} size="small">
-            <CloseIcon />
-          </IconButton>
-        </Box>
-      </DialogTitle>
-      <DialogContent dividers>
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
-            <Box display="flex" justifyContent="space-between" alignItems="center">
-              <Typography variant="h5">Report ID: {report.reportId}</Typography>
-              <Chip
-                label={report.severity}
-                sx={{
-                  bgcolor: getSeverityColor(report.severity),
-                  color: 'white'
-                }}
-              />
-            </Box>
-            <Typography color="textSecondary" gutterBottom>
-              Reported on {new Date(report.createdAt).toLocaleString()}
+    <Box>
+      <Grid container spacing={3}>
+        {/* Report ID and Date */}
+        <Grid item xs={12}>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="h5" gutterBottom>
+              Report #{report.reportId}
             </Typography>
-          </Grid>
-          
-          <Grid item xs={12}>
-            <Typography variant="h6" gutterBottom>Location Details</Typography>
-            <Box sx={{ mb: 2 }}>
-              <Typography><strong>Region:</strong> {report.region}</Typography>
-              {report.address && (
-                <Typography><strong>Address:</strong> {report.address}</Typography>
-              )}
-              {report.coordinates && (
-                <Typography>
-                  <strong>Coordinates:</strong> {report.coordinates.lat}, {report.coordinates.lng}
-                </Typography>
-              )}
-            </Box>
-          </Grid>
+            <Typography variant="body2" color="text.secondary">
+              Submitted on {new Date(report.createdAt).toLocaleString()}
+            </Typography>
+          </Box>
+          <Divider />
+        </Grid>
 
-          <Grid item xs={12}>
-            <Typography variant="h6" gutterBottom>Damage Information</Typography>
-            <Box sx={{ mb: 2 }}>
-              <Typography><strong>Type:</strong> {report.damageType}</Typography>
-              <Typography><strong>Priority:</strong> {report.priority}</Typography>
-              <Typography><strong>Action Required:</strong> {report.action}</Typography>
-              <Box sx={{ mt: 1 }}>
-                <Typography><strong>Description:</strong></Typography>
-                <Typography sx={{ mt: 0.5 }}>{report.description}</Typography>
-              </Box>
-            </Box>
-          </Grid>
+        {/* Status and Severity */}
+        <Grid item xs={12} sm={6}>
+          <Paper sx={{ p: 2, height: '100%' }}>
+            <Typography variant="subtitle2" gutterBottom>Status</Typography>
+            <Chip 
+              label={report.status}
+              color={getStatusColor(report.status)}
+              sx={{ fontWeight: 600 }}
+            />
+          </Paper>
+        </Grid>
 
-          {report.images && report.images.length > 0 && (
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>Images</Typography>
-              <Grid container spacing={2}>
-                {report.images.map((image, index) => (
-                  <Grid item xs={12} sm={6} md={4} key={index}>
-                    <Box
-                      component="img"
-                      src={image.url}
-                      alt={`Damage report image ${index + 1}`}
-                      sx={{
-                        width: '100%',
-                        height: 200,
-                        objectFit: 'cover',
-                        borderRadius: 1,
-                        cursor: 'pointer'
-                      }}
-                      onClick={() => window.open(image.url, '_blank')}
-                    />
-                  </Grid>
-                ))}
+        <Grid item xs={12} sm={6}>
+          <Paper sx={{ p: 2, height: '100%' }}>
+            <Typography variant="subtitle2" gutterBottom>Assignment</Typography>
+            <Typography>{report.assignedTo || 'Unassigned'}</Typography>
+          </Paper>
+        </Grid>
+
+        {/* Location Details */}
+        <Grid item xs={12}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="subtitle2" gutterBottom>Location Details</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body2" color="text.secondary">Region</Typography>
+                <Typography variant="body1">{report.region}</Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body2" color="text.secondary">Location</Typography>
+                <Typography variant="body1">{report.location}</Typography>
               </Grid>
             </Grid>
-          )}
-
-          <Grid item xs={12}>
-            <Typography variant="h6" gutterBottom>Reporter Information</Typography>
-            <Box sx={{ mb: 2 }}>
-              <Typography><strong>Reporter:</strong> {report.reporter}</Typography>
-              {report.reporterContact && (
-                <Typography><strong>Contact:</strong> {report.reporterContact}</Typography>
-              )}
-            </Box>
-          </Grid>
-
-          {report.notes && (
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>Additional Notes</Typography>
-              <Typography>{report.notes}</Typography>
-            </Grid>
-          )}
+          </Paper>
         </Grid>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Close</Button>
-      </DialogActions>
-    </Dialog>
+
+        {/* Damage Details */}
+        <Grid item xs={12}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="subtitle2" gutterBottom>Damage Information</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={4}>
+                <Typography variant="body2" color="text.secondary">Damage Type</Typography>
+                <Typography variant="body1">{report.damageType}</Typography>
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <Typography variant="body2" color="text.secondary">Severity</Typography>
+                <Chip 
+                  label={report.severity}
+                  color={getSeverityColor(report.severity)}
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <Typography variant="body2" color="text.secondary">Priority</Typography>
+                <Typography variant="body1">{report.priority}</Typography>
+              </Grid>
+              <Grid item xs={12}>
+                <Typography variant="body2" color="text.secondary">Description</Typography>
+                <Typography variant="body1" sx={{ mt: 1 }}>
+                  {report.description}
+                </Typography>
+              </Grid>
+              <Grid item xs={12}>
+                <Typography variant="body2" color="text.secondary">Action Required</Typography>
+                <Typography variant="body1">{report.action}</Typography>
+              </Grid>
+            </Grid>
+          </Paper>
+        </Grid>
+
+        {/* Image */}
+        {report.beforeImage && (
+          <Grid item xs={12}>
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>Damage Image</Typography>
+              <Box
+                sx={{
+                  position: 'relative',
+                  width: '100%',
+                  height: 300,
+                  borderRadius: 1,
+                  overflow: 'hidden',
+                  backgroundColor: alpha(theme.palette.common.black, 0.04)
+                }}
+              >
+                {loading ? (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '100%'
+                    }}
+                  >
+                    <CircularProgress />
+                  </Box>
+                ) : imageUrl ? (
+                  <img
+                    src={imageUrl}
+                    alt="Damage"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain'
+                    }}
+                  />
+                ) : (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '100%'
+                    }}
+                  >
+                    <Typography color="text.secondary">
+                      No image available
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            </Paper>
+          </Grid>
+        )}
+      </Grid>
+    </Box>
   );
-}
+};
 
 export default ViewDamageReport;

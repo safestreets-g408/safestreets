@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+/* eslint-disable no-unused-vars */
+import React, { useState, useEffect} from 'react';
 import { 
   Box, Paper, Typography, Grid, TextField, MenuItem, 
   Button, FormControl, InputLabel, Select, Chip, Stack,
@@ -8,14 +9,9 @@ import {
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import SortIcon from '@mui/icons-material/Sort';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import GridViewIcon from '@mui/icons-material/GridView';
 import TableRowsIcon from '@mui/icons-material/TableRows';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import PendingIcon from '@mui/icons-material/Pending';
-import BuildIcon from '@mui/icons-material/Build';
-import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import CloseIcon from '@mui/icons-material/Close';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import ViewDamageReport from '../components/reports/ViewDamageReport';
@@ -165,19 +161,6 @@ function Reports() {
     setPage(1);
   };
 
-  const handleSortChange = (field) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
-
-  const handleExportMenuOpen = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
   const handleExportMenuClose = () => {
     setAnchorEl(null);
   };
@@ -214,16 +197,6 @@ function Reports() {
   const regionOptions = Array.from(new Set(reports.map(r => r.region))).filter(Boolean);
   const damageTypeOptions = Array.from(new Set(reports.map(r => r.damageType))).filter(Boolean);
   const priorityOptions = Array.from(new Set(reports.map(r => r.priority))).filter(Boolean);
-
-  // Status mapping for icon (using action/priority as proxy)
-  const getStatusIcon = (priority, action) => {
-    // Map priority/action to status icon
-    if (priority === 'High') return <BuildIcon color="error" />;
-    if (priority === 'Medium') return <AssignmentIndIcon color="warning" />;
-    if (priority === 'Low') return <PendingIcon color="info" />;
-    if (action && /immediate/i.test(action)) return <CheckCircleIcon color="success" />;
-    return <PendingIcon color="disabled" />;
-  };
 
   // Filter Dialog
   const FilterDialog = () => (
@@ -391,7 +364,7 @@ function Reports() {
                 }}
               >
                 <td style={{ padding: 8, fontWeight: 500, color: theme.palette.primary.main }}>
-                  {report.id}
+                  {report.reportId}
                 </td>
                 <td style={{ padding: 8 }}>
                   {new Date(report.createdAt).toLocaleDateString()}
