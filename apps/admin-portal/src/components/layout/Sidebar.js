@@ -23,7 +23,9 @@ import AnalyticsIcon from '@mui/icons-material/BarChart';
 import RepairIcon from '@mui/icons-material/Build';
 import HistoryIcon from '@mui/icons-material/History';
 import LogoutIcon from '@mui/icons-material/ExitToApp';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { DRAWER_WIDTH } from '../../config/constants';
+import { te } from 'date-fns/locale';
 
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
@@ -32,6 +34,7 @@ const menuItems = [
   { text: 'Analytics', icon: <AnalyticsIcon />, path: '/analytics' },
   { text: 'Repair Management', icon: <RepairIcon />, path: '/repairs' },
   { text: 'Historical Analysis', icon: <HistoryIcon />, path: '/historical' },
+  { text: 'AI Analysis', icon: <AutoAwesomeIcon />, path: '/ai-analysis' }
 ];
 
 const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {

@@ -120,7 +120,27 @@ const theme = createTheme({
     '0 2px 4px rgba(0,0,0,0.05)',
     '0 4px 8px rgba(0,0,0,0.08)',
     '0 8px 16px rgba(0,0,0,0.1)',
-    // ...rest of the shadows array
+    '0 12px 20px rgba(0,0,0,0.12)',
+    '0 16px 24px rgba(0,0,0,0.14)',
+    '0 20px 28px rgba(0,0,0,0.16)',
+    '0 24px 32px rgba(0,0,0,0.18)',
+    '0 28px 36px rgba(0,0,0,0.2)',
+    '0 32px 40px rgba(0,0,0,0.22)',
+    '0 36px 44px rgba(0,0,0,0.24)',
+    '0 40px 48px rgba(0,0,0,0.26)',
+    '0 44px 52px rgba(0,0,0,0.28)',
+    '0 48px 56px rgba(0,0,0,0.3)',
+    '0 52px 60px rgba(0,0,0,0.32)',
+    '0 56px 64px rgba(0,0,0,0.34)',
+    '0 60px 68px rgba(0,0,0,0.36)',
+    '0 64px 72px rgba(0,0,0,0.38)',
+    '0 68px 76px rgba(0,0,0,0.4)',
+    '0 72px 80px rgba(0,0,0,0.42)',
+    '0 76px 84px rgba(0,0,0,0.44)',
+    '0 80px 88px rgba(0,0,0,0.46)',
+    '0 84px 92px rgba(0,0,0,0.48)',
+    '0 88px 96px rgba(0,0,0,0.5)',
+    '0 92px 100px rgba(0,0,0,0.52)'
   ],
 });
 

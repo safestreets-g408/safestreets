@@ -6,5 +6,5 @@ venv/
 .DS_Store
 model/
 *.pth
-.static/uploads/
+static/uploads/
 .venv/

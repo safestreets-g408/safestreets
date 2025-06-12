@@ -19,6 +19,7 @@ import Repair from './pages/Repair';
 import Historical from './pages/Historical';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
+import AiAnalysis from './pages/AiAnalysis';
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
               <Route path="/repairs" element={<Repair />} />
               <Route path="/historical" element={<Historical />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/ai-analysis" element={<AiAnalysis />} />
             </Route>
 
             {/* Catch all route */}
