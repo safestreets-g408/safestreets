@@ -9,20 +9,32 @@ const getHeaders = () => {
 };
 
 const handleResponse = async (response) => {
+  let responseData;
   let errorData;
   
   try {
-    errorData = await response.json();
+    responseData = await response.json();
+    errorData = responseData;
   } catch (parseError) {
     // If we can't parse JSON, create a generic error object
+    console.error('Error parsing JSON response:', parseError);
     errorData = { 
-      message: `HTTP ${response.status}: ${response.statusText}` 
+      message: `HTTP ${response.status}: ${response.statusText}`,
+      parseError: true
     };
   }
 
   if (!response.ok) {
     // Create more detailed error messages based on status codes
     let message = errorData.message || 'An error occurred';
+    
+    // Log detailed error information
+    console.error('API Error:', { 
+      status: response.status, 
+      statusText: response.statusText,
+      url: response.url,
+      errorData
+    });
     
     switch (response.status) {
       case 400:
@@ -35,7 +47,7 @@ const handleResponse = async (response) => {
         message = 'Access denied.';
         break;
       case 404:
-        message = 'Resource not found.';
+        message = errorData.message || 'Resource not found.';
         break;
       case 429:
         message = 'Too many requests. Please try again later.';
@@ -53,10 +65,11 @@ const handleResponse = async (response) => {
     const error = new Error(message);
     error.status = response.status;
     error.data = errorData;
+    error.url = response.url;
     throw error;
   }
   
-  return errorData;
+  return responseData;
 };
 
 export const api = {
@@ -106,7 +119,7 @@ export const api = {
       throw error;
     }
   },
-
+  
   patch: async (endpoint, data) => {
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
