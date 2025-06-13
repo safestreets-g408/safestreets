@@ -9,7 +9,7 @@ export const API_ENDPOINTS = {
   ANALYTICS: '/analytics',
   AUTH: '/auth',
   USERS: '/users',
-  FIELD_WORKERs: '/fieldworker',
+  FIELD_WORKERS: '/field/workers',
   IMAGES: '/images',
 };
 

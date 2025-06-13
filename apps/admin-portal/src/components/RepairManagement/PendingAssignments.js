@@ -35,7 +35,7 @@ function PendingAssignments({ pendingRepairs = [], fieldWorkers = [], onAssignRe
 
   const handleAssignRepair = () => {
     if (!selectedRepair || !selectedWorker) return;
-    onAssignRepair(selectedRepair.id, selectedWorker, assignmentNotes);
+    onAssignRepair(selectedRepair._id || selectedRepair.id, selectedWorker, assignmentNotes);
     handleAssignDialogClose();
   };
 
@@ -74,7 +74,7 @@ function PendingAssignments({ pendingRepairs = [], fieldWorkers = [], onAssignRe
       ) : (
         <Grid container spacing={2}>
           {pendingRepairs.map((repair) => (
-            <Grid item xs={12} md={6} lg={4} key={repair.id}>
+            <Grid item xs={12} md={6} lg={4} key={repair._id || repair.id}>
               <Card
                 sx={{
                   height: '100%',
@@ -91,7 +91,7 @@ function PendingAssignments({ pendingRepairs = [], fieldWorkers = [], onAssignRe
                 <CardContent sx={{ flexGrow: 1 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                     <Typography variant="subtitle1" fontWeight="bold">
-                      {repair.id}
+                      {repair.reportId || repair._id || repair.id}
                     </Typography>
                     <Chip
                       size="small"
@@ -165,13 +165,16 @@ function PendingAssignments({ pendingRepairs = [], fieldWorkers = [], onAssignRe
             <Select
               value={selectedWorker}
               label="Assign to Field Worker"
-              onChange={(e) => setSelectedWorker(e.target.value)}
+              onChange={(e) => {
+                console.log('Selected worker:', e.target.value);
+                setSelectedWorker(e.target.value);
+              }}
             >
               {fieldWorkers.map(worker => (
                 <MenuItem
                   key={worker.id}
                   value={worker.id}
-                  disabled={worker.status !== 'Available'}
+                  disabled={worker.status === 'Busy'}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
                     <Avatar

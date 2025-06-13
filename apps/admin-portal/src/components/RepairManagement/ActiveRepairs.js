@@ -9,6 +9,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import CircularProgress from '@mui/material/CircularProgress';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import SearchIcon from '@mui/icons-material/Search';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
@@ -23,6 +24,7 @@ function ActiveRepairs({ assignedRepairs = [], fieldWorkers = [], onStatusChange
   const [workerFilter, setWorkerFilter] = useState('all');
   const [regionFilter, setRegionFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [changingStatusIds, setChangingStatusIds] = useState([]);
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -149,7 +151,7 @@ function ActiveRepairs({ assignedRepairs = [], fieldWorkers = [], onStatusChange
       ) : (
         <Grid container spacing={2}>
           {filteredAssignedRepairs.map((repair) => (
-            <Grid item xs={12} md={6} lg={4} key={repair.id}>
+            <Grid item xs={12} md={6} lg={4} key={repair._id || repair.id}>
               <Card
                 sx={{
                   height: '100%',
@@ -166,7 +168,7 @@ function ActiveRepairs({ assignedRepairs = [], fieldWorkers = [], onStatusChange
                 <CardContent sx={{ flexGrow: 1 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                     <Typography variant="subtitle1" fontWeight="bold">
-                      {repair.id}
+                      {repair.reportId || repair.id}
                     </Typography>
                     <Chip
                       size="small"
@@ -217,18 +219,78 @@ function ActiveRepairs({ assignedRepairs = [], fieldWorkers = [], onStatusChange
                   </Typography>
                 </CardContent>
                 <CardActions sx={{ justifyContent: 'space-between' }}>
-                  <FormControl size="small" sx={{ minWidth: 120 }}>
+                  <FormControl size="small" sx={{ minWidth: 140, position: 'relative' }}>
                     <InputLabel>Update Status</InputLabel>
+                    {changingStatusIds.includes(repair._id || repair.id) && (
+                      <CircularProgress
+                        size={24}
+                        sx={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          marginTop: '-12px',
+                          marginLeft: '-12px',
+                          zIndex: 1,
+                        }}
+                      />
+                    )}
                     <Select
                       label="Update Status"
-                      value={repair.status}
-                      onChange={(e) => onStatusChange && onStatusChange(repair.id, e.target.value)}
+                      value={repair.status || ''}
+                      onChange={(e) => {
+                        const newStatus = e.target.value;
+                        const repairId = repair._id || repair.id;
+                        
+                        // Show visual feedback that something is happening
+                        setChangingStatusIds(prev => [...prev, repairId]);
+                        
+                        // Call the status change handler
+                        if (onStatusChange) {
+                          onStatusChange(repairId, newStatus)
+                            .finally(() => {
+                              // Remove from loading state whether successful or not
+                              setChangingStatusIds(prev => prev.filter(id => id !== repairId));
+                            });
+                        }
+                      }}
+                      disabled={changingStatusIds.includes(repair._id || repair.id)}
+                      MenuProps={{
+                        PaperProps: {
+                          elevation: 3,
+                          sx: { maxHeight: 200 }
+                        }
+                      }}
                     >
-                      <MenuItem value="Assigned">Assigned</MenuItem>
-                      <MenuItem value="In-Progress">In Progress</MenuItem>
-                      <MenuItem value="On Hold">On Hold</MenuItem>
-                      <MenuItem value="Resolved">Resolved</MenuItem>
-                      <MenuItem value="Rejected">Rejected</MenuItem>
+                      <MenuItem value="Assigned">
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <AssignmentIndIcon fontSize="small" sx={{ mr: 1, color: theme.palette.info.main }} />
+                          Assigned
+                        </Box>
+                      </MenuItem>
+                      <MenuItem value="In-Progress">
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <BuildIcon fontSize="small" sx={{ mr: 1, color: theme.palette.primary.main }} />
+                          In Progress
+                        </Box>
+                      </MenuItem>
+                      <MenuItem value="On Hold">
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <HourglassEmptyIcon fontSize="small" sx={{ mr: 1, color: theme.palette.error.light }} />
+                          On Hold
+                        </Box>
+                      </MenuItem>
+                      <MenuItem value="Resolved">
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <CheckCircleIcon fontSize="small" sx={{ mr: 1, color: theme.palette.success.main }} />
+                          Resolved
+                        </Box>
+                      </MenuItem>
+                      <MenuItem value="Rejected">
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <CancelIcon fontSize="small" sx={{ mr: 1, color: theme.palette.error.main }} />
+                          Rejected
+                        </Box>
+                      </MenuItem>
                     </Select>
                   </FormControl>
                   <Tooltip title="View Details">

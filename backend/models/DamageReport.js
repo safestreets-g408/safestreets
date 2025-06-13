@@ -21,6 +21,7 @@ const DamageReportSchema = new mongoose.Schema({
   resolvedAt: { type: Date },
   reporter: { type: String, required: true },
   location: { type: String, required: true },
+  aiReportId: { type: mongoose.Schema.Types.ObjectId, ref: 'AiReport' },
   createdAt: { type: Date, default: Date.now }
 });
 

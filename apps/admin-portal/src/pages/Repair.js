@@ -4,15 +4,12 @@ import {
   Select, MenuItem, FormControl, InputLabel,Avatar, 
    Tab, Tabs, Badge, 
   Dialog, DialogTitle, DialogContent, DialogActions,
-  FormHelperText, useTheme, CircularProgress
+  FormHelperText, useTheme, CircularProgress,
+  Snackbar, Alert
 } from '@mui/material';
 import { 
   Build as BuildIcon,
   Assignment as AssignmentIcon,
-  AssignmentInd as AssignmentIndIcon,
-  CheckCircle as CheckCircleIcon,
-  Cancel as CancelIcon,
-  Pending as PendingIcon,
   Person as PersonIcon,
 } from '@mui/icons-material';
 import { api } from '../utils/api';
@@ -28,15 +25,16 @@ function Repair() {
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState('');
   const [assignmentNotes, setAssignmentNotes] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [workerFilter, setWorkerFilter] = useState('all');
-  const [regionFilter, setRegionFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [fieldWorkers, setFieldWorkers] = useState([]);
   const [pendingRepairs, setPendingRepairs] = useState([]);
   const [assignedRepairs, setAssignedRepairs] = useState([]);
+  
+  // Snackbar for notifications
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success'); // success, error, warning, info
 
   const fetchRepairs = async () => {
     try {
@@ -66,14 +64,15 @@ function Repair() {
         // Fetch both field workers and repairs in parallel
         await Promise.all([
           (async () => {
-            const response = await api.get('/fieldworker');
+            const response = await api.get('/field/workers');
             const transformedWorkers = response.map(worker => ({
-              id: worker.workerId,
+              id: worker._id,
+              workerId: worker.workerId,
               name: worker.name,
               specialization: worker.specialization,
               region: worker.region,
-              activeAssignments: worker.activeAssignments,
-              status: worker.activeAssignments >= 3 ? 'Busy' : 'Available'
+              activeAssignments: worker.activeAssignments || 0,
+              status: (worker.activeAssignments >= 3) ? 'Busy' : 'Available'
             }));
             setFieldWorkers(transformedWorkers);
           })(),
@@ -95,6 +94,7 @@ function Repair() {
   };
 
   const handleAssignDialogOpen = (repair) => {
+    console.log('Opening assign dialog with repair:', repair);
     setSelectedRepair(repair);
     setAssignDialogOpen(true);
   };
@@ -105,40 +105,81 @@ function Repair() {
     setAssignmentNotes('');
   };
 
-  const handleAssignRepair = () => {
-    // In a real app, this would make an API call to assign the repair
-    console.log(`Assigning repair ${selectedRepair.id} to worker ${selectedWorker} with notes: ${assignmentNotes}`);
-    handleAssignDialogClose();
-    // Would refresh data after API call
-  };
-
-  const handleStatusChange = (repairId, newStatus) => {
-    // In a real app, this would make an API call to update the status
-    console.log(`Updating repair ${repairId} status to ${newStatus}`);
-    // Would refresh data after API call
-  };
-
-  const getStatusIcon = (status) => {
-    switch(status) {
-      case 'Pending': return <PendingIcon color="warning" />;
-      case 'Assigned': return <AssignmentIndIcon color="info" />;
-      case 'In-Progress': return <BuildIcon color="primary" />;
-      case 'On Hold': return <PendingIcon color="error" />;
-      case 'Resolved': return <CheckCircleIcon color="success" />;
-      case 'Rejected': return <CancelIcon color="error" />;
-      default: return <PendingIcon color="warning" />;
+  const handleAssignRepair = async () => {
+    if (!selectedRepair || !selectedWorker) {
+      console.error('Cannot assign: Missing repair or worker', { 
+        repair: selectedRepair, 
+        worker: selectedWorker 
+      });
+      return;
+    }
+    
+    const reportId = selectedRepair._id || selectedRepair.id;
+    console.log('Assigning repair', { reportId, workerId: selectedWorker, notes: assignmentNotes });
+    
+    try {
+      const response = await api.patch(`/damage/reports/${reportId}/assign`, {
+        workerId: selectedWorker,
+        notes: assignmentNotes
+      });
+      
+      if (response && response.success) {
+        // Show success message
+        console.log('Repair assigned successfully', response);
+        setError(null);
+        handleAssignDialogClose();
+        fetchRepairs(); // Refresh data after API call
+      }
+    } catch (err) {
+      console.error('Error assigning repair:', err);
+      setError(`Failed to assign repair: ${err.message || 'Unknown error'}`);
     }
   };
 
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'Pending': return theme.palette.warning.main;
-      case 'Assigned': return theme.palette.info.main;
-      case 'In-Progress': return theme.palette.primary.main;
-      case 'On Hold': return theme.palette.error.light;
-      case 'Resolved': return theme.palette.success.main;
-      case 'Rejected': return theme.palette.error.main;
-      default: return theme.palette.warning.main;
+  const handleStatusChange = async (repairId, newStatus) => {
+    try {
+      setError(null);
+      console.log(`Updating repair ${repairId} status to ${newStatus}`);
+      
+      // Convert frontend status format to backend format if needed
+      let backendStatus = newStatus;
+      if (newStatus === 'In-Progress') backendStatus = 'In Progress';
+      
+      const response = await api.patch(`/damage/reports/${repairId}/status`, {
+        status: backendStatus
+      });
+      
+      if (response && response.success) {
+        console.log(`Repair status updated successfully to ${newStatus}`, response);
+        
+        // Show success notification
+        setSnackbarMessage(`Repair status updated to ${newStatus}`);
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+        
+        fetchRepairs(); // Refresh data after API call
+        return true; // Indicate success
+      } else {
+        console.warn('Status update response missing success flag:', response);
+        setError('Response received but operation may have failed');
+        
+        // Show warning notification
+        setSnackbarMessage('Status update may have failed. Please check and try again.');
+        setSnackbarSeverity('warning');
+        setSnackbarOpen(true);
+        
+        return false; // Indicate issues
+      }
+    } catch (err) {
+      console.error('Error updating repair status:', err);
+      setError(`Failed to update status: ${err.message || 'Unknown error'}`);
+      
+      // Show error notification
+      setSnackbarMessage(`Failed to update status: ${err.message || 'Unknown error'}`);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      
+      throw err; // Propagate the error for proper Promise handling
     }
   };
 
@@ -152,18 +193,11 @@ function Repair() {
     }
   };
 
-  const filteredAssignedRepairs = assignedRepairs.filter(repair => {
-    const matchesStatus = statusFilter === 'all' || repair.status === statusFilter;
-    const matchesWorker = workerFilter === 'all' || repair.assignedTo === workerFilter;
-    const matchesRegion = regionFilter === 'all' || repair.region === regionFilter;
-    const matchesSearch = searchQuery === '' || 
-      repair.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      repair.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      repair.reporter.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (repair.assignedTo && repair.assignedTo.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    return matchesStatus && matchesWorker && matchesRegion && matchesSearch;
-  });
+  // Helper to close the snackbar
+  const handleSnackbarClose = (event, reason) => {
+    if (reason === 'clickaway') return;
+    setSnackbarOpen(false);
+  };
 
   return (
     <>
@@ -216,19 +250,9 @@ function Repair() {
       {/* Active Repairs Tab */}
       {tabValue === 1 && (
         <ActiveRepairs 
-          assignedRepairs={filteredAssignedRepairs}
+          assignedRepairs={assignedRepairs}
           fieldWorkers={fieldWorkers}
-          statusFilter={statusFilter}
-          workerFilter={workerFilter}
-          regionFilter={regionFilter}
-          searchQuery={searchQuery}
-          setStatusFilter={setStatusFilter}
-          setWorkerFilter={setWorkerFilter}
-          setRegionFilter={setRegionFilter}
-          setSearchQuery={setSearchQuery}
-          getStatusColor={getStatusColor}
-          getStatusIcon={getStatusIcon}
-          handleStatusChange={handleStatusChange}
+          onStatusChange={handleStatusChange}
           theme={theme}
         />
       )}
@@ -331,6 +355,23 @@ function Repair() {
           </Button>
         </DialogActions>
       </Dialog>
+      
+      {/* Snackbar for status updates and notifications */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={handleSnackbarClose} 
+          severity={snackbarSeverity} 
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </>
   );
 }

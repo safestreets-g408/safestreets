@@ -1,6 +1,15 @@
+const mongoose = require('mongoose');
 const DamageReport = require('../models/DamageReport');
+const AiReport = require('../models/AiReport');
+const FieldWorker = require('../models/FieldWorker');
 const upload = require('../middleware/multerConfig');
 const path = require('path');
+
+
+// Helper function to validate MongoDB ObjectId
+const isValidObjectId = (id) => {
+  return mongoose.Types.ObjectId.isValid(id);
+};
 
 
 // Upload image and classify damage
@@ -154,11 +163,432 @@ const getDamageHistory = async (req, res) => {
   }
 };
 
+// Create a damage report from AI analysis
+const createFromAiReport = async (req, res) => {
+  try {
+    const { 
+      region, 
+      location, 
+      description, 
+      action, 
+      damageType, 
+      severity, 
+      priority, 
+      reporter, 
+      aiReportId 
+    } = req.body;
+
+    // Validate required fields
+    const requiredFields = ['region', 'location', 'damageType', 'severity', 'priority', 'reporter'];
+    const missingFields = requiredFields.filter(field => !req.body[field]);
+    
+    if (missingFields.length > 0) {
+      return res.status(400).json({ 
+        message: 'Missing required fields', 
+        fields: missingFields,
+        success: false 
+      });
+    }
+
+    // Generate a report ID
+    const reportId = 'DR-' + Date.now();
+
+    // Fetch AI report to get the annotated image
+    const aiReport = await AiReport.findById(aiReportId).populate('imageId');
+    
+    if (!aiReport) {
+      return res.status(404).json({ 
+        message: 'AI Report not found',
+        success: false 
+      });
+    }
+
+    const newReport = new DamageReport({
+      reportId,
+      region,
+      location,
+      damageType,
+      severity,
+      priority,
+      action: action || 'Pending Review',
+      description: description || '',
+      reporter,
+      status: 'Pending',
+      assignedTo: 'Unassigned',
+      aiReportId: aiReportId
+    });
+
+    if (aiReport.annotatedImageBase64) {
+      // Convert base64 to buffer
+      const buffer = Buffer.from(aiReport.annotatedImageBase64, 'base64');
+      
+      newReport.beforeImage = {
+        data: buffer,
+        contentType: 'image/jpeg' // Adjust if your annotated images have a different format
+      };
+    }
+
+    await newReport.save();
+    
+    res.status(201).json({ 
+      message: 'Damage report created successfully from AI analysis',
+      success: true,
+      report: {
+        id: newReport._id,
+        reportId: newReport.reportId,
+        status: newReport.status,
+        createdAt: newReport.createdAt
+      }
+    });
+  } catch (err) {
+    console.error('Error creating damage report from AI:', err);
+    res.status(500).json({ 
+      message: 'Failed to create damage report', 
+      error: err.message,
+      success: false
+    });
+  }
+};
+
+// Create a damage report from AI analysis and optionally assign to a field worker
+const createAndAssignFromAiReport = async (req, res) => {
+  try {
+    const { 
+      region, 
+      location, 
+      description, 
+      action, 
+      damageType, 
+      severity, 
+      priority, 
+      reporter, 
+      aiReportId,
+      workerId
+    } = req.body;
+
+    // Validate required fields
+    const requiredFields = ['region', 'location', 'damageType', 'severity', 'priority', 'reporter'];
+    const missingFields = requiredFields.filter(field => !req.body[field]);
+    
+    if (missingFields.length > 0) {
+      return res.status(400).json({ 
+        message: 'Missing required fields', 
+        fields: missingFields,
+        success: false 
+      });
+    }
+
+    // Generate a report ID
+    const reportId = 'DR-' + Date.now();
+
+    // Fetch AI report to get the annotated image
+    const aiReport = await AiReport.findById(aiReportId).populate('imageId');
+    
+    if (!aiReport) {
+      return res.status(404).json({ 
+        message: 'AI Report not found',
+        success: false 
+      });
+    }
+
+    // Create the report
+    const newReport = new DamageReport({
+      reportId,
+      region,
+      location,
+      damageType,
+      severity,
+      priority,
+      action: action || 'Pending Review',
+      description: description || '',
+      reporter,
+      status: 'Pending',
+      assignedTo: 'Unassigned',
+      aiReportId
+    });
+
+    if (aiReport.annotatedImageBase64) {
+      // Convert base64 to buffer
+      const buffer = Buffer.from(aiReport.annotatedImageBase64, 'base64');
+      
+      newReport.beforeImage = {
+        data: buffer,
+        contentType: 'image/jpeg' // Adjust if your annotated images have a different format
+      };
+    }
+
+    await newReport.save();
+
+    // If workerId is provided, assign the report to the worker
+    if (workerId) {
+      // Check if field worker exists
+      const fieldWorker = await FieldWorker.findById(workerId);
+      if (!fieldWorker) {
+        return res.status(404).json({
+          message: 'Field worker not found',
+          success: false
+        });
+      }
+
+      // Update report
+      newReport.assignedTo = fieldWorker.name;
+      newReport.assignedAt = new Date();
+      newReport.status = 'Assigned';
+      
+      await newReport.save();
+    }
+    
+    res.status(201).json({ 
+      message: 'Damage report created successfully' + (workerId ? ' and assigned to field worker' : ''),
+      success: true,
+      report: {
+        id: newReport._id,
+        reportId: newReport.reportId,
+        status: newReport.status,
+        assignedTo: newReport.assignedTo,
+        createdAt: newReport.createdAt
+      }
+    });
+  } catch (err) {
+    console.error('Error creating damage report from AI:', err);
+    res.status(500).json({ 
+      message: 'Failed to create damage report', 
+      error: err.message,
+      success: false
+    });
+  }
+};
+
+// Assign a repair task to a field worker
+const assignRepair = async (req, res) => {
+  try {
+    const { reportId } = req.params;
+    const { workerId } = req.body;
+    
+    console.log('Assign repair request:', { reportId, workerId, body: req.body });
+
+    if (!reportId || !workerId) {
+      console.log('Missing required fields:', { reportId, workerId });
+      return res.status(400).json({
+        message: 'Report ID and Worker ID are required',
+        success: false
+      });
+    }
+    
+    // Validate ObjectIds
+    if (!isValidObjectId(reportId)) {
+      console.log(`Invalid report ID format: ${reportId}`);
+      return res.status(400).json({
+        message: 'Invalid report ID format',
+        success: false
+      });
+    }
+    
+    if (!isValidObjectId(workerId)) {
+      console.log(`Invalid worker ID format: ${workerId}`);
+      return res.status(400).json({
+        message: 'Invalid worker ID format',
+        success: false
+      });
+    }
+
+    // Check if report exists
+    const report = await DamageReport.findById(reportId);
+    if (!report) {
+      console.log(`Report not found with ID: ${reportId}`);
+      return res.status(404).json({
+        message: 'Damage report not found',
+        success: false
+      });
+    }
+    
+    console.log('Found report:', { 
+      id: report._id,
+      reportId: report.reportId, 
+      status: report.status,
+      assignedTo: report.assignedTo
+    });
+
+    // Check if field worker exists
+    const fieldWorker = await FieldWorker.findById(workerId);
+    if (!fieldWorker) {
+      console.error(`Field worker not found with ID: ${workerId}`);
+      return res.status(404).json({
+        message: `Field worker not found with ID: ${workerId}`,
+        success: false
+      });
+    }
+    
+    console.log('Found field worker:', { 
+      id: fieldWorker._id,
+      workerId: fieldWorker.workerId,
+      name: fieldWorker.name 
+    });
+
+    // Update report
+    report.assignedTo = fieldWorker.name;
+    report.assignedAt = new Date();
+    report.status = 'Assigned';
+    
+    await report.save();
+
+    res.status(200).json({
+      message: 'Repair task assigned successfully',
+      success: true,
+      report: {
+        id: report._id,
+        reportId: report.reportId,
+        assignedTo: report.assignedTo,
+        status: report.status
+      }
+    });
+  } catch (err) {
+    console.error('Error assigning repair:', err);
+    res.status(500).json({ 
+      message: 'Failed to assign repair task', 
+      error: err.message,
+      success: false
+    });
+  }
+};
+
+// Unassign a repair task
+const unassignRepair = async (req, res) => {
+  try {
+    const { reportId } = req.params;
+
+    if (!reportId) {
+      return res.status(400).json({
+        message: 'Report ID is required',
+        success: false
+      });
+    }
+
+    // Check if report exists
+    const report = await DamageReport.findById(reportId);
+    if (!report) {
+      return res.status(404).json({
+        message: 'Damage report not found',
+        success: false
+      });
+    }
+
+    // Update report
+    report.assignedTo = 'Unassigned';
+    report.status = 'Pending';
+    
+    await report.save();
+
+    res.status(200).json({
+      message: 'Repair task unassigned successfully',
+      success: true,
+      report: {
+        id: report._id,
+        reportId: report.reportId,
+        assignedTo: report.assignedTo,
+        status: report.status
+      }
+    });
+  } catch (err) {
+    console.error('Error unassigning repair:', err);
+    res.status(500).json({ 
+      message: 'Failed to unassign repair task', 
+      error: err.message,
+      success: false
+    });
+  }
+};
+
+// Update repair status
+const updateRepairStatus = async (req, res) => {
+  try {
+    const { reportId } = req.params;
+    const { status } = req.body;
+
+    if (!reportId || !status) {
+      return res.status(400).json({
+        message: 'Report ID and status are required',
+        success: false
+      });
+    }
+
+    // Validate status
+    const validStatuses = ['Pending', 'Assigned', 'In Progress', 'In-Progress', 'On Hold', 'On-Hold', 'Completed', 'Resolved', 'Rejected'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        message: 'Invalid status value',
+        success: false
+      });
+    }
+
+    // Check if report exists
+    const report = await DamageReport.findById(reportId);
+    if (!report) {
+      return res.status(404).json({
+        message: 'Damage report not found',
+        success: false
+      });
+    }
+
+    // Update report status
+    report.status = status;
+    
+    // If completed, add resolvedAt date
+    if (status === 'Completed') {
+      report.resolvedAt = new Date();
+    }
+    
+    await report.save();
+
+    res.status(200).json({
+      message: 'Repair status updated successfully',
+      success: true,
+      report: {
+        id: report._id,
+        reportId: report.reportId,
+        status: report.status,
+        resolvedAt: report.resolvedAt
+      }
+    });
+  } catch (err) {
+    console.error('Error updating repair status:', err);
+    res.status(500).json({ 
+      message: 'Failed to update repair status', 
+      error: err.message,
+      success: false
+    });
+  }
+};
+
+// Get reports generated from AI reports
+const getGeneratedFromAiReports = async (req, res) => {
+  try {
+    // Find all damage reports that have aiReportId field
+    const reports = await DamageReport.find({ aiReportId: { $exists: true } })
+      .select('aiReportId reportId createdAt')
+      .sort({ createdAt: -1 });
+      
+    res.status(200).json(reports);
+  } catch (err) {
+    console.error('Error fetching AI-generated reports:', err);
+    res.status(500).json({ 
+      message: 'Failed to fetch AI-generated reports', 
+      error: err.message 
+    });
+  }
+};
+
 module.exports = { 
   uploadDamageReport, 
   getDamageHistory, 
   getReports,
   getReportById,
   getReportImage,
-  upload 
+  createFromAiReport,
+  createAndAssignFromAiReport,
+  assignRepair,
+  unassignRepair,
+  updateRepairStatus,
+  upload,
+  getGeneratedFromAiReports
 };
