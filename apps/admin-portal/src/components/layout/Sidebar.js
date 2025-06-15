@@ -8,14 +8,13 @@ import {
   ListItemIcon,
   ListItemText,
   ListItemButton,
-  Toolbar,
   Typography,
   Avatar,
-  Divider,
   useTheme,
   alpha,
   useMediaQuery,
-  Button
+  Button,
+  Chip,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import ReportIcon from '@mui/icons-material/Report';
@@ -28,20 +27,55 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { DRAWER_WIDTH } from '../../config/constants';
 
 const menuItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
-  { text: 'Damage Reports', icon: <ReportIcon />, path: '/reports' },
-  { text: 'Map View', icon: <MapIcon />, path: '/map' },
-  { text: 'Analytics', icon: <AnalyticsIcon />, path: '/analytics' },
-  { text: 'Repair Management', icon: <RepairIcon />, path: '/repairs' },
-  { text: 'Historical Analysis', icon: <HistoryIcon />, path: '/historical' },
-  { text: 'AI Analysis', icon: <AutoAwesomeIcon />, path: '/ai-analysis' }
+  { 
+    text: 'Dashboard', 
+    icon: <DashboardIcon />, 
+    path: '/', 
+    badge: null,
+  },
+  { 
+    text: 'Damage Reports', 
+    icon: <ReportIcon />, 
+    path: '/reports', 
+    badge: 12,
+  },
+  { 
+    text: 'Map View', 
+    icon: <MapIcon />, 
+    path: '/map', 
+    badge: null,
+  },
+  { 
+    text: 'Analytics', 
+    icon: <AnalyticsIcon />, 
+    path: '/analytics', 
+    badge: null,
+  },
+  { 
+    text: 'Repair Management', 
+    icon: <RepairIcon />, 
+    path: '/repairs', 
+    badge: 5,
+  },
+  { 
+    text: 'Historical Analysis', 
+    icon: <HistoryIcon />, 
+    path: '/historical', 
+    badge: null,
+  },
+  { 
+    text: 'AI Analysis', 
+    icon: <AutoAwesomeIcon />, 
+    path: '/ai-analysis', 
+    badge: 'AI',
+  }
 ];
 
 const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const handleNav = (path) => {
     navigate(path);
@@ -53,207 +87,204 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
   const handleLogout = () => {
     onLogout();
     navigate('/login');
-  }
+  };
 
   const drawer = (
     <Box sx={{
       height: '100%',
       display: 'flex',
       flexDirection: 'column',
-      background: theme.palette.background.paper,
-      borderRight: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-      transition: theme.transitions.create(['width', 'background'], {
-        easing: theme.transitions.easing.sharp,
-        duration: theme.transitions.duration.enteringScreen,
-      }),
+      background: '#ffffff',
       position: 'relative',
-      overflow: 'hidden',
-      boxShadow: isMobile ? theme.shadows[10] : 'none',
-      '&:after': {
-        content: '""',
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'linear-gradient(180deg, rgba(51, 102, 255, 0.02) 0%, rgba(16, 185, 129, 0.02) 100%)',
-        pointerEvents: 'none',
-        zIndex: 0,
-      },
     }}>
-      <Toolbar sx={{
+      {/* Header Section */}
+      <Box sx={{
+        p: 3,
         display: 'flex',
         alignItems: 'center',
         gap: 2,
-        px: 3,
-        minHeight: { xs: 70, sm: 70 },
-        position: 'relative',
-        zIndex: 1,
+        background: '#f8f9fa',
+        borderBottom: '1px solid #e9ecef',
       }}>
         <Avatar sx={{
-          background: `linear-gradient(135deg, ${theme.palette.primary.main} 20%, ${theme.palette.secondary.main} 80%)`,
-          width: 42,
-          height: 42,
-          fontSize: '1.2rem',
-          fontWeight: 700,
-          boxShadow: `0 4px 14px ${alpha(theme.palette.primary.main, 0.25)}`,
-          border: `2px solid ${theme.palette.background.paper}`,
+          background: '#2563eb',
+          width: 48,
+          height: 48,
+          fontSize: '1.25rem',
+          fontWeight: 600,
         }}>
           SS
         </Avatar>
-        <Typography variant="h6" noWrap sx={{
-          fontWeight: 800,
-          letterSpacing: '-0.5px',
-          background: `linear-gradient(135deg, ${theme.palette.primary.main} 30%, ${theme.palette.secondary.main} 90%)`,
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          position: 'relative',
-          '&:after': {
-            content: '""',
-            position: 'absolute',
-            bottom: -4,
-            left: 0,
-            width: '40%',
-            height: 2,
-            background: `linear-gradient(90deg, ${theme.palette.primary.main}, transparent)`,
-            borderRadius: '2px',
-          }
-        }}>
-          SafeStreets
-        </Typography>
-      </Toolbar>
+        <Box>
+          <Typography variant="h6" sx={{
+            fontWeight: 600,
+            fontSize: '1.125rem',
+            color: '#1f2937',
+            mb: 0,
+          }}>
+            SafeStreets
+          </Typography>
+          <Typography variant="caption" sx={{
+            color: '#6b7280',
+            fontSize: '0.75rem',
+            fontWeight: 500,
+          }}>
+            Admin Portal
+          </Typography>
+        </Box>
+      </Box>
 
-      <Divider sx={{ mx: 2, opacity: 0.4 }} />
-
-      <List sx={{ flex: 1, px: 2, py: 2, position: 'relative', zIndex: 1 }}>
+      {/* Navigation Section */}
+      <Box sx={{ flex: 1, py: 2, overflow: 'auto' }}>
         <Typography 
           variant="overline" 
           sx={{
-            color: alpha(theme.palette.text.secondary, 0.7),
-            fontWeight: 600,
-            fontSize: '0.7rem',
-            px: 2,
+            color: '#6b7280',
+            px: 3,
             mb: 1,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            letterSpacing: '0.05em',
+            display: 'block',
           }}
         >
-          Main Navigation
+          NAVIGATION
         </Typography>
         
-        {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding sx={{ mb: 1.2 }}>
-            <ListItemButton
-              onClick={() => handleNav(item.path)}
-              selected={location.pathname === item.path}
-              sx={{
-                borderRadius: 2,
-                minHeight: 48,
-                position: 'relative',
-                overflow: 'hidden',
-                transition: 'all 0.2s ease',
-                pl: 2,
-                py: 0.8,
-                '&:before': {
-                  content: '""',
-                  position: 'absolute',
-                  left: 0,
-                  top: location.pathname === item.path ? '20%' : '50%',
-                  height: location.pathname === item.path ? '60%' : 0,
-                  width: 3,
-                  backgroundColor: theme.palette.primary.main,
-                  borderRadius: 4,
-                  transition: 'all 0.2s ease-in-out',
-                },
-                '&:hover:before': {
-                  height: '60%',
-                  top: '20%',
-                },
-                '&.Mui-selected': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                  '&:hover': {
-                    backgroundColor: alpha(theme.palette.primary.main, 0.12),
-                  },
-                  '& .MuiListItemIcon-root': {
-                    color: theme.palette.primary.main,
-                    '& svg': {
-                      transform: 'scale(1.1)',
-                      filter: `drop-shadow(0 4px 8px ${alpha(theme.palette.primary.main, 0.4)})`,
+        <List sx={{ p: 0 }}>
+          {menuItems.map((item) => {
+            const isSelected = location.pathname === item.path;
+            return (
+              <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
+                <ListItemButton
+                  onClick={() => handleNav(item.path)}
+                  selected={isSelected}
+                  sx={{
+                    minHeight: 48,
+                    px: 3,
+                    py: 1.5,
+                    mx: 1,
+                    borderRadius: 1,
+                    transition: 'all 0.15s ease',
+                    '&:before': {
+                      content: '""',
+                      position: 'absolute',
+                      left: 0,
+                      top: isSelected ? '20%' : '50%',
+                      height: isSelected ? '60%' : 0,
+                      width: 3,
+                      backgroundColor: theme.palette.primary.main,
+                      transition: 'all 0.15s ease',
+                    },
+                    '&.Mui-selected': {
+                      backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                      '&:hover': {
+                        backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                      },
+                      '& .MuiListItemIcon-root': {
+                        color: theme.palette.primary.main,
+                      },
+                      '& .MuiListItemText-primary': {
+                        fontWeight: 600,
+                        color: theme.palette.primary.main,
+                      },
+                    },
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.primary.main, 0.04),
                     }
-                  },
-                },
-                '&:hover': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.06),
-                  transform: 'translateX(4px)',
-                  '& .MuiListItemIcon-root svg': {
-                    transform: 'scale(1.1)',
-                  }
-                }
-              }}
-            >
-              <ListItemIcon sx={{
-                minWidth: 40,
-                color: location.pathname === item.path 
-                  ? theme.palette.primary.main 
-                  : alpha(theme.palette.text.primary, 0.7),
-                '& svg': {
-                  transition: 'all 0.2s ease-in-out',
-                  fontSize: '1.3rem',
-                }
-              }}>
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText 
-                primary={item.text}
-                primaryTypographyProps={{
-                  fontSize: '0.95rem',
-                  fontWeight: location.pathname === item.path ? 700 : 500,
-                  color: location.pathname === item.path ? theme.palette.text.primary : undefined,
-                  letterSpacing: '0.01em',
-                }}
-              />
-              {location.pathname === item.path && (
-                <Box sx={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  backgroundColor: theme.palette.primary.main,
-                  mr: 1,
-                  boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.2)}`,
-                }} />
-              )}
-            </ListItemButton>
-          </ListItem>
-        ))}
-      </List>
+                  }}
+                >
+                  <ListItemIcon sx={{
+                    minWidth: 40,
+                    color: isSelected 
+                      ? theme.palette.primary.main 
+                      : '#6b7280',
+                    transition: 'color 0.15s ease',
+                  }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  
+                  <ListItemText 
+                    primary={item.text}
+                    primaryTypographyProps={{
+                      fontSize: '0.875rem',
+                      fontWeight: isSelected ? 600 : 500,
+                      color: isSelected ? theme.palette.primary.main : '#374151',
+                    }}
+                  />
 
-      <Divider sx={{ mx: 2, mb: 2, opacity: 0.4 }} />
+                  {/* Badge */}
+                  {item.badge && (
+                    <Box sx={{ ml: 1 }}>
+                      {typeof item.badge === 'number' ? (
+                        <Chip 
+                          label={item.badge} 
+                          size="small"
+                          sx={{
+                            height: 20,
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            backgroundColor: '#dc2626',
+                            color: 'white',
+                            '& .MuiChip-label': { px: 1 },
+                          }}
+                        />
+                      ) : (
+                        <Chip 
+                          label={item.badge} 
+                          size="small"
+                          sx={{
+                            height: 20,
+                            fontSize: '0.65rem',
+                            fontWeight: 600,
+                            backgroundColor: '#2563eb',
+                            color: 'white',
+                            '& .MuiChip-label': { px: 1 },
+                          }}
+                        />
+                      )}
+                    </Box>
+                  )}
+                </ListItemButton>
+              </ListItem>
+            );
+          })}
+        </List>
+      </Box>
 
-      <Box sx={{ px: 2, pb: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      {/* Footer Section */}
+      <Box sx={{ p: 2, borderTop: '1px solid #e9ecef' }}>
         <Button
           variant="outlined"
-          color="error"
           onClick={handleLogout}
           startIcon={<LogoutIcon />}
+          fullWidth
           sx={{
-            width: '100%',
-            borderRadius: 2,
+            borderRadius: 1,
             py: 1,
-            borderWidth: '1.5px',
-            fontWeight: 600,
             textTransform: 'none',
+            fontWeight: 500,
+            borderColor: '#d1d5db',
+            color: '#6b7280',
             '&:hover': {
-              borderWidth: '1.5px',
-              backgroundColor: alpha(theme.palette.error.main, 0.08),
-              transform: 'translateY(-2px)',
+              borderColor: '#dc2626',
+              backgroundColor: alpha('#dc2626', 0.04),
+              color: '#dc2626',
             },
+            transition: 'all 0.15s ease',
           }}
         >
           Sign Out
         </Button>
 
-        <Typography variant="caption" sx={{ mt: 2, color: alpha(theme.palette.text.secondary, 0.6), textAlign: 'center' }}>
-          SafeStreets Admin Portal v1.2
+        <Typography variant="caption" sx={{ 
+          mt: 2, 
+          color: '#9ca3af', 
+          textAlign: 'center',
+          display: 'block',
+          fontSize: '0.7rem',
+        }}>
+          SafeStreets Portal v2.0
         </Typography>
       </Box>
     </Box>
@@ -263,8 +294,8 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
     <Box
       component="nav"
       sx={{ 
-        width: { sm: DRAWER_WIDTH }, 
-        flexShrink: { sm: 0 },
+        width: { md: DRAWER_WIDTH }, 
+        flexShrink: { md: 0 },
       }}
     >
       {/* Mobile drawer */}
@@ -274,12 +305,12 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
         onClose={onDrawerToggle}
         ModalProps={{ keepMounted: true }}
         sx={{
-          display: { xs: 'block', sm: 'none' },
+          display: { xs: 'block', md: 'none' },
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
             width: DRAWER_WIDTH,
-            borderRight: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            boxShadow: theme.shadows[8]
+            borderRight: 'none',
+            boxShadow: theme.shadows[8],
           },
         }}
       >
@@ -290,13 +321,12 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
       <Drawer
         variant="permanent"
         sx={{
-          display: { xs: 'none', sm: 'block' },
+          display: { xs: 'none', md: 'block' },
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
             width: DRAWER_WIDTH,
-            borderRight: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            boxShadow: 'none',
-            background: theme.palette.background.default,
+            borderRight: '1px solid rgba(0, 0, 0, 0.06)',
+            boxShadow: '2px 0 10px rgba(0, 0, 0, 0.05)',
           },
         }}
         open

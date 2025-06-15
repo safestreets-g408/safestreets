@@ -7,14 +7,13 @@ import {
   TextField, 
   Button, 
   Box,
-  useTheme,
   useMediaQuery,
   Stack,
   IconButton,
   Alert,
   Snackbar
 } from '@mui/material';
-import InventoryIcon from '@mui/icons-material/Inventory';
+import SecurityIcon from '@mui/icons-material/Security';
 import HomeIcon from '@mui/icons-material/Home';
 import { api } from '../utils/api';
 
@@ -25,8 +24,7 @@ const Login = () => {
   const [showError, setShowError] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery('(max-width:768px)');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -68,22 +66,23 @@ const Login = () => {
           position: 'absolute',
           top: 20,
           left: 20,
-          color: theme.palette.primary.main
+          color: '#2563eb'
         }}
       >
         <HomeIcon sx={{ fontSize: 32 }} />
       </IconButton>
       <Paper
-        elevation={3}
+        elevation={0}
         sx={{
           display: 'flex',
           flexDirection: isMobile ? 'column' : 'row',
-          borderRadius: '24px',
+          borderRadius: '8px',
           overflow: 'hidden',
           minHeight: '600px',
           width: '100%',
-          background: theme.palette.background.paper,
-          boxShadow: '0 8px 40px rgba(0, 0, 0, 0.12)'
+          background: '#ffffff',
+          border: '1px solid #e5e7eb',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
         }}
       >
         {/* Left Side - Product Info */}
@@ -91,7 +90,7 @@ const Login = () => {
           sx={{
             flex: '1 1 50%',
             p: 6,
-            background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+            background: '#2563eb',
             color: 'white',
             display: 'flex',
             flexDirection: 'column',
@@ -99,18 +98,18 @@ const Login = () => {
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
-            <InventoryIcon sx={{ fontSize: 48, mr: 2 }} />
-            <Typography variant="h3" sx={{ fontWeight: 700 }}>
-              DCS
+            <SecurityIcon sx={{ fontSize: 48, mr: 2 }} />
+            <Typography variant="h3" sx={{ fontWeight: 600 }}>
+              SafeStreets
             </Typography>
           </Box>
           
           <Typography variant="h4" sx={{ mb: 3, fontWeight: 600 }}>
-            Welcome to the Damage Control System
+            SafeStreets Admin Portal
           </Typography>
           
           <Typography variant="h6" sx={{ mb: 4, opacity: 0.9 }}>
-            Monitor and manage damage control operations in real-time
+            Monitor and manage infrastructure damage reports and repairs
           </Typography>
 
           <Box sx={{ mb: 4 }}>
@@ -119,6 +118,9 @@ const Login = () => {
             </Typography>
             <Typography variant="body1" sx={{ mb: 2, fontWeight: 500 }}>
               ✓ Comprehensive repair status monitoring
+            </Typography>
+            <Typography variant="body1" sx={{ mb: 2, fontWeight: 500 }}>
+              ✓ Advanced analytics and reporting
             </Typography>
           </Box>
         </Box>
@@ -132,7 +134,7 @@ const Login = () => {
             justifyContent: 'center'
           }}
         >
-          <Typography variant="h4" sx={{ mb: 4, fontWeight: 600 }}>
+          <Typography variant="h4" sx={{ mb: 4, fontWeight: 600, color: '#111827' }}>
             Sign In
           </Typography>
 
@@ -148,7 +150,12 @@ const Login = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               variant="outlined"
-              sx={{ mb: 3 }}
+              sx={{ 
+                mb: 3,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 1,
+                }
+              }}
             />
 
             <TextField
@@ -162,7 +169,12 @@ const Login = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               variant="outlined"
-              sx={{ mb: 4 }}
+              sx={{ 
+                mb: 4,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 1,
+                }
+              }}
             />
 
             <Stack spacing={2}>
@@ -173,13 +185,16 @@ const Login = () => {
                 disabled={!email || !password || loading}
                 sx={{
                   py: 1.8,
-                  borderRadius: '12px',
-                  fontSize: '1.1rem',
+                  borderRadius: 1,
+                  fontSize: '1rem',
                   textTransform: 'none',
                   fontWeight: 600,
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  backgroundColor: '#2563eb',
                   '&:hover': {
-                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.25)',
+                    backgroundColor: '#1d4ed8',
+                  },
+                  '&:disabled': {
+                    backgroundColor: '#9ca3af',
                   }
                 }}
               >

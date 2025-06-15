@@ -13,11 +13,31 @@ const handleResponse = async (response) => {
   let errorData;
   
   try {
-    responseData = await response.json();
-    errorData = responseData;
+    // Try to parse as JSON first
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      responseData = await response.json();
+      errorData = responseData;
+    } else {
+      // Handle non-JSON responses
+      const textResponse = await response.text();
+      console.warn('Non-JSON response received:', textResponse.substring(0, 100) + '...');
+      
+      // Try to convert text to JSON if possible
+      try {
+        responseData = JSON.parse(textResponse);
+        errorData = responseData;
+      } catch (jsonError) {
+        responseData = { text: textResponse };
+        errorData = { 
+          message: `HTTP ${response.status}: ${response.statusText}`,
+          textResponse: textResponse.substring(0, 100) + '...'
+        };
+      }
+    }
   } catch (parseError) {
-    // If we can't parse JSON, create a generic error object
-    console.error('Error parsing JSON response:', parseError);
+    // If we can't parse response, create a generic error object
+    console.error('Error parsing response:', parseError);
     errorData = { 
       message: `HTTP ${response.status}: ${response.statusText}`,
       parseError: true
@@ -47,7 +67,7 @@ const handleResponse = async (response) => {
         message = 'Access denied.';
         break;
       case 404:
-        message = errorData.message || 'Resource not found.';
+        message = errorData.message || `Resource not found: ${response.url.split('/').slice(-2).join('/')}`;
         break;
       case 429:
         message = 'Too many requests. Please try again later.';
@@ -90,6 +110,7 @@ export const api = {
 
   post: async (endpoint, data) => {
     try {
+      console.log(`API POST request to ${API_BASE_URL}${endpoint}`);
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: getHeaders(),
@@ -97,6 +118,7 @@ export const api = {
       });
       return handleResponse(response);
     } catch (error) {
+      console.error(`API POST error for ${endpoint}:`, error);
       if (error instanceof TypeError && error.message.includes('fetch')) {
         throw new Error('Network error. Please check your connection.');
       }

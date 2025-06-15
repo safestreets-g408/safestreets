@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Table, TableBody, TableCell, TableContainer, TableHead, 
   TableRow, TablePagination, Chip, IconButton, Tooltip, Box,
-  useTheme, alpha, Paper
+  Paper
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
@@ -11,7 +11,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 function ReportDataTable({ filters }) {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const theme = useTheme();
 
   // Sample data - in a real app, this would be fetched based on filters
   const reports = [
@@ -47,42 +46,62 @@ function ReportDataTable({ filters }) {
     setPage(0);
   };
 
-  const getSeverityColor = (severity) => {
-    switch (severity.toLowerCase()) {
-      case 'low':
-        return 'success';
-      case 'medium':
-        return 'warning';
-      case 'high':
-        return 'error';
-      case 'critical':
-        return 'error';
-      default:
-        return 'default';
-    }
+  const getSeverityChip = (severity) => {
+    const severityConfig = {
+      'Low': { backgroundColor: '#10b981', color: '#ffffff' },
+      'Medium': { backgroundColor: '#f59e0b', color: '#ffffff' },
+      'High': { backgroundColor: '#ef4444', color: '#ffffff' },
+      'Critical': { backgroundColor: '#dc2626', color: '#ffffff' },
+    };
+    
+    const config = severityConfig[severity] || { backgroundColor: '#6b7280', color: '#ffffff' };
+    
+    return (
+      <Chip 
+        label={severity} 
+        size="small"
+        sx={{
+          fontWeight: 500,
+          borderRadius: 1,
+          px: 1,
+          backgroundColor: config.backgroundColor,
+          color: config.color,
+        }}
+      />
+    );
   };
 
-  const getStatusColor = (status) => {
-    switch (status.toLowerCase()) {
-      case 'completed':
-        return 'success';
-      case 'in progress':
-        return 'info';
-      case 'assigned':
-        return 'primary';
-      case 'pending':
-        return 'warning';
-      default:
-        return 'default';
-    }
+  const getStatusChip = (status) => {
+    const statusConfig = {
+      'Completed': { backgroundColor: '#10b981', color: '#ffffff' },
+      'In Progress': { backgroundColor: '#3b82f6', color: '#ffffff' },
+      'Assigned': { backgroundColor: '#2563eb', color: '#ffffff' },
+      'Pending': { backgroundColor: '#f59e0b', color: '#ffffff' },
+    };
+    
+    const config = statusConfig[status] || { backgroundColor: '#6b7280', color: '#ffffff' };
+    
+    return (
+      <Chip 
+        label={status} 
+        size="small"
+        sx={{
+          fontWeight: 500,
+          borderRadius: 1,
+          px: 1,
+          backgroundColor: config.backgroundColor,
+          color: config.color,
+        }}
+      />
+    );
   };
 
   return (
     <Paper 
       elevation={0} 
       sx={{ 
-        borderRadius: 2,
-        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+        borderRadius: 1,
+        border: '1px solid #e5e7eb',
         overflow: 'hidden',
       }}
     >
@@ -92,43 +111,51 @@ function ReportDataTable({ filters }) {
             <TableRow>
               <TableCell sx={{ 
                 fontWeight: 600, 
-                bgcolor: alpha(theme.palette.primary.main, 0.04),
-                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`
+                backgroundColor: '#f8f9fa',
+                borderBottom: '2px solid #e5e7eb',
+                color: '#374151',
               }}>Report ID</TableCell>
               <TableCell sx={{ 
                 fontWeight: 600,
-                bgcolor: alpha(theme.palette.primary.main, 0.04),
-                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`
+                backgroundColor: '#f8f9fa',
+                borderBottom: '2px solid #e5e7eb',
+                color: '#374151',
               }}>Location</TableCell>
               <TableCell sx={{ 
                 fontWeight: 600,
-                bgcolor: alpha(theme.palette.primary.main, 0.04),
-                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`
+                backgroundColor: '#f8f9fa',
+                borderBottom: '2px solid #e5e7eb',
+                color: '#374151',
               }}>Region</TableCell>
               <TableCell sx={{ 
                 fontWeight: 600,
-                bgcolor: alpha(theme.palette.primary.main, 0.04),
-                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`
+                backgroundColor: '#f8f9fa',
+                borderBottom: '2px solid #e5e7eb',
+                color: '#374151',
               }}>Damage Type</TableCell>
               <TableCell sx={{ 
                 fontWeight: 600,
-                bgcolor: alpha(theme.palette.primary.main, 0.04),
-                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`
+                backgroundColor: '#f8f9fa',
+                borderBottom: '2px solid #e5e7eb',
+                color: '#374151',
               }}>Severity</TableCell>
               <TableCell sx={{ 
                 fontWeight: 600,
-                bgcolor: alpha(theme.palette.primary.main, 0.04),
-                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`
+                backgroundColor: '#f8f9fa',
+                borderBottom: '2px solid #e5e7eb',
+                color: '#374151',
               }}>Date Reported</TableCell>
               <TableCell sx={{ 
                 fontWeight: 600,
-                bgcolor: alpha(theme.palette.primary.main, 0.04),
-                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`
+                backgroundColor: '#f8f9fa',
+                borderBottom: '2px solid #e5e7eb',
+                color: '#374151',
               }}>Status</TableCell>
               <TableCell sx={{ 
                 fontWeight: 600,
-                bgcolor: alpha(theme.palette.primary.main, 0.04),
-                borderBottom: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`
+                backgroundColor: '#f8f9fa',
+                borderBottom: '2px solid #e5e7eb',
+                color: '#374151',
               }}>Actions</TableCell>
             </TableRow>
           </TableHead>
@@ -139,43 +166,25 @@ function ReportDataTable({ filters }) {
                 <TableRow 
                   key={report.id}
                   sx={{
-                    transition: 'background-color 0.2s ease-in-out',
+                    transition: 'background-color 0.15s ease',
                     '&:hover': {
-                      bgcolor: alpha(theme.palette.primary.main, 0.04),
+                      backgroundColor: '#f9fafb',
                     },
-                    bgcolor: index % 2 === 0 ? alpha(theme.palette.background.default, 0.5) : 'inherit'
+                    backgroundColor: index % 2 === 0 ? '#ffffff' : '#fafbfc'
                   }}
                 >
-                  <TableCell sx={{ fontWeight: 500, color: theme.palette.primary.main }}>
+                  <TableCell sx={{ fontWeight: 500, color: '#2563eb' }}>
                     {report.id}
                   </TableCell>
-                  <TableCell>{report.location}</TableCell>
-                  <TableCell>{report.region}</TableCell>
-                  <TableCell>{report.damageType}</TableCell>
+                  <TableCell sx={{ color: '#374151' }}>{report.location}</TableCell>
+                  <TableCell sx={{ color: '#374151' }}>{report.region}</TableCell>
+                  <TableCell sx={{ color: '#374151' }}>{report.damageType}</TableCell>
                   <TableCell>
-                    <Chip 
-                      label={report.severity} 
-                      color={getSeverityColor(report.severity)} 
-                      size="small"
-                      sx={{
-                        fontWeight: 600,
-                        borderRadius: 1,
-                        px: 1,
-                      }}
-                    />
+                    {getSeverityChip(report.severity)}
                   </TableCell>
-                  <TableCell>{report.reportDate}</TableCell>
+                  <TableCell sx={{ color: '#374151' }}>{report.reportDate}</TableCell>
                   <TableCell>
-                    <Chip 
-                      label={report.status} 
-                      color={getStatusColor(report.status)} 
-                      size="small"
-                      sx={{
-                        fontWeight: 600,
-                        borderRadius: 1,
-                        px: 1,
-                      }}
-                    />
+                    {getStatusChip(report.status)}
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1 }}>
@@ -183,9 +192,9 @@ function ReportDataTable({ filters }) {
                         <IconButton 
                           size="small"
                           sx={{ 
-                            color: theme.palette.primary.main,
+                            color: '#2563eb',
                             '&:hover': { 
-                              bgcolor: alpha(theme.palette.primary.main, 0.08),
+                              backgroundColor: 'rgba(37, 99, 235, 0.04)',
                             }
                           }}
                         >
@@ -196,9 +205,9 @@ function ReportDataTable({ filters }) {
                         <IconButton 
                           size="small"
                           sx={{ 
-                            color: theme.palette.warning.main,
+                            color: '#f59e0b',
                             '&:hover': { 
-                              bgcolor: alpha(theme.palette.warning.main, 0.08),
+                              backgroundColor: 'rgba(245, 158, 11, 0.04)',
                             }
                           }}
                         >
@@ -209,9 +218,9 @@ function ReportDataTable({ filters }) {
                         <IconButton 
                           size="small"
                           sx={{ 
-                            color: theme.palette.error.main,
+                            color: '#ef4444',
                             '&:hover': { 
-                              bgcolor: alpha(theme.palette.error.main, 0.08),
+                              backgroundColor: 'rgba(239, 68, 68, 0.04)',
                             }
                           }}
                         >
@@ -234,7 +243,7 @@ function ReportDataTable({ filters }) {
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
         sx={{
-          borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          borderTop: '1px solid #e5e7eb',
           '& .MuiTablePagination-select': {
             borderRadius: 1,
           },

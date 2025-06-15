@@ -8,11 +8,9 @@ import {
   Paper,
   CircularProgress
 } from '@mui/material';
-import { alpha, useTheme } from '@mui/material/styles';
 import {api} from '../../utils/api';
 
 const ViewDamageReport = ({ report }) => {
-  const theme = useTheme();
   const [imageUrl, setImageUrl] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -162,7 +160,7 @@ const ViewDamageReport = ({ report }) => {
                   height: 300,
                   borderRadius: 1,
                   overflow: 'hidden',
-                  backgroundColor: alpha(theme.palette.common.black, 0.04)
+                  backgroundColor: '#f9fafb'
                 }}
               >
                 {loading ? (

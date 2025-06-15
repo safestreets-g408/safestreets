@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -13,22 +13,32 @@ import {
   Box,
   useTheme,
   alpha,
+  Paper,
+  InputBase,
+  Breadcrumbs,
+  Link,
+  Chip,
+  Stack,
+  Tooltip,
+  useMediaQuery,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
-import RefreshIcon from '@mui/icons-material/Refresh';
+import SearchIcon from '@mui/icons-material/Search';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import { DRAWER_WIDTH } from '../../config/constants';
-//import { useAuth } from '../../hooks/useAuth';
 
 const Header = ({ onDrawerToggle }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [notificationAnchor, setNotificationAnchor] = useState(null);
+  const [searchValue, setSearchValue] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
-  //const { logout } = useAuth();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const handleProfileMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -46,199 +56,434 @@ const Header = ({ onDrawerToggle }) => {
     setNotificationAnchor(null);
   };
 
+  // Get page title from current route
+  const getPageTitle = () => {
+    const pathMap = {
+      '/': 'Dashboard',
+      '/reports': 'Damage Reports',
+      '/map': 'Map View',
+      '/analytics': 'Analytics',
+      '/repairs': 'Repair Management',
+      '/historical': 'Historical Analysis',
+      '/ai-analysis': 'AI Analysis',
+      '/profile': 'Profile Settings'
+    };
+    return pathMap[location.pathname] || 'Dashboard';
+  };
+
+  // Generate breadcrumbs
+  const getBreadcrumbs = () => {
+    const pathnames = location.pathname.split('/').filter(x => x);
+    const breadcrumbMap = {
+      '': 'Home',
+      'reports': 'Reports',
+      'map': 'Map',
+      'analytics': 'Analytics',
+      'repairs': 'Repairs',
+      'historical': 'Historical',
+      'ai-analysis': 'AI Analysis',
+      'profile': 'Profile'
+    };
+
+    return [
+      { label: 'Home', path: '/' },
+      ...pathnames.map((name, index) => {
+        const path = `/${pathnames.slice(0, index + 1).join('/')}`;
+        return {
+          label: breadcrumbMap[name] || name.charAt(0).toUpperCase() + name.slice(1),
+          path: path
+        };
+      })
+    ];
+  };
+
   const notifications = [
-    { id: 1, message: "New critical damage report submitted", time: "10 minutes ago" },
-    { id: 2, message: "Repair team assigned to DR-2023-003", time: "1 hour ago" },
-    { id: 3, message: "Weekly analytics report ready", time: "3 hours ago" }
+    { 
+      id: 1, 
+      title: "Critical Damage Detected",
+      message: "New high-priority damage report in Downtown area", 
+      time: "2 min ago",
+      type: "critical",
+      unread: true
+    },
+    { 
+      id: 2, 
+      title: "Repair Completed",
+      message: "Road repair on Main St has been completed", 
+      time: "1 hour ago",
+      type: "success",
+      unread: true
+    },
+    { 
+      id: 3, 
+      title: "Weekly Analytics Report",
+      message: "Your weekly analytics report is now available", 
+      time: "3 hours ago",
+      type: "info",
+      unread: false
+    }
   ];
+
+  const getNotificationColor = (type) => {
+    switch(type) {
+      case 'critical': return theme.palette.error.main;
+      case 'success': return theme.palette.success.main;
+      case 'info': return theme.palette.info.main;
+      default: return theme.palette.grey[500];
+    }
+  };
+
+  // Simulate current time
+  const currentTime = new Date().toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
 
   return (
     <AppBar
       position="fixed"
       elevation={0}
       sx={{
-        width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` },
-        ml: { sm: `${DRAWER_WIDTH}px` },
-        boxShadow: 'none',
-        backdropFilter: 'blur(20px)',
-        backgroundColor: alpha(theme.palette.background.default, 0.9),
-        borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-        transition: theme.transitions.create(['width', 'margin'], {
-          easing: theme.transitions.easing.sharp,
-          duration: theme.transitions.duration.leavingScreen,
-        }),
+        width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
+        ml: { md: `${DRAWER_WIDTH}px` },
+        background: '#ffffff',
+        borderBottom: '1px solid #e5e7eb',
+        color: theme.palette.text.primary,
+        zIndex: theme.zIndex.drawer + 1,
       }}
     >
-      <Toolbar 
-        sx={{ 
-          justifyContent: 'space-between',
-          minHeight: { xs: 64, sm: 70 },
-          px: { xs: 2, sm: 3, md: 4 },
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <Toolbar sx={{ 
+        justifyContent: 'space-between',
+        height: 64,
+        minHeight: 64,
+        px: { xs: 2, sm: 3 },
+        gap: 2,
+      }}>
+        {/* Left Section */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
           <IconButton
             color="primary"
             edge="start"
             onClick={onDrawerToggle}
             sx={{ 
-              mr: 2, 
-              display: { sm: 'none' },
-              bgcolor: alpha(theme.palette.primary.main, 0.08),
+              display: { md: 'none' },
+              color: '#374151',
               '&:hover': {
-                bgcolor: alpha(theme.palette.primary.main, 0.12),
+                backgroundColor: alpha('#374151', 0.04),
               }
             }}
           >
             <MenuIcon />
           </IconButton>
+
+          <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+            <Typography variant="h5" sx={{ 
+              fontWeight: 600,
+              fontSize: '1.25rem',
+              color: '#111827',
+              mb: 0.25,
+            }}>
+              {getPageTitle()}
+            </Typography>
+            
+            <Breadcrumbs
+              separator={<NavigateNextIcon fontSize="small" sx={{ color: '#9ca3af' }} />}
+              sx={{ fontSize: '0.875rem' }}
+            >
+              {getBreadcrumbs().map((breadcrumb, index) => (
+                index === getBreadcrumbs().length - 1 ? (
+                  <Typography 
+                    key={breadcrumb.path}
+                    color="text.secondary" 
+                    sx={{ fontSize: '0.875rem', fontWeight: 500, color: '#6b7280' }}
+                  >
+                    {breadcrumb.label}
+                  </Typography>
+                ) : (
+                  <Link
+                    key={breadcrumb.path}
+                    color="inherit"
+                    href={breadcrumb.path}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigate(breadcrumb.path);
+                    }}
+                    sx={{ 
+                      fontSize: '0.875rem',
+                      textDecoration: 'none',
+                      color: '#6b7280',
+                      '&:hover': {
+                        textDecoration: 'underline',
+                        color: theme.palette.primary.main,
+                      }
+                    }}
+                  >
+                    {breadcrumb.label}
+                  </Link>
+                )
+              ))}
+            </Breadcrumbs>
+          </Box>
         </Box>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <IconButton 
-            color="primary"
-            onClick={() => window.location.reload()}
-            sx={{ 
-              width: 40,
-              height: 40,
-              bgcolor: alpha(theme.palette.primary.main, 0.08),
-              '&:hover': {
-                bgcolor: alpha(theme.palette.primary.main, 0.12),
-              },
-              transition: 'all 0.2s ease-in-out',
-            }}
-          >
-            <RefreshIcon />
-          </IconButton>
-
-          <IconButton 
-            color="primary"
-            onClick={handleNotificationOpen}
-            sx={{ 
-              width: 40,
-              height: 40,
-              bgcolor: alpha(theme.palette.primary.main, 0.08),
-              '&:hover': {
-                bgcolor: alpha(theme.palette.primary.main, 0.12),
-              },
-              transition: 'all 0.2s ease-in-out',
-            }}
-          >
-            <Badge badgeContent={notifications.length} color="error">
-              <NotificationsIcon />
-            </Badge>
-          </IconButton>
-
-          <IconButton
-            onClick={handleProfileMenuOpen}
-            sx={{ 
-              ml: 1,
-              bgcolor: alpha(theme.palette.primary.main, 0.1),
-              '&:hover': {
-                bgcolor: alpha(theme.palette.primary.main, 0.2),
-              }
-            }}
-          >
-            <Avatar 
-              sx={{ 
-                bgcolor: theme.palette.primary.main,
-                width: 32,
-                height: 32,
-                fontSize: '0.9rem',
-                fontWeight: 600
+        {/* Center Section - Search */}
+        {!isMobile && (
+          <Box sx={{ flex: 1, maxWidth: 400, mx: 2 }}>
+            <Paper
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                background: '#f9fafb',
+                borderRadius: 1,
+                px: 2,
+                py: 0.5,
+                border: '1px solid #d1d5db',
+                transition: 'all 0.15s ease',
+                '&:hover': {
+                  background: '#ffffff',
+                  borderColor: '#9ca3af',
+                },
+                '&:focus-within': {
+                  background: '#ffffff',
+                  borderColor: theme.palette.primary.main,
+                  boxShadow: `0 0 0 1px ${alpha(theme.palette.primary.main, 0.1)}`,
+                }
               }}
             >
-              AD
-            </Avatar>
-          </IconButton>
+              <SearchIcon sx={{ color: '#6b7280', mr: 1 }} />
+              <InputBase
+                placeholder="Search reports, locations..."
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                sx={{ 
+                  flex: 1,
+                  fontSize: '0.875rem',
+                  '& .MuiInputBase-input': {
+                    padding: '6px 0',
+                  }
+                }}
+              />
+            </Paper>
+          </Box>
+        )}
+
+        {/* Right Section */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          {/* Time */}
+          {!isMobile && (
+            <Typography variant="body2" sx={{ 
+              color: '#6b7280',
+              fontWeight: 500,
+              mr: 2,
+            }}>
+              {currentTime}
+            </Typography>
+          )}
+
+          {/* Notifications */}
+          <Tooltip title="Notifications">
+            <IconButton 
+              onClick={handleNotificationOpen}
+              sx={{ 
+                color: '#374151',
+                '&:hover': {
+                  backgroundColor: alpha('#374151', 0.04),
+                },
+              }}
+            >
+              <Badge 
+                badgeContent={notifications.filter(n => n.unread).length} 
+                color="error"
+                sx={{
+                  '& .MuiBadge-badge': {
+                    backgroundColor: '#dc2626',
+                    color: 'white',
+                  }
+                }}
+              >
+                <NotificationsIcon />
+              </Badge>
+            </IconButton>
+          </Tooltip>
+
+          {/* Profile */}
+          <Tooltip title="Profile">
+            <IconButton
+              onClick={handleProfileMenuOpen}
+              sx={{ 
+                ml: 1,
+                color: '#374151',
+                '&:hover': {
+                  backgroundColor: alpha('#374151', 0.04),
+                },
+              }}
+            >
+              <Avatar 
+                sx={{ 
+                  backgroundColor: '#2563eb',
+                  width: 32,
+                  height: 32,
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                }}
+              >
+                AD
+              </Avatar>
+            </IconButton>
+          </Tooltip>
         </Box>
 
+        {/* Profile Menu */}
         <Menu
           anchorEl={anchorEl}
           open={Boolean(anchorEl)}
           onClose={handleProfileMenuClose}
           PaperProps={{
             sx: {
-              width: 200,
-              boxShadow: theme.shadows[8],
+              width: 280,
               borderRadius: 2,
-              mt: 1
+              boxShadow: theme.shadows[4],
+              mt: 1,
+              background: '#ffffff',
+              border: '1px solid #e5e7eb',
             }
           }}
+          transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+          anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
         >
-          <Box sx={{ p: 2, textAlign: 'center' }}>
+          <Box sx={{ p: 3, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>
             <Avatar
               sx={{
-                width: 60,
-                height: 60,
-                margin: '0 auto 8px',
-                bgcolor: theme.palette.primary.main,
-                fontSize: '1.2rem',
-                fontWeight: 600
+                width: 48,
+                height: 48,
+                margin: '0 auto 12px',
+                backgroundColor: '#2563eb',
+                fontSize: '1.25rem',
+                fontWeight: 600,
               }}
             >
               AD
             </Avatar>
-            <Typography variant="subtitle1" fontWeight={600}>Admin User</Typography>
-            <Typography variant="body2" color="text.secondary">admin@example.com</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5, color: '#111827' }}>
+              Admin User
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ color: '#6b7280' }}>
+              admin@safestreets.com
+            </Typography>
+            <Chip 
+              label="Administrator" 
+              size="small" 
+              sx={{ 
+                mt: 1,
+                backgroundColor: '#2563eb',
+                color: 'white',
+                fontWeight: 500,
+              }} 
+            />
           </Box>
+          
           <MenuItem onClick={() => {
             handleProfileMenuClose();
             navigate('/profile');
-          }}>
-            <ListItemIcon>
-              <AccountCircleIcon fontSize="small" />
+          }} sx={{ py: 1.5, px: 3 }}>
+            <ListItemIcon sx={{ color: '#6b7280' }}>
+              <AccountCircleIcon />
             </ListItemIcon>
-            <Typography variant="body2">My Profile</Typography>
+            <Typography sx={{ color: '#374151' }}>My Profile</Typography>
           </MenuItem>
-          <MenuItem onClick={handleProfileMenuClose}>
-            <ListItemIcon>
-              <SettingsIcon fontSize="small" />
+          
+          <MenuItem onClick={handleProfileMenuClose} sx={{ py: 1.5, px: 3 }}>
+            <ListItemIcon sx={{ color: '#6b7280' }}>
+              <SettingsIcon />
             </ListItemIcon>
-            <Typography variant="body2">Settings</Typography>
+            <Typography sx={{ color: '#374151' }}>Settings</Typography>
           </MenuItem>
+          
           <MenuItem onClick={() => {
             handleProfileMenuClose();
-          }}>
+            navigate('/login');
+          }} sx={{ py: 1.5, px: 3, color: '#dc2626' }}>
             <ListItemIcon>
-              <LogoutIcon fontSize="small" color="error" />
+              <LogoutIcon sx={{ color: '#dc2626' }} />
             </ListItemIcon>
-            <Typography variant="body2" color="error">Logout</Typography>
+            <Typography sx={{ color: '#dc2626' }}>Logout</Typography>
           </MenuItem>
         </Menu>
 
+        {/* Notifications Menu */}
         <Menu
           anchorEl={notificationAnchor}
           open={Boolean(notificationAnchor)}
           onClose={handleNotificationClose}
           PaperProps={{
             sx: {
-              width: 320,
-              maxHeight: 400,
-              boxShadow: theme.shadows[8],
+              width: 380,
+              maxHeight: 500,
               borderRadius: 2,
-              mt: 1
+              boxShadow: theme.shadows[4],
+              mt: 1,
+              background: '#ffffff',
+              border: '1px solid #e5e7eb',
             }
           }}
+          transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+          anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
         >
-          <Box sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>Notifications</Typography>
-            {notifications.map((notification) => (
-              <Box 
-                key={notification.id} 
+          <Box sx={{ p: 3, borderBottom: '1px solid #e5e7eb' }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Typography variant="h6" sx={{ fontWeight: 600, color: '#111827' }}>
+                Notifications
+              </Typography>
+              <Chip 
+                label={`${notifications.filter(n => n.unread).length} new`}
+                size="small"
                 sx={{ 
-                  mb: 2,
-                  p: 1.5,
-                  borderRadius: 1,
-                  bgcolor: alpha(theme.palette.primary.main, 0.05),
-                  '&:last-child': { mb: 0 }
+                  backgroundColor: '#2563eb',
+                  color: 'white',
+                  fontWeight: 500,
+                }}
+              />
+            </Stack>
+          </Box>
+          
+          <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
+            {notifications.map((notification) => (
+              <MenuItem 
+                key={notification.id}
+                sx={{ 
+                  py: 2,
+                  px: 3,
+                  borderBottom: '1px solid #e5e7eb',
+                  '&:last-child': { borderBottom: 'none' },
+                  opacity: notification.unread ? 1 : 0.7,
                 }}
               >
-                <Typography variant="body2">{notification.message}</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {notification.time}
-                </Typography>
-              </Box>
+                <Box sx={{ width: '100%' }}>
+                  <Stack direction="row" spacing={2} alignItems="flex-start">
+                    <Box
+                      sx={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        backgroundColor: getNotificationColor(notification.type),
+                        mt: 1,
+                        flexShrink: 0,
+                      }}
+                    />
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5, color: '#111827' }}>
+                        {notification.title}
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 1, color: '#6b7280' }}>
+                        {notification.message}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: '#9ca3af' }}>
+                        {notification.time}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </Box>
+              </MenuItem>
             ))}
           </Box>
         </Menu>

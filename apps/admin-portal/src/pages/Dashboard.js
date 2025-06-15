@@ -1,63 +1,36 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  Grid, Paper, Typography, Box, Card, CardContent, 
-  LinearProgress, IconButton, Avatar, List, ListItem,
-  ListItemText, ListItemAvatar, Divider, Chip, Button,
-  useTheme, alpha, CircularProgress, Dialog, DialogTitle,
-  DialogContent, DialogActions, TextField, MenuItem, Select,
-  FormControl, InputLabel, FormHelperText, Snackbar, Alert
+  Grid, 
+  Box, 
+  Typography, 
+  IconButton, 
+  Button,
+  Stack,
+  Tooltip
 } from '@mui/material';
+
+// Icons
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import ReportIcon from '@mui/icons-material/Report';
 import BuildIcon from '@mui/icons-material/Build';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'; 
 import WarningIcon from '@mui/icons-material/Warning';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import TrendingDownIcon from '@mui/icons-material/TrendingDown';
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import AssignmentIcon from '@mui/icons-material/Assignment';
-import PersonIcon from '@mui/icons-material/Person';
-import { styled } from '@mui/material/styles';
+
+// Custom Components
+import StatCard from '../components/dashboard/StatCard';
+import RecentReports from '../components/dashboard/RecentReports';
+import ActivityFeed from '../components/dashboard/ActivityFeed';
+import QuickActions from '../components/dashboard/QuickActions';
+import AiReportsDialog from '../components/dashboard/AiReportsDialog';
+import CreateDamageReportDialog from '../components/dashboard/CreateDamageReportDialog';
+
+// API
 import { api } from '../utils/api';
-
-const StyledCard = styled(Card)(({ theme }) => ({
-  height: '100%',
-  display: 'flex',
-  flexDirection: 'column',
-  transition: 'transform 0.3s, box-shadow 0.3s',
-  borderRadius: theme.shape.borderRadius * 2,
-  boxShadow: '0 10px 20px rgba(0,0,0,0.05)',
-  overflow: 'hidden',
-  border: '1px solid',
-  borderColor: alpha(theme.palette.divider, 0.1),
-  '&:hover': {
-    transform: 'translateY(-8px)',
-    boxShadow: '0 15px 30px rgba(0,0,0,0.1)'
-  }
-}));
-
-const GlassCard = styled(Paper)(({ theme }) => ({
-  backdropFilter: 'blur(10px)',
-  backgroundColor: alpha(theme.palette.background.paper, 0.8),
-  borderRadius: theme.shape.borderRadius * 2,
-  boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
-  border: '1px solid',
-  borderColor: alpha(theme.palette.divider, 0.1),
-}));
-
-const ProgressBar = styled(LinearProgress)(({ theme }) => ({
-  height: 8,
-  borderRadius: 4,
-  backgroundColor: alpha(theme.palette.divider, 0.1),
-  '& .MuiLinearProgress-bar': {
-    borderRadius: 4,
-  }
-}));
+import { API_ENDPOINTS } from '../config/constants';
 
 const Dashboard = () => {
-  const theme = useTheme();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [dashboardData, setDashboardData] = useState({
     totalReports: 0,
     pendingRepairs: 0,
@@ -65,82 +38,64 @@ const Dashboard = () => {
     criticalDamages: 0,
     recentReports: []
   });
+  
   const [aiReports, setAiReports] = useState([]);
-  const [selectedReport, setSelectedReport] = useState(null);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [repairDialog, setRepairDialog] = useState(false);
-  const [assignDialog, setAssignDialog] = useState(false);
-  const [generatedReportIds, setGeneratedReportIds] = useState([]);
+  const [aiReportsLoading, setAiReportsLoading] = useState(false);
+  const [aiReportsError, setAiReportsError] = useState(null);
+  const [aiReportsOpen, setAiReportsOpen] = useState(false);
+  const [selectedAiReport, setSelectedAiReport] = useState(null);
+  
+  const [fieldWorkers, setFieldWorkers] = useState([]);
+  const [selectedFieldWorker, setSelectedFieldWorker] = useState('');
+  
+  const [createReportOpen, setCreateReportOpen] = useState(false);
   const [reportFormData, setReportFormData] = useState({
     region: '',
     location: '',
+    damageType: '',
+    severity: '',
+    priority: '',
     description: '',
-    action: '',
-    assignTo: '' // Add field for worker assignment
+    reporter: 'admin@example.com', 
+    aiReportId: null, 
+    assignToWorker: false
   });
-  const [fieldWorkers, setFieldWorkers] = useState([]);
-  const [selectedWorker, setSelectedWorker] = useState('');
-  const [notification, setNotification] = useState({
-    open: false,
-    message: '',
-    severity: 'success'
-  });
-  const [aiReportsLoading, setAiReportsLoading] = useState(true);
-
-  const getSeverityColor = (severity) => {
-    switch(severity.toLowerCase()) {
-      case 'critical':
-        return theme.palette.error.main;
-      case 'high':
-        return theme.palette.warning.main;
-      case 'medium':
-        return theme.palette.info.main;
-      case 'low':
-        return theme.palette.success.main;
-      default:
-        return theme.palette.grey[500];
-    }
-  };
+  const [createReportLoading, setCreateReportLoading] = useState(false);
+  const [createReportError, setCreateReportError] = useState(null);
+  
+  const [recentActivity, setRecentActivity] = useState([]);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      setError(null);
-
-      // Get all reports from the last 30 days
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-      const response = await api.get('/damage/reports', {
-        params: {
-          startDate: thirtyDaysAgo.toISOString(),
-          endDate: new Date().toISOString()
-        }
-      });
-
-      // Process the response data
-      const totalReports = response.length;
-      const pendingRepairs = response.filter(report => report.status === 'Pending').length;
-      const completedRepairs = response.filter(report => report.status === 'Completed').length;
-      const criticalDamages = response.filter(report => report.severity === 'Critical').length;
-
-      // Get the 3 most recent reports
-      const recentReports = response
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 3)
-        .map(report => ({
-          _id: report._id,
+      
+      console.log('Fetching dashboard data...');
+      
+      const reportsData = await api.get(`${API_ENDPOINTS.DAMAGE_REPORTS}/reports`);
+      console.log('Reports data fetched:', reportsData.length || 0, 'reports');
+      
+      const totalReports = reportsData.length || 0;
+      const pendingRepairs = reportsData.filter(r => r.status === 'Pending').length;
+      const completedRepairs = reportsData.filter(r => r.status === 'Completed').length;
+      const criticalDamages = reportsData.filter(r => r.severity === 'HIGH' || r.severity === 'Critical').length;
+      
+      let recentReports = [];
+      if (Array.isArray(reportsData) && reportsData.length > 0) {
+        const sortedReports = [...reportsData].sort(
+          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        );
+        
+        recentReports = sortedReports.slice(0, 3).map(report => ({
           id: report._id,
-          reportId: report.reportId,
-          title: report.description || 'No description',
-          severity: report.severity || 'Low',
-          location: report.region || 'Unknown Location',
-          region: report.region,
-          timestamp: formatTimestamp(report.createdAt),
-          status: report.status || 'Pending',
-          assignedTo: report.assignedTo
+          title: `${report.damageType} at ${report.location}`,
+          severity: report.severity,
+          location: report.location,
+          timestamp: new Date(report.createdAt).toLocaleDateString(),
+          status: report.status
         }));
-
+      }
+      
+      
       setDashboardData({
         totalReports,
         pendingRepairs,
@@ -148,866 +103,401 @@ const Dashboard = () => {
         criticalDamages,
         recentReports
       });
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-      setError(err.message);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      setDashboardData({
+        totalReports: 0,
+        pendingRepairs: 0,
+        completedRepairs: 0,
+        criticalDamages: 0,
+        recentReports: []
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+
   const fetchAiReports = async () => {
     try {
       setAiReportsLoading(true);
-      const response = await api.get('/images/reports');
-      if (response && response.reports) {
-        setAiReports(response.reports);
-        
-        // Get the list of AI reports that already have damage reports generated
-        try {
-          const generatedReports = await api.get('/damage/reports/generated-from-ai');
-          if (generatedReports && Array.isArray(generatedReports)) {
-            // Map the aiReportId values to an array of report IDs
-            const generatedIds = generatedReports.map(report => report.aiReportId);
-            setGeneratedReportIds(generatedIds);
-          }
-        } catch (innerErr) {
-          console.error('Error fetching generated report IDs:', innerErr);
+      setAiReportsError(null);
+      const response = await api.get(`${API_ENDPOINTS.IMAGES}/reports`);
+      
+      let reportsData = [];
+      if (Array.isArray(response)) {
+        reportsData = response;
+      } else if (response?.reports && Array.isArray(response.reports)) {
+        reportsData = response.reports;
+      } else if (response && typeof response === 'object') {
+        const possibleReports = Object.values(response).find(val => Array.isArray(val));
+        reportsData = Array.isArray(possibleReports) ? possibleReports : [];
+      }
+      
+      
+      if (reportsData.length > 0) {
+        const sample = {...reportsData[0]};
+        if (sample.annotatedImageBase64) {
+          sample.annotatedImageBase64 = '[Base64 image data truncated]';
         }
       }
-    } catch (err) {
-      console.error('Error fetching AI reports:', err);
+      
+      setAiReports(reportsData || []);
+    } catch (error) {
+      console.error('Error fetching AI reports:', error);
+      setAiReportsError(error.message || 'Failed to fetch AI reports');
+      setAiReports([]);
     } finally {
       setAiReportsLoading(false);
     }
   };
-  
+
   const fetchFieldWorkers = async () => {
     try {
-      const workers = await api.get('/field/workers');
-      console.log('Fetched field workers:', workers);
-      if (Array.isArray(workers)) {
-        // Transform workers to ensure consistent format
-        const transformedWorkers = workers.map(worker => ({
-          id: worker._id,
-          workerId: worker.workerId,
-          name: worker.name,
-          specialization: worker.specialization || '',
-          region: worker.region || '',
-          status: worker.status || 'Available'
-        }));
-        setFieldWorkers(transformedWorkers);
-      }
-    } catch (err) {
-      console.error('Error fetching field workers:', err);
+      const workers = await api.get(`${API_ENDPOINTS.FIELD_WORKERS}`);
+      const workersData = Array.isArray(workers) ? workers : 
+                         (workers.fieldWorkers || workers.workers || []);
+      
+      setFieldWorkers(workersData);
+    } catch (error) {
+      console.error('Error fetching field workers:', error);
+      setFieldWorkers([]);
     }
   };
 
-  useEffect(() => {
-    fetchDashboardData();
-    fetchAiReports();
-    fetchFieldWorkers();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const formatTimestamp = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
-    
-    if (diffInHours < 24) {
-      return `${diffInHours} hours ago`;
-    } else {
-      const diffInDays = Math.floor(diffInHours / 24);
-      return `${diffInDays} days ago`;
+  const handleViewAnalytics = async () => {
+    try {
+      
+      setAiReportsLoading(true);
+      
+      await Promise.all([
+        fetchAiReports(),
+        fetchFieldWorkers()
+      ]);
+      
+      setAiReportsOpen(true);
+    } catch (error) {
+      console.error('Error in View Analytics handler:', error);
+      setAiReportsOpen(true);
     }
   };
 
-  // Add a refresh handler
-  const handleRefresh = () => {
-    fetchDashboardData();
-    fetchAiReports();
+  const handleSelectAiReport = (report) => {
+    if (report.damageReportGenerated) {
+      alert('Damage report already generated for this AI report.');
+      return;
+    }
+    setSelectedAiReport(report);
+
+    setReportFormData({
+      ...reportFormData,
+      region: reportFormData.region || '',
+      location: reportFormData.location || '',
+      damageType: report.damageType || '',
+      severity: report.severity || '',
+      priority: report.priority?.toString() || '',
+      aiReportId: report.id,
+      reporter: 'admin@example.com',
+    });
+
+
+    setCreateReportOpen(true);
   };
 
-  const handleOpenReportDialog = (report) => {
-    setSelectedReport(report);
+  const resetFormData = () => {
     setReportFormData({
       region: '',
       location: '',
-      description: `Damage detected: ${report.damageType} - Severity: ${report.severity}`,
-      action: 'Inspection Required',
-      assignTo: '' // Reset worker assignment
+      damageType: '',
+      severity: '',
+      priority: '',
+      description: '',
+      reporter: 'admin@example.com',
+      aiReportId: null,
+      assignToWorker: false
     });
-    setOpenDialog(true);
+    setSelectedFieldWorker('');
+    setSelectedAiReport(null);
+    setCreateReportError(null);
   };
 
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setRepairDialog(false);
-    setAssignDialog(false);
-    setSelectedReport(null);
+  const handleDialogClose = () => {
+    resetFormData();
+    setCreateReportOpen(false);
   };
 
-  const handleInputChange = (e) => {
+  const handleFormInputChange = (e) => {
     const { name, value } = e.target;
-    setReportFormData(prev => ({
-      ...prev,
+    setReportFormData({
+      ...reportFormData,
       [name]: value
-    }));
+    });
   };
 
-  const createDamageReport = async () => {
+  const handleFieldWorkerChange = (e) => {
+    setSelectedFieldWorker(e.target.value);
+    setReportFormData({
+      ...reportFormData,
+      assignToWorker: !!e.target.value
+    });
+  };
+
+  const handleCreateReport = async () => {
     try {
-      if (!selectedReport) return;
+      setCreateReportLoading(true);
+      setCreateReportError(null);
       
-      const payload = {
-        region: reportFormData.region,
-        location: reportFormData.location,
-        description: reportFormData.description,
-        action: reportFormData.action,
-        damageType: selectedReport.damageType,
-        severity: selectedReport.severity,
-        priority: selectedReport.priority,
-        reporter: 'admin',
-        aiReportId: selectedReport.id
+      const aiReportId = reportFormData.aiReportId || (selectedAiReport?.id);
+      
+      if (!aiReportId) {
+        setCreateReportError('AI Report ID is missing. Please select an AI report first.');
+        setCreateReportLoading(false);
+        return;
+      }
+      
+
+      const requiredFields = ['region', 'location', 'damageType', 'severity', 'priority'];
+      const missingFields = requiredFields.filter(field => !reportFormData[field]);
+      
+      if (missingFields.length > 0) {
+        setCreateReportError(`Please fill in all required fields: ${missingFields.join(', ')}`);
+        setCreateReportLoading(false);
+        return;
+      }
+
+      let endpoint = `${API_ENDPOINTS.DAMAGE_REPORTS}/reports/create-from-ai`;
+      let payload = { 
+        ...reportFormData,
+        aiReportId
       };
+
+
+
+      if (reportFormData.assignToWorker && selectedFieldWorker) {
+        endpoint = `${API_ENDPOINTS.DAMAGE_REPORTS}/reports/create-and-assign`;
+        payload.workerId = selectedFieldWorker;
+      }
+
+      const response = await api.post(endpoint, payload);
       
-      let response;
+      const isSuccess = response.success || response.report || 
+                       (response.message && response.message.includes('success'));
       
-      // If a worker is selected, use the combined endpoint
-      if (reportFormData.assignTo) {
-        payload.workerId = reportFormData.assignTo;
-        response = await api.post('/damage/reports/create-and-assign', payload);
+      if (isSuccess) {
+        resetFormData();
+        
+        setCreateReportOpen(false);
+        setAiReportsOpen(false);
+        
+        setTimeout(() => {
+          fetchDashboardData();
+        }, 1000); 
       } else {
-        response = await api.post('/damage/reports/create-from-ai', payload);
+        throw new Error(response.message || 'Failed to create damage report');
       }
-      
-      if (response && response.success) {
-        setNotification({
-          open: true,
-          message: response.message || 'Damage report created successfully!',
-          severity: 'success'
-        });
-        
-        // Add the report ID to the list of generated reports
-        setGeneratedReportIds(prevIds => [...prevIds, selectedReport.id]);
-        
-        setOpenDialog(false);
-        fetchDashboardData(); // Refresh dashboard data
-      }
-    } catch (err) {
-      console.error('Error creating damage report:', err);
-      setNotification({
-        open: true,
-        message: 'Failed to create damage report: ' + err.message,
-        severity: 'error'
-      });
+    } catch (error) {
+      console.error('Error creating damage report:', error);
+      setCreateReportError(error.message || 'Failed to create damage report');
+    } finally {
+      setCreateReportLoading(false);
     }
   };
 
-  const handleOpenRepairDialog = (report) => {
-    setSelectedReport(report);
-    setRepairDialog(true);
+  const handleAiReportsClose = () => {
+    setAiReportsOpen(false);
   };
 
-  const handleOpenAssignDialog = (report) => {
-    console.log('Opening assign dialog with report:', report);
-    setSelectedReport(report);
-    setAssignDialog(true);
-    setSelectedWorker('');
-  };
-
-  const assignRepair = async () => {
-    if (!selectedReport || !selectedWorker) {
-      console.error('Cannot assign: Missing report or worker', { 
-        report: selectedReport, 
-        worker: selectedWorker 
-      });
-      
-      setNotification({
-        open: true,
-        message: 'Cannot assign: Missing report or worker information',
-        severity: 'error'
-      });
-      return;
-    }
-    
-    // Ensure we have a valid report ID
-    const reportId = selectedReport._id || selectedReport.id;
-    if (!reportId) {
-      console.error('Missing report ID in selected report:', selectedReport);
-      setNotification({
-        open: true,
-        message: 'Error: Report ID is missing',
-        severity: 'error'
-      });
-      return;
-    }
-    
-    console.log('Assigning repair', { reportId, workerId: selectedWorker });
-    
-    try {
-      const response = await api.patch(`/damage/reports/${reportId}/assign`, {
-        workerId: selectedWorker
-      });
-      
-      if (response && response.success) {
-        setNotification({
-          open: true,
-          message: 'Repair task assigned successfully!',
-          severity: 'success'
-        });
-        setAssignDialog(false);
-        fetchDashboardData();
-      }
-    } catch (err) {
-      console.error('Error assigning repair task:', err);
-      setNotification({
-        open: true,
-        message: 'Failed to assign repair task: ' + (err.message || 'Unknown error'),
-        severity: 'error'
-      });
-    }
-  };
-
-  const unassignRepair = async () => {
-    if (!selectedReport) {
-      console.error('Cannot unassign: Missing report', { report: selectedReport });
-      return;
-    }
-    
-    const reportId = selectedReport._id || selectedReport.id;
-    console.log('Unassigning repair', { reportId });
-    
-    try {
-      const response = await api.patch(`/damage/reports/${reportId}/unassign`);
-      
-      if (response && response.success) {
-        setNotification({
-          open: true,
-          message: 'Repair task unassigned successfully!',
-          severity: 'success'
-        });
-        setRepairDialog(false);
-        fetchDashboardData();
-      }
-    } catch (err) {
-      console.error('Error unassigning repair task:', err);
-      setNotification({
-        open: true,
-        message: 'Failed to unassign repair task: ' + (err.message || 'Unknown error'),
-        severity: 'error'
-      });
-    }
-  };
-
-  const handleCloseNotification = () => {
-    setNotification(prev => ({
-      ...prev,
-      open: false
+  const updateRecentActivity = useCallback(() => {
+    const aiActivity = aiReports.map(report => ({
+      id: report.id,
+      type: 'ai-report',
+      title: `AI Report: ${report.damageType}`,
+      description: `Predicted damage type: ${report.damageType}, Severity: ${report.severity}`,
+      time: new Date(report.createdAt).toLocaleTimeString(),
+      severity: report.severity,
+      location: report.location || 'Unknown'
     }));
-  };
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+    const damageActivity = dashboardData.recentReports.map(report => ({
+      id: report.id,
+      type: 'damage-report',
+      title: `Damage Report: ${report.title}`,
+      description: `Reported damage type: ${report.severity}, Status: ${report.status}`,
+      time: report.timestamp,
+      severity: report.severity,
+      location: report.location
+    }));
 
-  if (error) {
-    return (
-      <Box sx={{ p: 3, textAlign: 'center' }}>
-        <Typography color="error" variant="h6">
-          Error loading dashboard: {error}
-        </Typography>
-        <Button onClick={handleRefresh} sx={{ mt: 2 }}>
-          Try Again
-        </Button>
-      </Box>
-    );
-  }
+    const combinedActivity = [...aiActivity, ...damageActivity];
+    setRecentActivity(combinedActivity);
+  }, [aiReports, dashboardData.recentReports]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  useEffect(() => {
+    updateRecentActivity();
+  }, [aiReports, dashboardData.recentReports, updateRecentActivity]);
+
 
   return (
-    <Box sx={{ p: { xs: 2, md: 4 }, bgcolor: 'background.default', borderRadius: 3 }}>
-      <Box 
-        display="flex" 
-        flexDirection={{ xs: 'column', sm: 'row' }} 
-        justifyContent="space-between" 
-        alignItems={{ xs: 'flex-start', sm: 'center' }} 
-        mb={4}
-        gap={2}
-      >
-        <Box>
-          <Typography variant="h4" fontWeight="800" color="text.primary" sx={{ letterSpacing: '-0.5px' }}>
-            Dashboard Overview
-          </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5 }}>
-            Welcome back! Here's what's happening today.
-          </Typography>
-        </Box>
-        <Box display="flex" gap={2}>
-          <Button 
-            variant="outlined" 
-            startIcon={<RefreshIcon />}
-            sx={{ 
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600
-            }}
-            onClick={handleRefresh}
-          >
-            Refresh
-          </Button>
-          <Button 
-            variant="contained" 
-            disableElevation
-            sx={{ 
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 600,
-              boxShadow: `0 4px 14px ${alpha(theme.palette.primary.main, 0.4)}`
-            }}
-          >
-            New Report
-          </Button>
-        </Box>
-      </Box>
-
-      <Grid container spacing={3}>
-        {[
-          { title: 'Total Reports', value: dashboardData.totalReports, icon: <ReportIcon />, color: theme.palette.primary.main, progress: 70, trend: 'up', change: '+12%' },
-          { title: 'Pending Repairs', value: dashboardData.pendingRepairs, icon: <BuildIcon />, color: theme.palette.warning.main, progress: 45, trend: 'down', change: '-8%' },
-          { title: 'Completed Repairs', value: dashboardData.completedRepairs, icon: <CheckCircleIcon />, color: theme.palette.success.main, progress: 85, trend: 'up', change: '+23%' },
-          { title: 'Critical Damages', value: dashboardData.criticalDamages, icon: <WarningIcon />, color: theme.palette.error.main, progress: 25, trend: 'down', change: '-15%' }
-        ].map((item, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
-            <StyledCard>
-              <CardContent sx={{ p: 3 }}>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                  <Avatar 
-                    sx={{ 
-                      bgcolor: alpha(item.color, 0.15), 
-                      color: item.color,
-                      width: 48,
-                      height: 48
-                    }}
-                  >
-                    {item.icon}
-                  </Avatar>
-                  <Box display="flex" alignItems="center">
-                    <Chip 
-                      icon={item.trend === 'up' ? <TrendingUpIcon fontSize="small" /> : <TrendingDownIcon fontSize="small" />}
-                      label={item.change}
-                      size="small"
-                      color={item.trend === 'up' ? 'success' : 'error'}
-                      sx={{ 
-                        borderRadius: 1, 
-                        fontWeight: 'bold',
-                        height: 24
-                      }}
-                    />
-                    <IconButton size="small" sx={{ ml: 1 }}>
-                      <MoreHorizIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                </Box>
-                <Typography variant="h3" sx={{ mt: 3, mb: 0.5 }} color="text.primary" fontWeight="700">
-                  {item.value}
-                </Typography>
-                <Typography color="text.secondary" fontWeight="500" variant="body2">
-                  {item.title}
-                </Typography>
-                <ProgressBar 
-                  variant="determinate" 
-                  value={item.progress} 
-                  sx={{ mt: 2 }} 
-                  color={
-                    item.title === 'Total Reports' ? 'primary' :
-                    item.title === 'Pending Repairs' ? 'warning' :
-                    item.title === 'Completed Repairs' ? 'success' : 'error'
-                  }
-                />
-              </CardContent>
-            </StyledCard>
-          </Grid>
-        ))}
-
-        {/* AI Analysis Reports Section */}
-        <Grid item xs={12}>
-          <GlassCard sx={{ p: { xs: 2, md: 3 } }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-              <Typography variant="h6" fontWeight="700" color="text.primary">
-                Recent AI Analysis Reports
-              </Typography>
-              <Button 
-                endIcon={<RefreshIcon />}
+    <Box sx={{ width: '100%' }}>
+      <Box sx={{ mb: 4 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+            <Box>
+              <Typography 
+                variant="h4" 
                 sx={{ 
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  borderRadius: 2
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  mb: 1,
                 }}
-                onClick={fetchAiReports}
               >
-                Refresh
-              </Button>
+                Welcome back, Admin! 👋
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
+                Here's what's happening with SafeStreets today
+              </Typography>
             </Box>
             
-            {aiReportsLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                <CircularProgress size={30} />
-              </Box>
-            ) : aiReports.length === 0 ? (
-              <Box sx={{ p: 2, textAlign: 'center' }}>
-                <Typography color="text.secondary">No AI analysis reports found</Typography>
-              </Box>
-            ) : (
-              <List sx={{ px: { xs: 0, md: 1 } }}>
-                {aiReports.slice(0, 5).map((report, index) => (
-                  <React.Fragment key={report.id}>
-                    <ListItem 
-                      sx={{ 
-                        py: 2,
-                        px: { xs: 1, md: 2 },
-                        borderRadius: 2,
-                        transition: 'all 0.2s ease',
-                        '&:hover': {
-                          bgcolor: alpha(theme.palette.action.hover, 0.5),
-                          transform: 'translateX(4px)'
-                        }
-                      }}
-                    >
-                      <ListItemAvatar>
-                        <Avatar 
-                          sx={{ 
-                            bgcolor: alpha(getSeverityColor(report.severity), 0.15),
-                            color: getSeverityColor(report.severity),
-                            fontWeight: 'bold'
-                          }}
-                        >
-                          {report.damageType[0]}
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={
-                          <Box display="flex" justifyContent="space-between" alignItems="center">
-                            <Box display="flex" alignItems="center" gap={1}>
-                              <Typography variant="subtitle1" fontWeight="600" color="text.primary">
-                                {report.damageType}
-                              </Typography>
-                              <Chip 
-                                label={report.severity} 
-                                size="small" 
-                                color={report.severity === 'HIGH' ? 'error' : report.severity === 'MEDIUM' ? 'warning' : 'success'}
-                                sx={{ 
-                                  height: 20, 
-                                  fontSize: '0.65rem',
-                                  fontWeight: 600,
-                                  borderRadius: 1
-                                }} 
-                              />
-                            </Box>
-                            <Box display="flex" gap={1}>
-                              <Button 
-                                size="small" 
-                                variant={generatedReportIds.includes(report.id) ? "contained" : "outlined"}
-                                color={generatedReportIds.includes(report.id) ? "success" : "primary"} 
-                                startIcon={generatedReportIds.includes(report.id) ? <CheckCircleIcon /> : <AssignmentIcon />}
-                                onClick={() => handleOpenReportDialog(report)
-                                }
-                                sx={{ borderRadius: 1 }}
-                              >
-                                {generatedReportIds.includes(report.id) ? "Report Generated" : "Generate Report"}
-                              </Button>
-                            </Box>
-                          </Box>
-                        }
-                        secondary={
-                          <Box display="flex" justifyContent="space-between" mt={1}>
-                            <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
-                              <Box component="span" sx={{ 
-                                width: 8, 
-                                height: 8, 
-                                borderRadius: '50%', 
-                                bgcolor: getSeverityColor(report.severity),
-                                display: 'inline-block',
-                                mr: 1
-                              }}/>
-                              Priority: {report.priority}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" fontWeight="500">
-                              {formatTimestamp(report.createdAt)}
-                            </Typography>
-                          </Box>
-                        }
-                      />
-                    </ListItem>
-                    {index < aiReports.slice(0, 5).length - 1 && (
-                      <Divider variant="inset" component="li" sx={{ opacity: 0.5 }} />
-                    )}
-                  </React.Fragment>
-                ))}
-              </List>
-            )}
-          </GlassCard>
-        </Grid>
-
-        {/* Recent Damage Reports Section */}
-        <Grid item xs={12}>
-          <GlassCard sx={{ p: { xs: 2, md: 3 } }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-              <Typography variant="h6" fontWeight="700" color="text.primary">
-                Recent Damage Reports
-              </Typography>
-              <Button 
-                endIcon={<MoreHorizIcon />}
-                sx={{ 
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  borderRadius: 2
+            <Stack direction="row" spacing={2}>
+              <Tooltip title="Refresh Dashboard">
+                <IconButton 
+                  onClick={fetchDashboardData}
+                  disabled={loading}
+                  sx={{
+                    background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%)',
+                      transform: 'rotate(180deg)',
+                    },
+                    transition: 'all 0.3s ease',
+                  }}
+                >
+                  <RefreshIcon />
+                </IconButton>
+              </Tooltip>
+              
+              <Button
+                variant="contained"
+                startIcon={<DashboardIcon />}
+                onClick={handleViewAnalytics}
+                sx={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  borderRadius: 3,
+                  px: 3,
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+                    transform: 'translateY(-2px)',
+                  },
+                  transition: 'all 0.3s ease',
                 }}
               >
-                View All
+                View Analytics
               </Button>
-            </Box>
-            <List sx={{ px: { xs: 0, md: 1 } }}>
-              {dashboardData.recentReports.map((report, index) => (
-                <React.Fragment key={report.id}>
-                  <ListItem 
-                    sx={{ 
-                      py: 2,
-                      px: { xs: 1, md: 2 },
-                      borderRadius: 2,
-                      transition: 'all 0.2s ease',
-                      '&:hover': {
-                        bgcolor: alpha(theme.palette.action.hover, 0.5),
-                        transform: 'translateX(4px)'
-                      }
-                    }}
-                  >
-                    <ListItemAvatar>
-                      <Avatar 
-                        sx={{ 
-                          bgcolor: alpha(getSeverityColor(report.severity), 0.15),
-                          color: getSeverityColor(report.severity),
-                          fontWeight: 'bold'
-                        }}
-                      >
-                        {report.severity[0]}
-                      </Avatar>
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={
-                        <Box display="flex" justifyContent="space-between" alignItems="center">
-                          <Box display="flex" alignItems="center" gap={1}>
-                            <Typography variant="subtitle1" fontWeight="600" color="text.primary">
-                              {report.title}
-                            </Typography>
-                            <Chip 
-                              label={report.id} 
-                              size="small" 
-                              variant="outlined"
-                              sx={{ 
-                                height: 20, 
-                                fontSize: '0.65rem',
-                                fontWeight: 600,
-                                borderRadius: 1
-                              }} 
-                            />
-                          </Box>
-                          <Box display="flex" gap={1}>
-                            <Button 
-                              size="small" 
-                              variant="outlined" 
-                              startIcon={<BuildIcon />} 
-                              onClick={() => handleOpenRepairDialog(report)}
-                              sx={{ borderRadius: 1 }}
-                            >
-                              Manage Repair
-                            </Button>
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                              <Chip 
-                                icon={<PersonIcon fontSize="small" />}
-                                label={report.assignedTo !== 'Unassigned' ? report.assignedTo : 'Not Assigned'}
-                                color={report.assignedTo !== 'Unassigned' ? "success" : "default"}
-                                variant={report.assignedTo !== 'Unassigned' ? "filled" : "outlined"}
-                                size="small"
-                                sx={{ mr: 1, height: 28 }}
-                              />
-                              <Button 
-                                size="small" 
-                                variant="outlined" 
-                                startIcon={<PersonIcon />} 
-                                onClick={() => handleOpenAssignDialog(report)}
-                                sx={{ borderRadius: 1 }}
-                              >
-                                {report.assignedTo !== 'Unassigned' ? 'Reassign' : 'Assign'}
-                              </Button>
-                            </Box>
-                          </Box>
-                        </Box>
-                      }
-                      secondary={
-                        <Box display="flex" justifyContent="space-between" mt={1}>
-                          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
-                            <Box component="span" sx={{ 
-                              width: 8, 
-                              height: 8, 
-                              borderRadius: '50%', 
-                              bgcolor: getSeverityColor(report.severity),
-                              display: 'inline-block',
-                              mr: 1
-                            }}/>
-                            {report.location}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary" fontWeight="500">
-                            {report.timestamp}
-                          </Typography>
-                        </Box>
-                      }
-                    />
-                  </ListItem>
-                  {index < dashboardData.recentReports.length - 1 && (
-                    <Divider variant="inset" component="li" sx={{ opacity: 0.5 }} />
-                  )}
-                </React.Fragment>
-              ))}
-            </List>
-          </GlassCard>
+            </Stack>
+          </Stack>
+        </Box>
+
+      {/* Stats Grid */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            icon={<ReportIcon />}
+            title="Total Reports"
+            value={dashboardData.totalReports}
+            change={12}
+            color="primary"
+            loading={loading}
+          />
+        </Grid>
+        
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            icon={<BuildIcon />}
+            title="Pending Repairs"
+            value={dashboardData.pendingRepairs}
+            change={-8}
+            color="warning"
+            loading={loading}
+          />
+        </Grid>
+        
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            icon={<CheckCircleIcon />}
+            title="Completed Repairs"
+            value={dashboardData.completedRepairs}
+            change={15}
+            color="success"
+            loading={loading}
+          />
+        </Grid>
+        
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            icon={<WarningIcon />}
+            title="Critical Issues"
+            value={dashboardData.criticalDamages}
+            change={-5}
+            color="error"
+            loading={loading}
+          />
         </Grid>
       </Grid>
 
-      {/* Dialog for generating damage report from AI analysis */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>Generate Damage Report</DialogTitle>
-        <DialogContent>
-          {selectedReport && (
-            <Box sx={{ mt: 2 }}>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <Typography variant="subtitle1">
-                    AI Analysis Results:
-                  </Typography>
-                  <Typography variant="body2">
-                    Damage Type: {selectedReport.damageType}
-                  </Typography>
-                  <Typography variant="body2">
-                    Severity: {selectedReport.severity}
-                  </Typography>
-                  <Typography variant="body2" mb={2}>
-                    Priority: {selectedReport.priority}
-                  </Typography>
-                  
-                  {selectedReport.annotatedImage && (
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="body2" mb={1}>Annotated Image:</Typography>
-                      <img 
-                        src={selectedReport.annotatedImage} 
-                        alt="Damage" 
-                        style={{ 
-                          width: '100%', 
-                          maxHeight: '200px',
-                          objectFit: 'contain',
-                          borderRadius: 8
-                        }}
-                      />
-                    </Box>
-                  )}
-                </Grid>
+      {/* Main Content Grid */}
+      <Grid container spacing={3}>
+        {/* Recent Reports */}
+        <Grid item xs={12} lg={8}>
+          <RecentReports reports={dashboardData.recentReports} loading={loading} />
+        </Grid>
 
-                <Grid item xs={12}>
-                  <TextField
-                    name="region"
-                    label="Region"
-                    fullWidth
-                    value={reportFormData.region}
-                    onChange={handleInputChange}
-                    margin="dense"
-                    required
-                  />
-                </Grid>
-                
-                <Grid item xs={12}>
-                  <TextField
-                    name="location"
-                    label="Exact Location"
-                    fullWidth
-                    value={reportFormData.location}
-                    onChange={handleInputChange}
-                    margin="dense"
-                    required
-                  />
-                </Grid>
-                
-                <Grid item xs={12}>
-                  <TextField
-                    name="description"
-                    label="Description"
-                    fullWidth
-                    multiline
-                    rows={3}
-                    value={reportFormData.description}
-                    onChange={handleInputChange}
-                    margin="dense"
-                  />
-                </Grid>
-                
-                <Grid item xs={12}>
-                  <TextField
-                    name="action"
-                    label="Required Action"
-                    fullWidth
-                    value={reportFormData.action}
-                    onChange={handleInputChange}
-                    margin="dense"
-                    required
-                  />
-                </Grid>
-                
-                <Grid item xs={12}>
-                  <FormControl fullWidth margin="dense">
-                    <InputLabel id="assign-worker-label">Assign to Field Worker (Optional)</InputLabel>
-                    <Select
-                      labelId="assign-worker-label"
-                      name="assignTo"
-                      value={reportFormData.assignTo}
-                      label="Assign to Field Worker (Optional)"
-                      onChange={handleInputChange}
-                    >
-                      <MenuItem value="">
-                        <em>Unassigned</em>
-                      </MenuItem>
-                      {fieldWorkers.map(worker => (
-                        <MenuItem key={worker.id} value={worker.id}>
-                          {worker.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-              </Grid>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={createDamageReport} variant="contained" color="primary">
-            Create Report
-          </Button>
-        </DialogActions>
-      </Dialog>
+        {/* Activity Feed */}
+        <Grid item xs={12} lg={4}>
+          <ActivityFeed activities={recentActivity} />
+        </Grid>
 
-      {/* Dialog for managing repair tasks */}
-      <Dialog open={repairDialog} onClose={handleCloseDialog} maxWidth="xs" fullWidth>
-        <DialogTitle>Manage Repair Task</DialogTitle>
-        <DialogContent>
-          {selectedReport && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle1">
-                Report ID: {selectedReport.id}
-              </Typography>
-              <Typography variant="body2" mb={1}>
-                Currently {selectedReport.assignedTo && selectedReport.assignedTo !== 'Unassigned' ? 
-                  `Assigned to: ${selectedReport.assignedTo}` : 'Unassigned'}
-              </Typography>
-              <Typography variant="body2" mb={2}>
-                Status: {selectedReport.status}
-              </Typography>
-              
-              {selectedReport.assignedTo && selectedReport.assignedTo !== 'Unassigned' && (
-                <Button 
-                  variant="outlined" 
-                  color="error"
-                  fullWidth
-                  onClick={unassignRepair}
-                >
-                  Unassign Repair Task
-                </Button>
-              )}
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Close</Button>
-        </DialogActions>
-      </Dialog>
+        {/* Quick Actions */}
+        <Grid item xs={12}>
+          <QuickActions />
+        </Grid>
+      </Grid>
 
-      {/* Dialog for assigning repair tasks */}
-      <Dialog open={assignDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>Assign Repair Task</DialogTitle>
-        <DialogContent>
-          {selectedReport && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle1">
-                Report ID: {selectedReport.reportId || selectedReport._id || selectedReport.id}
-              </Typography>
-              
-              <Typography variant="body2" color="text.secondary" mb={2}>
-                Region: {selectedReport.region} | Severity: {selectedReport.severity}
-              </Typography>
-              
-              <FormControl fullWidth margin="dense">
-                <InputLabel>Select Field Worker</InputLabel>
-                <Select
-                  value={selectedWorker}
-                  label="Select Field Worker"
-                  onChange={(e) => {
-                    console.log('Selected worker:', e.target.value);
-                    setSelectedWorker(e.target.value);
-                  }}
-                >
-                  <MenuItem value="">
-                    <em>Select a worker</em>
-                  </MenuItem>
-                  {fieldWorkers.map(worker => (
-                    <MenuItem key={worker.id} value={worker.id}>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Avatar sx={{ width: 24, height: 24, mr: 1 }}>
-                          {worker.name ? worker.name[0] : '?'}
-                        </Avatar>
-                        {worker.name} - {worker.specialization || 'General'} ({worker.region || 'All regions'})
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </Select>
-                <FormHelperText>
-                  {fieldWorkers.length ? 'Select a field worker to assign this task' : 'No field workers available'}
-                </FormHelperText>
-              </FormControl>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button 
-            onClick={assignRepair} 
-            variant="contained" 
-            color="primary"
-            disabled={!selectedWorker}
-          >
-            Assign Task
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* AI Reports Dialog */}
+      <AiReportsDialog
+        open={aiReportsOpen}
+        onClose={handleAiReportsClose}
+        reports={aiReports}
+        loading={aiReportsLoading}
+        error={aiReportsError}
+        onSelectReport={handleSelectAiReport}
+      />
 
-      {/* Notification Snackbar */}
-      <Snackbar
-        open={notification.open}
-        autoHideDuration={6000}
-        onClose={handleCloseNotification}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert 
-          onClose={handleCloseNotification} 
-          severity={notification.severity} 
-          sx={{ width: '100%' }}
-        >
-          {notification.message}
-        </Alert>
-      </Snackbar>
+      {/* Create Damage Report Dialog */}
+      <CreateDamageReportDialog 
+        open={createReportOpen}
+        onClose={handleDialogClose}
+        onSubmit={handleCreateReport}
+        selectedAiReport={selectedAiReport}
+        formData={reportFormData}
+        onFormChange={handleFormInputChange}
+        fieldWorkers={fieldWorkers}
+        onFieldWorkerChange={handleFieldWorkerChange}
+        selectedFieldWorker={selectedFieldWorker}
+        loading={createReportLoading}
+        error={createReportError}
+      />
     </Box>
   );
-}
+};
 
 export default Dashboard;

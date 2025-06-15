@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect} from 'react';
 import { 
   Box, Paper, Typography, Grid, TextField, MenuItem, 
@@ -7,7 +6,6 @@ import {
   Pagination, Menu, ListItemIcon, ListItemText, CircularProgress,
   Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
-import { alpha, useTheme } from '@mui/material/styles';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import GridViewIcon from '@mui/icons-material/GridView';
@@ -16,6 +14,22 @@ import CloseIcon from '@mui/icons-material/Close';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import ViewDamageReport from '../components/reports/ViewDamageReport';
 import { api } from '../utils/api';
+
+// Professional color palette
+const colors = {
+  primary: '#2563eb',
+  primaryDark: '#1d4ed8',
+  secondary: '#64748b',
+  success: '#059669',
+  warning: '#d97706',
+  error: '#dc2626',
+  surface: '#ffffff',
+  border: '#e2e8f0',
+  text: {
+    primary: '#1e293b',
+    secondary: '#64748b'
+  }
+};
 
 function Reports() {
   const [filters, setFilters] = useState({
@@ -28,8 +42,8 @@ function Reports() {
   });
   const [viewMode, setViewMode] = useState('table');
   const [page, setPage] = useState(1);
-  const [sortField, setSortField] = useState('createdAt');
-  const [sortDirection, setSortDirection] = useState('desc');
+  const [sortField] = useState('createdAt');
+  const [sortDirection] = useState('desc');
   const [anchorEl, setAnchorEl] = useState(null);
   const [filtersDialogOpen, setFiltersDialogOpen] = useState(false);
   const [reports, setReports] = useState([]);
@@ -38,7 +52,6 @@ function Reports() {
   const [selectedReport, setSelectedReport] = useState(null);
   const [viewReportOpen, setViewReportOpen] = useState(false);
 
-  const theme = useTheme();
   const exportMenuOpen = Boolean(anchorEl);
 
   // Pagination
@@ -102,6 +115,21 @@ function Reports() {
         return 'success';
       default:
         return 'default';
+    }
+  };
+
+  const getSeverityBarColor = (severity) => {
+    switch (severity?.toLowerCase()) {
+      case 'critical':
+        return colors.error;
+      case 'high':
+        return colors.error;
+      case 'medium':
+        return colors.warning;
+      case 'low':
+        return colors.success;
+      default:
+        return colors.secondary;
     }
   };
 
@@ -217,8 +245,8 @@ function Reports() {
           onClick={() => setFiltersDialogOpen(false)}
           size="small"
           sx={{
-            color: theme.palette.text.secondary,
-            '&:hover': { color: theme.palette.text.primary }
+            color: colors.text.secondary,
+            '&:hover': { color: colors.text.primary }
           }}
         >
           <CloseIcon />
@@ -334,7 +362,7 @@ function Reports() {
       elevation={0}
       sx={{ 
         borderRadius: 2,
-        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+        border: `1px solid ${colors.border}`,
         overflow: 'hidden',
       }}
     >
@@ -356,14 +384,10 @@ function Reports() {
               <tr 
                 key={report.id}
                 style={{
-                  transition: 'background-color 0.2s ease-in-out',
-                  '&:hover': {
-                    backgroundColor: alpha(theme.palette.primary.main, 0.04),
-                  },
-                  backgroundColor: index % 2 === 0 ? alpha(theme.palette.background.default, 0.5) : 'inherit'
+                  backgroundColor: index % 2 === 0 ? '#f8fafc' : 'inherit'
                 }}
               >
-                <td style={{ padding: 8, fontWeight: 500, color: theme.palette.primary.main }}>
+                <td style={{ padding: 8, fontWeight: 500, color: colors.primary }}>
                   {report.reportId}
                 </td>
                 <td style={{ padding: 8 }}>
@@ -400,9 +424,9 @@ function Reports() {
                         size="small"
                         onClick={() => handleViewReport(report)}
                         sx={{ 
-                          color: theme.palette.primary.main,
+                          color: colors.primary,
                           '&:hover': { 
-                            backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                            backgroundColor: colors.border,
                           }
                         }}
                       >
@@ -435,15 +459,15 @@ function Reports() {
             sx={{ 
               height: '100%',
               borderRadius: 2,
-              transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+              transition: 'box-shadow 0.2s ease-in-out',
               '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: theme.shadows[8],
+                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.15)',
               },
               display: 'flex',
               flexDirection: 'column',
               position: 'relative',
               overflow: 'visible',
+              border: `1px solid ${colors.border}`,
               '&::before': {
                 content: '""',
                 position: 'absolute',
@@ -451,7 +475,7 @@ function Reports() {
                 left: 0,
                 right: 0,
                 height: '4px',
-                background: `linear-gradient(90deg, ${theme.palette[getSeverityColor(report.severity)].main}, ${theme.palette[getSeverityColor(report.severity)].light})`,
+                background: getSeverityBarColor(report.severity),
                 borderRadius: '8px 8px 0 0',
               }
             }}
@@ -496,7 +520,7 @@ function Reports() {
               sx={{ 
                 p: 2, 
                 pt: 0,
-                borderTop: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                borderTop: `1px solid ${colors.border}`,
                 display: 'flex',
                 justifyContent: 'flex-end'
               }}
@@ -506,10 +530,10 @@ function Reports() {
                 variant="contained"
                 onClick={() => handleViewReport(report)}
                 sx={{
-                  bgcolor: alpha(theme.palette.primary.main, 0.1),
-                  color: theme.palette.primary.main,
+                  bgcolor: colors.primary,
+                  color: 'white',
                   '&:hover': {
-                    bgcolor: alpha(theme.palette.primary.main, 0.2),
+                    bgcolor: colors.primaryDark,
                   },
                 }}
               >
@@ -540,7 +564,7 @@ function Reports() {
             sx={{
               fontSize: { xs: '1.5rem', sm: '1.875rem' },
               fontWeight: 700,
-              color: theme.palette.text.primary,
+              color: colors.text.primary,
               letterSpacing: '-0.5px',
             }}
           >
@@ -557,10 +581,10 @@ function Reports() {
               startIcon={<FilterListIcon />}
               onClick={() => setFiltersDialogOpen(true)}
               sx={{
-                bgcolor: alpha(theme.palette.primary.main, 0.1),
-                color: theme.palette.primary.main,
+                bgcolor: colors.primary,
+                color: 'white',
                 '&:hover': {
-                  bgcolor: alpha(theme.palette.primary.main, 0.2),
+                  bgcolor: colors.primaryDark,
                 },
                 px: 3,
               }}
@@ -576,13 +600,13 @@ function Reports() {
                   minWidth: 'auto',
                   px: 2,
                   ...(viewMode === 'grid' ? {
-                    bgcolor: alpha(theme.palette.primary.main, 0.1),
-                    color: theme.palette.primary.main,
+                    bgcolor: colors.primary,
+                    color: 'white',
                     '&:hover': {
-                      bgcolor: alpha(theme.palette.primary.main, 0.2),
+                      bgcolor: colors.primaryDark,
                     },
                   } : {
-                    borderColor: alpha(theme.palette.divider, 0.2),
+                    borderColor: colors.border,
                   })
                 }}
               >
@@ -595,13 +619,13 @@ function Reports() {
                   minWidth: 'auto',
                   px: 2,
                   ...(viewMode === 'table' ? {
-                    bgcolor: alpha(theme.palette.primary.main, 0.1),
-                    color: theme.palette.primary.main,
+                    bgcolor: colors.primary,
+                    color: 'white',
                     '&:hover': {
-                      bgcolor: alpha(theme.palette.primary.main, 0.2),
+                      bgcolor: colors.primaryDark,
                     },
                   } : {
-                    borderColor: alpha(theme.palette.divider, 0.2),
+                    borderColor: colors.border,
                   })
                 }}
               >
@@ -614,9 +638,9 @@ function Reports() {
               startIcon={<FileDownloadIcon />}
               onClick={(e) => setAnchorEl(e.currentTarget)}
               sx={{
-                bgcolor: theme.palette.success.main,
+                bgcolor: colors.success,
                 '&:hover': {
-                  bgcolor: theme.palette.success.dark,
+                  bgcolor: '#047857',
                 },
               }}
             >
@@ -641,10 +665,10 @@ function Reports() {
                   label={`${key}: ${value}`}
                   onDelete={() => handleFilterDelete(key)}
                   sx={{
-                    bgcolor: alpha(theme.palette.primary.main, 0.08),
-                    color: theme.palette.primary.main,
+                    bgcolor: colors.border,
+                    color: colors.text.primary,
                     '& .MuiChip-deleteIcon': {
-                      color: theme.palette.primary.main,
+                      color: colors.text.secondary,
                     },
                     fontWeight: 500,
                   }}
@@ -672,8 +696,8 @@ function Reports() {
               sx={{
                 p: 3,
                 textAlign: 'center',
-                bgcolor: alpha(theme.palette.error.main, 0.05),
-                border: `1px solid ${alpha(theme.palette.error.main, 0.1)}`,
+                bgcolor: '#fef2f2',
+                border: `1px solid ${colors.error}`,
                 borderRadius: 2,
               }}
             >
@@ -762,8 +786,8 @@ function Reports() {
               onClick={handleCloseReport}
               size="small"
               sx={{
-                color: theme.palette.text.secondary,
-                '&:hover': { color: theme.palette.text.primary }
+                color: colors.text.secondary,
+                '&:hover': { color: colors.text.primary }
               }}
             >
               <CloseIcon />

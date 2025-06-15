@@ -4,7 +4,7 @@ export const DRAWER_WIDTH = 280;
 // API
 export const API_BASE_URL = 'http://localhost:5030/api';
 export const API_ENDPOINTS = {
-  DAMAGE_REPORTS: '/damage/reports',
+  DAMAGE_REPORTS: '/damage',
   REPAIRS: '/repairs',
   ANALYTICS: '/analytics',
   AUTH: '/auth',
@@ -33,4 +33,4 @@ export const CHART_COLORS = {
   warning: '#ff9800',
   error: '#f44336',
   info: '#00bcd4'
-}; 
+};

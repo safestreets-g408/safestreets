@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Box, Typography, Grid, FormControl, InputLabel, 
-  Select, MenuItem,
-  useTheme, alpha, Card, CardContent,
-  CardHeader, Avatar, IconButton, Fade, Zoom,
+  Select, MenuItem, Card, CardContent,
+  CardHeader, Avatar, IconButton,
   CircularProgress
 } from '@mui/material';
 import { 
@@ -20,8 +19,23 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { api } from '../utils/api';
 
+// Professional color palette
+const colors = {
+  primary: '#2563eb',
+  primaryDark: '#1d4ed8',
+  secondary: '#64748b',
+  success: '#059669',
+  warning: '#d97706',
+  error: '#dc2626',
+  surface: '#ffffff',
+  border: '#e2e8f0',
+  text: {
+    primary: '#1e293b',
+    secondary: '#64748b'
+  }
+};
+
 function Analytics() {
-  const theme = useTheme();
   const [timeframe, setTimeframe] = useState('7days');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -186,22 +200,22 @@ function Analytics() {
 
   const getStatusColor = (status) => {
     switch(status) {
-      case 'Pending': return theme.palette.warning.main;
-      case 'Assigned': return theme.palette.info.main;
-      case 'In-Progress': return theme.palette.primary.main;
-      case 'Resolved': return theme.palette.success.main;
-      case 'Rejected': return theme.palette.error.main;
-      default: return theme.palette.grey[400];
+      case 'Pending': return '#f59e0b';
+      case 'Assigned': return '#3b82f6';
+      case 'In-Progress': return '#2563eb';
+      case 'Resolved': return '#10b981';
+      case 'Rejected': return '#ef4444';
+      default: return '#6b7280';
     }
   };
 
   const getSeverityColor = (severity) => {
     switch(severity) {
-      case 'Low': return theme.palette.info.main;
-      case 'Medium': return theme.palette.warning.main;
-      case 'High': return theme.palette.error.main;
-      case 'Critical': return theme.palette.secondary.main;
-      default: return theme.palette.grey[400];
+      case 'Low': return '#3b82f6';
+      case 'Medium': return '#f59e0b';
+      case 'High': return '#ef4444';
+      case 'Critical': return '#dc2626';
+      default: return '#6b7280';
     }
   };
 
@@ -240,35 +254,41 @@ function Analytics() {
       elevation={0}
       sx={{ 
         height: '100%', 
-        borderRadius: 3, 
-        boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.1)}`,
-        transition: 'transform 0.3s, box-shadow 0.3s',
+        borderRadius: 2, 
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+        transition: 'box-shadow 0.2s',
         overflow: 'hidden',
-        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+        border: `1px solid ${colors.border}`,
+        backgroundColor: colors.surface,
         '&:hover': {
-          transform: 'translateY(-5px)',
-          boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.15)}`
+          boxShadow: '0 4px 8px rgba(0, 0, 0, 0.15)'
         }
       }}
     >
       <CardHeader
         avatar={
-          <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1) }}>
+          <Avatar sx={{ 
+            bgcolor: colors.primary,
+            color: 'white',
+            width: 40,
+            height: 40
+          }}>
             {icon}
           </Avatar>
         }
         action={
           <Box>
-            <IconButton size="small" sx={{ mr: 1 }}>
+            <IconButton size="small" sx={{ mr: 1, color: colors.secondary }}>
               <RefreshIcon fontSize="small" />
             </IconButton>
             <IconButton 
               size="small"
               onClick={onExport}
               sx={{ 
-                bgcolor: alpha(theme.palette.primary.main, 0.1),
+                bgcolor: colors.primary,
+                color: 'white',
                 '&:hover': {
-                  bgcolor: alpha(theme.palette.primary.main, 0.2),
+                  bgcolor: colors.primaryDark,
                 }
               }}
             >
@@ -276,34 +296,40 @@ function Analytics() {
             </IconButton>
           </Box>
         }
-        title={<Typography variant="h6" fontWeight="600">{title}</Typography>}
+        title={
+          <Typography 
+            variant="h6" 
+            fontWeight="600"
+            color={colors.text.primary}
+          >
+            {title}
+          </Typography>
+        }
         sx={{ 
-          pb: 0,
-          '& .MuiCardHeader-title': { fontSize: '1.1rem' },
-          borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+          pb: 1,
+          borderBottom: `1px solid ${colors.border}`
         }}
       />
       <CardContent sx={{ pt: 2, height: 'calc(100% - 72px)' }}>
-        <Zoom in={true} style={{ transitionDelay: '150ms' }}>
-          <Box sx={{ height: '100%' }}>
-            {children}
-          </Box>
-        </Zoom>
+        <Box sx={{ height: '100%' }}>
+          {children}
+        </Box>
       </CardContent>
     </Card>
   );
 
   return (
-    <Fade in={true}>
-      <Box>
-        <Typography 
-          variant="h4" 
-          gutterBottom 
-          sx={{
-            fontWeight: 'semi-bold'
-          }}
-        >
-          Analytics & Insights
+    <Box>
+      <Typography 
+        variant="h4" 
+        gutterBottom 
+        sx={{
+          fontWeight: 600,
+          color: colors.text.primary,
+          mb: 3
+        }}
+      >
+        Analytics & Insights
         </Typography>
         
         <Box sx={{ mb: 4, display: 'flex', justifyContent: 'flex-end' }}>
@@ -313,7 +339,7 @@ function Analytics() {
               '& .MuiOutlinedInput-root': {
                 borderRadius: 2,
                 '&:hover fieldset': {
-                  borderColor: theme.palette.primary.main,
+                  borderColor: colors.primary,
                 },
               }
             }}
@@ -338,7 +364,7 @@ function Analytics() {
             <CircularProgress />
           </Box>
         ) : error ? (
-          <Box sx={{ textAlign: 'center', color: 'error.main', p: 3 }}>
+          <Box sx={{ textAlign: 'center', color: colors.error, p: 3 }}>
             <Typography>{error}</Typography>
           </Box>
         ) : (
@@ -347,7 +373,7 @@ function Analytics() {
             <Grid item xs={12} md={8}>
               <ChartCard 
                 title="Daily Report Trends" 
-                icon={<TrendingUpIcon color="primary" />}
+                icon={<TrendingUpIcon />}
                 chartType="line"
                 onExport={() => exportData('trends')}
               >
@@ -355,13 +381,13 @@ function Analytics() {
                   <AreaChart data={analyticsData.dailyTrends}>
                     <defs>
                       <linearGradient id="colorReports" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={theme.palette.primary.main} stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor={theme.palette.primary.main} stopOpacity={0.1}/>
+                        <stop offset="5%" stopColor={colors.primary} stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor={colors.primary} stopOpacity={0.1}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={alpha(theme.palette.text.secondary, 0.1)} />
-                    <XAxis dataKey="date" stroke={theme.palette.text.secondary} />
-                    <YAxis stroke={theme.palette.text.secondary} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={colors.border} />
+                    <XAxis dataKey="date" stroke={colors.text.secondary} />
+                    <YAxis stroke={colors.text.secondary} />
                     <Tooltip 
                       contentStyle={{ 
                         borderRadius: 8, 
@@ -373,11 +399,11 @@ function Analytics() {
                     <Area 
                       type="monotone" 
                       dataKey="reports" 
-                      stroke={theme.palette.primary.main} 
+                      stroke={colors.primary} 
                       fillOpacity={1}
                       fill="url(#colorReports)"
                       strokeWidth={3}
-                      activeDot={{ r: 8, strokeWidth: 0, fill: theme.palette.primary.dark }}
+                      activeDot={{ r: 8, strokeWidth: 0, fill: colors.primaryDark }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -388,7 +414,7 @@ function Analytics() {
             <Grid item xs={12} md={4}>
               <ChartCard 
                 title="Severity Distribution" 
-                icon={<PieChartIcon color="primary" />}
+                icon={<PieChartIcon />}
                 chartType="pie"
                 onExport={() => exportData('severity')}
               >
@@ -410,7 +436,7 @@ function Analytics() {
                         <Cell 
                           key={`cell-${index}`} 
                           fill={entry.color} 
-                          stroke={theme.palette.background.paper}
+                          stroke={colors.surface}
                           strokeWidth={2}
                         />
                       ))}
@@ -431,15 +457,15 @@ function Analytics() {
             <Grid item xs={12} md={6}>
               <ChartCard 
                 title="Most Affected Zones" 
-                icon={<LocationOnIcon color="primary" />}
+                icon={<LocationOnIcon />}
                 chartType="bar"
                 onExport={() => exportData('zones')}
               >
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={analyticsData.affectedZones}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={alpha(theme.palette.text.secondary, 0.1)} />
-                    <XAxis dataKey="name" stroke={theme.palette.text.secondary} />
-                    <YAxis stroke={theme.palette.text.secondary} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={colors.border} />
+                    <XAxis dataKey="name" stroke={colors.text.secondary} />
+                    <YAxis stroke={colors.text.secondary} />
                     <Tooltip 
                       contentStyle={{ 
                         borderRadius: 8, 
@@ -456,7 +482,7 @@ function Analytics() {
                       {analyticsData.affectedZones.map((entry, index) => (
                         <Cell 
                           key={`cell-${index}`} 
-                          fill={`${theme.palette.primary.main}${80 + index * 20}`} 
+                          fill={colors.primary} 
                         />
                       ))}
                     </Bar>
@@ -469,15 +495,15 @@ function Analytics() {
             <Grid item xs={12} md={6}>
               <ChartCard 
                 title="Damage Type Breakdown" 
-                icon={<AssessmentIcon color="primary" />}
+                icon={<AssessmentIcon />}
                 chartType="bar"
                 onExport={() => exportData('types')}
               >
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={analyticsData.damageTypes} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke={alpha(theme.palette.text.secondary, 0.1)} />
-                    <XAxis type="number" stroke={theme.palette.text.secondary} />
-                    <YAxis dataKey="name" type="category" width={100} stroke={theme.palette.text.secondary} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={colors.border} />
+                    <XAxis type="number" stroke={colors.text.secondary} />
+                    <YAxis dataKey="name" type="category" width={100} stroke={colors.text.secondary} />
                     <Tooltip 
                       contentStyle={{ 
                         borderRadius: 8, 
@@ -494,7 +520,7 @@ function Analytics() {
                       {analyticsData.damageTypes.map((entry, index) => (
                         <Cell 
                           key={`cell-${index}`} 
-                          fill={`${theme.palette.secondary.main}${80 + index * 20}`} 
+                          fill={colors.secondary} 
                         />
                       ))}
                     </Bar>
@@ -507,7 +533,7 @@ function Analytics() {
             <Grid item xs={12}>
               <ChartCard 
                 title="Repair Status Overview" 
-                icon={<BuildIcon color="primary" />}
+                icon={<BuildIcon />}
                 chartType="pie"
                 onExport={() => exportData('status')}
               >
@@ -531,7 +557,7 @@ function Analytics() {
                             <Cell 
                               key={`cell-${index}`} 
                               fill={entry.color} 
-                              stroke={theme.palette.background.paper}
+                              stroke={colors.surface}
                               strokeWidth={2}
                             />
                           ))}
@@ -550,41 +576,38 @@ function Analytics() {
                   <Grid item xs={12} md={6}>
                     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                       {analyticsData.repairStatus.map((status, index) => (
-                        <Fade 
-                          in={true} 
-                          key={status.name}
-                          style={{ transitionDelay: `${index * 100}ms` }}
-                        >
-                          <Box sx={{ mb: 2.5 }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                              <Typography variant="body1" fontWeight="500" color="text.primary">
-                                {status.name}
-                              </Typography>
-                              <Typography variant="body1" fontWeight="bold">
-                                {status.value}%
-                              </Typography>
-                            </Box>
+                        <Box sx={{ mb: 2.5 }} key={status.name}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                            <Typography 
+                              variant="body1" 
+                              fontWeight="500" 
+                              color={colors.text.primary}
+                            >
+                              {status.name}
+                            </Typography>
+                            <Typography variant="body1" fontWeight="bold">
+                              {status.value}%
+                            </Typography>
+                          </Box>
+                          <Box 
+                            sx={{ 
+                              width: '100%', 
+                              height: 10, 
+                              bgcolor: colors.border, 
+                              borderRadius: 2,
+                              overflow: 'hidden'
+                            }}
+                          >
                             <Box 
                               sx={{ 
-                                width: '100%', 
-                                height: 10, 
-                                bgcolor: alpha(status.color, 0.15), 
-                                borderRadius: 2,
-                                overflow: 'hidden'
-                              }}
-                            >
-                              <Box 
-                                sx={{ 
-                                  width: `${status.value}%`, 
-                                  height: '100%', 
-                                  bgcolor: status.color, 
-                                  borderRadius: 2,
-                                  boxShadow: `0 2px 8px ${alpha(status.color, 0.4)}`
-                                }} 
-                              />
-                            </Box>
+                                width: `${status.value}%`, 
+                                height: '100%', 
+                                bgcolor: status.color, 
+                                borderRadius: 2
+                              }} 
+                            />
                           </Box>
-                        </Fade>
+                        </Box>
                       ))}
                     </Box>
                   </Grid>
@@ -594,7 +617,6 @@ function Analytics() {
           </Grid>
         )}
       </Box>
-    </Fade>
   );
 }
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Breadcrumbs, Link, useTheme } from '@mui/material';
+import { Box, Typography, Breadcrumbs, Link } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 
@@ -10,8 +10,6 @@ const PageHeader = ({
   action,
   sx = {}
 }) => {
-  const theme = useTheme();
-
   return (
     <Box 
       sx={{ 
@@ -26,13 +24,13 @@ const PageHeader = ({
             <NavigateNextIcon 
               fontSize="small" 
               sx={{ 
-                color: theme.palette.text.disabled,
-                fontSize: '1.2rem' 
+                color: '#9ca3af',
+                fontSize: '1rem' 
               }} 
             />
           }
           sx={{ 
-            mb: 2.5,
+            mb: 2,
             '& .MuiBreadcrumbs-li': {
               display: 'flex',
               alignItems: 'center',
@@ -46,11 +44,11 @@ const PageHeader = ({
               return (
                 <Typography
                   key={crumb.label}
-                  color="text.secondary"
                   variant="body2"
                   sx={{ 
                     fontSize: '0.875rem',
-                    fontWeight: isLast ? 500 : 400 
+                    fontWeight: isLast ? 500 : 400,
+                    color: isLast ? '#374151' : '#6b7280'
                   }}
                 >
                   {crumb.label}
@@ -67,8 +65,10 @@ const PageHeader = ({
                 variant="body2"
                 sx={{
                   textDecoration: 'none',
+                  color: '#6b7280',
                   '&:hover': {
                     textDecoration: 'underline',
+                    color: '#2563eb',
                   },
                 }}
               >
@@ -92,8 +92,9 @@ const PageHeader = ({
             component="h1"
             gutterBottom={!!subtitle}
             sx={{
-              color: theme.palette.text.primary,
+              color: '#111827',
               fontWeight: 600,
+              fontSize: '1.875rem',
             }}
           >
             {title}
@@ -102,8 +103,11 @@ const PageHeader = ({
           {subtitle && (
             <Typography
               variant="body1"
-              color="text.secondary"
-              sx={{ mt: -1 }}
+              sx={{ 
+                mt: -1,
+                color: '#6b7280',
+                fontSize: '1rem',
+              }}
             >
               {subtitle}
             </Typography>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Chip, useTheme, alpha } from '@mui/material';
+import { Chip } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import WarningIcon from '@mui/icons-material/Warning';
@@ -8,32 +8,38 @@ import BuildIcon from '@mui/icons-material/Build';
 
 const statusConfig = {
   completed: {
-    color: 'success',
+    backgroundColor: '#10b981',
+    color: '#ffffff',
     icon: CheckCircleIcon,
     label: 'Completed'
   },
   pending: {
-    color: 'warning',
+    backgroundColor: '#f59e0b',
+    color: '#ffffff',
     icon: PendingIcon,
     label: 'Pending'
   },
   inProgress: {
-    color: 'info',
+    backgroundColor: '#3b82f6',
+    color: '#ffffff',
     icon: BuildIcon,
     label: 'In Progress'
   },
   failed: {
-    color: 'error',
+    backgroundColor: '#ef4444',
+    color: '#ffffff',
     icon: ErrorIcon,
     label: 'Failed'
   },
   critical: {
-    color: 'error',
+    backgroundColor: '#dc2626',
+    color: '#ffffff',
     icon: ErrorIcon,
     label: 'Critical'
   },
   warning: {
-    color: 'warning',
+    backgroundColor: '#f59e0b',
+    color: '#ffffff',
     icon: WarningIcon,
     label: 'Warning'
   }
@@ -45,7 +51,7 @@ const StatusChip = ({
   size = 'small',
   sx = {}
 }) => {
-  const theme = useTheme();
+
   const config = statusConfig[status] || statusConfig.pending;
   const Icon = config.icon;
 
@@ -53,15 +59,16 @@ const StatusChip = ({
     <Chip
       icon={<Icon fontSize="small" />}
       label={customLabel || config.label}
-      color={config.color}
       size={size}
       sx={{
-        fontWeight: 600,
+        backgroundColor: config.backgroundColor,
+        color: config.color,
+        fontWeight: 500,
         borderRadius: 1,
         '& .MuiChip-icon': {
-          fontSize: '1rem',
+          fontSize: '0.875rem',
+          color: config.color,
         },
-        boxShadow: `0 2px 8px ${alpha(theme.palette[config.color].main, 0.2)}`,
         ...sx
       }}
     />

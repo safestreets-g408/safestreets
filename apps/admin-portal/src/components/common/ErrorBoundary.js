@@ -32,26 +32,34 @@ class ErrorBoundary extends Component {
           textAlign="center"
           p={3}
         >
-          <Typography variant="h4" gutterBottom color="error">
+          <Typography variant="h4" gutterBottom sx={{ color: '#dc2626', fontWeight: 600 }}>
             Oops! Something went wrong.
           </Typography>
           
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+          <Typography variant="body1" sx={{ mb: 4, color: '#6b7280' }}>
             We're sorry for the inconvenience. Please try refreshing the page.
           </Typography>
 
           <Button
             variant="contained"
-            color="primary"
             startIcon={<RefreshIcon />}
             onClick={() => window.location.reload()}
+            sx={{
+              backgroundColor: '#2563eb',
+              color: 'white',
+              textTransform: 'none',
+              fontWeight: 500,
+              '&:hover': {
+                backgroundColor: '#1d4ed8',
+              }
+            }}
           >
             Refresh Page
           </Button>
 
           {process.env.NODE_ENV === 'development' && (
             <Box sx={{ mt: 4, maxWidth: '600px', overflow: 'auto' }}>
-              <Typography variant="caption" component="pre" color="error">
+              <Typography variant="caption" component="pre" sx={{ color: '#dc2626' }}>
                 {this.state.error?.toString()}
               </Typography>
             </Box>

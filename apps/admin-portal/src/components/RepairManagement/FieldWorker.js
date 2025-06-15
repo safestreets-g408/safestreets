@@ -3,7 +3,7 @@ import {
   Box, Typography, Grid, Card, CardContent, CardActions,
   Button, Chip, Divider, IconButton, Tooltip, Avatar,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, useTheme, Paper
+  TextField, Paper
 } from '@mui/material';
 import {
   Assignment as AssignmentIcon,
@@ -14,7 +14,6 @@ import {
 } from '@mui/icons-material';
 
 function FieldWorker({ fieldWorkers = [], onAddWorker = () => {}, onEditWorker = () => {}, onDeleteWorker = () => {} }) {
-  const theme = useTheme();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState(null);
@@ -140,7 +139,7 @@ function FieldWorker({ fieldWorkers = [], onAddWorker = () => {}, onEditWorker =
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                     <Avatar
                       sx={{
-                        bgcolor: theme.palette.primary.main,
+                        bgcolor: '#2563eb',
                         width: 56,
                         height: 56,
                         mr: 2

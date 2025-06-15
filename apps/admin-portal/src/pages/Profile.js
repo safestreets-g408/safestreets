@@ -9,16 +9,12 @@ import {
   Button,
   Divider,
   TextField,
-  Card,
   CardContent,
   IconButton,
-  Fade,
   Tabs,
   Tab,
   Badge,
   Tooltip,
-  useTheme,
-  useMediaQuery,
   Chip as MuiChip,
 } from "@mui/material";
 import {
@@ -34,44 +30,24 @@ import {
   Person,
   Dashboard,
 } from "@mui/icons-material";
-import { styled } from "@mui/material/styles";
-import { motion } from "framer-motion";
 
-const MotionCard = motion(Card);
-
-const StyledBadge = styled(Badge)(({ theme }) => ({
-  "& .MuiBadge-badge": {
-    backgroundColor: "#44b700",
-    color: "#44b700",
-    boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
-    "&::after": {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      borderRadius: "50%",
-      animation: "ripple 1.2s infinite ease-in-out",
-      border: "1px solid currentColor",
-      content: '""',
-    },
-  },
-  "@keyframes ripple": {
-    "0%": {
-      transform: "scale(.8)",
-      opacity: 1,
-    },
-    "100%": {
-      transform: "scale(2.4)",
-      opacity: 0,
-    },
-  },
-}));
+// Professional color palette
+const colors = {
+  primary: '#2563eb',
+  primaryDark: '#1d4ed8',
+  secondary: '#64748b',
+  success: '#059669',
+  warning: '#d97706',
+  error: '#dc2626',
+  surface: '#ffffff',
+  border: '#e2e8f0',
+  text: {
+    primary: '#1e293b',
+    secondary: '#64748b'
+  }
+};
 
 const Profile = () => {
-  const theme = useTheme();
-  // eslint-disable-next-line no-unused-vars
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [tabValue, setTabValue] = useState(0);
   const [editMode, setEditMode] = useState(false);
   const [userData, setUserData] = useState({
@@ -107,26 +83,26 @@ const Profile = () => {
   };
 
   return (
-    <Box sx={{ flexGrow: 1, minHeight: "100vh", bgcolor: "background.default", py: 4 }}>
+    <Box sx={{ flexGrow: 1, minHeight: "100vh", bgcolor: "#f8fafc", py: 4 }}>
       <Container maxWidth="lg">
-        <Fade in={true} timeout={800}>
-          <Box
-            sx={{
-              borderRadius: 2,
-              overflow: "hidden",
-            }}
-          >
-            <Grid container spacing={4}>
-              {/* Header */}
-              <Grid item xs={12}>
-                <Paper 
-                  elevation={2} 
-                  sx={{ 
-                    p: 3, 
-                    borderRadius: 2,
-                    background: theme.palette.background.paper,
-                  }}
-                >
+        <Box
+          sx={{
+            borderRadius: 2,
+            overflow: "hidden",
+          }}
+        >
+          <Grid container spacing={4}>
+            {/* Header */}
+            <Grid item xs={12}>
+              <Paper 
+                elevation={0} 
+                sx={{ 
+                  p: 3, 
+                  borderRadius: 2,
+                  backgroundColor: colors.surface,
+                  border: `1px solid ${colors.border}`,
+                }}
+              >
                   <Box
                     sx={{
                       display: "flex",
@@ -137,10 +113,11 @@ const Profile = () => {
                     }}
                   >
                     <Box sx={{ display: "flex", alignItems: "center" }}>
-                      <StyledBadge
+                      <Badge
                         overlap="circular"
                         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
                         variant="dot"
+                        color="success"
                       >
                         <Avatar
                           src="/static/images/avatar/sarah.jpg"
@@ -148,10 +125,13 @@ const Profile = () => {
                             width: 64, 
                             height: 64, 
                             mr: 2,
+                            backgroundColor: colors.primary,
                             boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)" 
                           }}
-                        />
-                      </StyledBadge>
+                        >
+                          SJ
+                        </Avatar>
+                      </Badge>
                       <Box>
                         <Typography variant="h5" fontWeight="600">
                           {userData.name}
@@ -166,9 +146,9 @@ const Profile = () => {
                         <IconButton
                           color="primary"
                           sx={{
-                            bgcolor: theme.palette.action.hover,
+                            bgcolor: colors.border,
                             "&:hover": {
-                              bgcolor: theme.palette.action.selected,
+                              bgcolor: "#e2e8f0",
                             },
                           }}
                         >
@@ -185,7 +165,11 @@ const Profile = () => {
                           borderRadius: 1.5,
                           px: 3,
                           py: 1,
-                          boxShadow: 2,
+                          backgroundColor: colors.primary,
+                          "&:hover": {
+                            backgroundColor: colors.primaryDark,
+                          },
+                          boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
                         }}
                       >
                         {editMode ? "Save Changes" : "Edit Profile"}
@@ -197,22 +181,20 @@ const Profile = () => {
 
               {/* Main Content */}
               <Grid item xs={12} md={4}>
-                <MotionCard
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
-                  elevation={2}
+                <Paper
+                  elevation={0}
                   sx={{
                     borderRadius: 2,
                     overflow: "hidden",
                     height: "100%",
+                    border: `1px solid ${colors.border}`,
                   }}
                 >
                   <Box
                     sx={{
                       p: 3,
                       textAlign: "center",
-                      background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                      background: colors.primary,
                       color: "white",
                     }}
                   >
@@ -235,15 +217,15 @@ const Profile = () => {
                   </Box>
                   <CardContent sx={{ p: 3 }}>
                     <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                      <Email sx={{ mr: 2, color: theme.palette.primary.main }} />
+                      <Email sx={{ mr: 2, color: colors.primary }} />
                       <Typography variant="body2">{userData.email}</Typography>
                     </Box>
                     <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                      <Phone sx={{ mr: 2, color: theme.palette.primary.main }} />
+                      <Phone sx={{ mr: 2, color: colors.primary }} />
                       <Typography variant="body2">{userData.phone}</Typography>
                     </Box>
                     <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                      <LocationOn sx={{ mr: 2, color: theme.palette.primary.main }} />
+                      <LocationOn sx={{ mr: 2, color: colors.primary }} />
                       <Typography variant="body2">{userData.location}</Typography>
                     </Box>
                     <Divider sx={{ my: 2 }} />
@@ -258,16 +240,17 @@ const Profile = () => {
                     </Typography>
                     <Typography variant="body2">{userData.joinDate}</Typography>
                   </CardContent>
-                </MotionCard>
+                </Paper>
               </Grid>
 
               <Grid item xs={12} md={8}>
                 <Paper
-                  elevation={2}
+                  elevation={0}
                   sx={{
                     borderRadius: 2,
                     overflow: "hidden",
                     height: "100%",
+                    border: `1px solid ${colors.border}`,
                   }}
                 >
                   <Tabs
@@ -277,7 +260,7 @@ const Profile = () => {
                     sx={{ 
                       borderBottom: 1, 
                       borderColor: "divider",
-                      bgcolor: theme.palette.background.paper,
+                      bgcolor: colors.surface,
                     }}
                     indicatorColor="primary"
                     textColor="primary"
@@ -469,11 +452,12 @@ const Profile = () => {
                           </Typography>
                         </Grid>
                         <Grid item xs={12}>
-                          <MotionCard
-                            whileHover={{ y: -5 }}
-                            transition={{ duration: 0.3 }}
-                            elevation={1}
-                            sx={{ borderRadius: 2 }}
+                          <Paper
+                            elevation={0}
+                            sx={{ 
+                              borderRadius: 2,
+                              border: `1px solid ${colors.border}`,
+                            }}
                           >
                             <CardContent>
                               <Typography variant="subtitle1" fontWeight="bold" gutterBottom color="primary">
@@ -513,14 +497,15 @@ const Profile = () => {
                                 </Grid>
                               </Grid>
                             </CardContent>
-                          </MotionCard>
+                          </Paper>
                         </Grid>
                         <Grid item xs={12}>
-                          <MotionCard
-                            whileHover={{ y: -5 }}
-                            transition={{ duration: 0.3 }}
-                            elevation={1}
-                            sx={{ borderRadius: 2 }}
+                          <Paper
+                            elevation={0}
+                            sx={{ 
+                              borderRadius: 2,
+                              border: `1px solid ${colors.border}`,
+                            }}
                           >
                             <CardContent>
                               <Typography variant="subtitle1" fontWeight="bold" gutterBottom color="primary">
@@ -576,7 +561,7 @@ const Profile = () => {
                                 </Grid>
                               </Grid>
                             </CardContent>
-                          </MotionCard>
+                          </Paper>
                         </Grid>
                       </Grid>
                     </Box>
@@ -585,10 +570,9 @@ const Profile = () => {
               </Grid>
             </Grid>
           </Box>
-        </Fade>
-      </Container>
-    </Box>
-  );
+        </Container>
+      </Box>
+    );
 };
 
 // Timeline components
