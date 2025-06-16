@@ -61,7 +61,6 @@ graph TB
 - **D50** - Manhole covers
 
 **AI Capabilities:**
-- **🎯 High Accuracy Classification** - ViT model trained on diverse road datasets
 - **📏 Severity Assessment** - Automated damage severity evaluation
 - **🖼️ Image Annotation** - Bounding box generation for detected damages
 - **⚡ Fast Inference** - Optimized PyTorch model serving
