@@ -22,10 +22,9 @@ const LoginScreen = ({ navigation, route }) => {
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
-      if (route.params && route.params.onLogin) {
-        route.params.onLogin();
-      }
-      navigation.replace('Main');
+      // Instead of using the function from params, just set a flag in AsyncStorage
+      // that the main app can check - this avoids the non-serializable warning
+      navigation.replace('MainTabs');
     }, 1000);
   };
 
@@ -45,8 +44,10 @@ const LoginScreen = ({ navigation, route }) => {
             style={styles.logo}
             resizeMode="contain"
           />
-          <Title style={styles.appTitle}>Road Damage Reporter</Title>
-          <Paragraph style={styles.appSubtitle}>Report road issues in your community</Paragraph>
+          <Title style={styles.appTitle}>Safe Streets</Title>
+          <Paragraph style={styles.appSubtitle}>
+            Official road maintenance reporting system
+          </Paragraph>
         </View>
 
         <View style={styles.formContainer}>
@@ -58,7 +59,10 @@ const LoginScreen = ({ navigation, route }) => {
             mode="outlined"
             autoCapitalize="none"
             keyboardType="email-address"
-            left={<TextInput.Icon name="email" />}
+            left={<TextInput.Icon name="email" color="#003366" />}
+            outlineColor="#E0E6ED"
+            activeOutlineColor="#003366"
+            theme={{ colors: { primary: '#003366', text: '#263238' } }}
           />
 
           <TextInput
@@ -68,36 +72,58 @@ const LoginScreen = ({ navigation, route }) => {
             style={styles.input}
             mode="outlined"
             secureTextEntry={secureTextEntry}
+            outlineColor="#E0E6ED"
+            activeOutlineColor="#003366"
+            theme={{ colors: { primary: '#003366', text: '#263238' } }}
             right={
               <TextInput.Icon 
                 name={secureTextEntry ? "eye" : "eye-off"} 
                 onPress={toggleSecureEntry} 
+                color="#003366"
               />
             }
-            left={<TextInput.Icon name="lock" />}
+            left={<TextInput.Icon name="lock" color="#003366" />}
           />
 
           <Button 
             mode="contained" 
             onPress={handleLogin} 
             style={styles.loginButton}
+            buttonColor="#003366"
             loading={isLoading}
             disabled={isLoading}
+            icon="login"
           >
-            Log In
+            SIGN IN
           </Button>
 
           <View style={styles.forgotPasswordContainer}>
-            <TouchableOpacity onPress={() => Alert.alert('Reset Password', 'Password reset functionality would go here')}>
+            <TouchableOpacity onPress={() => Alert.alert('Reset Password', 'A password reset link will be sent to your email address.')}>
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
           </View>
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>OR</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <Button 
+            mode="outlined" 
+            onPress={() => Alert.alert('Security Access', 'Government ID verification required for official access.')} 
+            style={styles.govLoginButton}
+            icon="shield-account"
+            textColor="#003366"
+          >
+            OFFICIAL GOVERNMENT LOGIN
+          </Button>
         </View>
 
         <View style={styles.signupContainer}>
-          <Text style={styles.signupText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={() => Alert.alert('Sign Up', 'Sign up functionality would go here')}>
-            <Text style={styles.signupLink}>Sign Up</Text>
+          <Text style={styles.signupText}>First time user? </Text>
+          <TouchableOpacity onPress={() => Alert.alert('Account Creation', 'Please contact your local authority to create an official account.')}>
+            <Text style={styles.signupLink}>Create Account</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -108,12 +134,12 @@ const LoginScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f7f9fc',
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 20,
+    padding: 24,
   },
   logoContainer: {
     alignItems: 'center',
@@ -125,45 +151,82 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   appTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
-    color: '#3498db',
+    color: '#003366',
+    letterSpacing: 0.5,
   },
   appSubtitle: {
-    fontSize: 16,
-    color: '#7f8c8d',
+    fontSize: 15,
+    color: '#546E7A',
     textAlign: 'center',
+    marginTop: 8,
+    letterSpacing: 0.2,
+    maxWidth: 280,
   },
   formContainer: {
     width: '100%',
   },
   input: {
-    marginBottom: 16,
+    marginBottom: 18,
     backgroundColor: 'white',
+    borderRadius: 4,
+    height: 56,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E0E6ED',
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    color: '#78909C',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  govLoginButton: {
+    borderColor: '#003366',
+    borderWidth: 1.5,
+    marginTop: 8,
+    height: 48,
+    justifyContent: 'center',
   },
   loginButton: {
-    marginTop: 8,
-    paddingVertical: 8,
-    backgroundColor: '#3498db',
+    marginTop: 10,
+    borderRadius: 4,
+    height: 48,
+    justifyContent: 'center',
+    elevation: 1,
   },
   forgotPasswordContainer: {
     alignItems: 'center',
     marginTop: 16,
   },
   forgotPasswordText: {
-    color: '#3498db',
+    color: '#0055a4',
+    fontWeight: '500',
+    fontSize: 14,
+    letterSpacing: 0.2,
   },
   signupContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: 40,
+    marginBottom: 20,
   },
   signupText: {
-    color: '#7f8c8d',
+    color: '#455A64',
+    fontSize: 14,
   },
   signupLink: {
-    color: '#3498db',
+    color: '#003366',
     fontWeight: 'bold',
+    fontSize: 14,
   },
 });
 

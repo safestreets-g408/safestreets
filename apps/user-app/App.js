@@ -4,8 +4,9 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Provider as PaperProvider, DefaultTheme, FAB, Portal, Modal, Button as PaperButton } from 'react-native-paper';
-import { View, Text, StatusBar, StyleSheet, ActivityIndicator, Dimensions, TouchableOpacity, Animated, Easing, LogBox, AppState, Alert } from 'react-native';
+import { View, Text, StatusBar, StyleSheet, ActivityIndicator, Dimensions, TouchableOpacity, Animated, Easing, LogBox, AppState, Alert, Image } from 'react-native';
 import { Camera, User, Clipboard, Home, Bell, Settings, HelpCircle } from 'react-native-feather';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Animatable from 'react-native-animatable';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -28,24 +29,51 @@ const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 const { width, height } = Dimensions.get('window');
 
-// Enhanced theme with blue color palette
+// Enhanced professional theme with authority design palette
 const theme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    primary: '#1a73e8',
-    accent: '#4285f4',
-    background: '#f5f8ff',
-    surface: '#ffffff',
-    text: '#1a237e',
-    error: '#d32f2f',
-    success: '#43a047',
-    warning: '#ffa000',
-    info: '#2196f3',
+    primary: '#003366',           // Deep navy blue - authoritative
+    accent: '#0055a4',           // Mid-tone blue for accents
+    secondary: '#00bcd4',        // Teal for secondary actions
+    background: '#f7f9fc',       // Light cool gray for backgrounds
+    surface: '#ffffff',          // White surface
+    text: '#263238',             // Near black text for readability
+    error: '#d32f2f',            // Standard error red
+    success: '#2e7d32',          // Deep green for success messages
+    warning: '#ef6c00',          // Orange warning
+    info: '#0277bd',             // Info blue
+    card: '#ffffff',             // Card background
+    border: '#e0e6ed',           // Light border color
+    disabled: '#bdbdbd',         // Disabled state color
+    pending: '#ff9800',          // Pending status color
+    inProgress: '#03a9f4',       // In progress status color
+    resolved: '#4caf50',         // Resolved status color
+    highlight: '#e8f5fe',        // Highlight background
   },
-  roundness: 12,
+  roundness: 8,                  // Slightly less rounded for professional look
   animation: {
     scale: 1.0,
+  },
+  fonts: {
+    ...DefaultTheme.fonts,
+    regular: {
+      fontFamily: 'System',
+      fontWeight: '400',
+    },
+    medium: {
+      fontFamily: 'System',
+      fontWeight: '500',
+    },
+    light: {
+      fontFamily: 'System',
+      fontWeight: '300',
+    },
+    thin: {
+      fontFamily: 'System',
+      fontWeight: '100',
+    },
   },
 };
 
@@ -106,36 +134,46 @@ const MainTabs = () => {
     <>
       <Tab.Navigator
         screenOptions={{
-          tabBarActiveTintColor: '#1a73e8',
-          tabBarInactiveTintColor: '#90a4ae',
+          tabBarActiveTintColor: theme.colors.primary,
+          tabBarInactiveTintColor: '#78909c',
           tabBarStyle: { 
-            height: 65,
+            height: 68,
             paddingBottom: 10,
             paddingTop: 8,
             borderTopWidth: 0,
-            elevation: 8,
-            shadowColor: '#1565c0',
+            elevation: 10,
+            shadowColor: 'rgba(0, 51, 102, 0.15)',
             shadowOffset: { width: 0, height: -3 },
-            shadowOpacity: 0.1,
-            shadowRadius: 5,
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
+            shadowOpacity: 0.2,
+            shadowRadius: 8,
             backgroundColor: '#ffffff',
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            // Remove rounded corners for a more professional look
           },
           tabBarLabelStyle: {
             fontSize: 11,
             fontWeight: '600',
-            marginTop: 2,
+            marginTop: 4,
+            textTransform: 'uppercase',
+            letterSpacing: 0.3,
           },
           headerStyle: {
-            elevation: 0,
-            shadowOpacity: 0,
+            elevation: 2,
+            shadowOpacity: 0.1,
+            shadowOffset: { width: 0, height: 2 },
+            shadowRadius: 3,
             borderBottomWidth: 0,
+            height: 70, // Taller header for authority look
           },
           headerTitleStyle: {
-            fontWeight: 'bold',
+            fontWeight: '600',
             fontSize: 18,
+            letterSpacing: 0.5,
           },
+          headerShadowVisible: true,
         }}
       >
         <Tab.Screen 
@@ -145,23 +183,24 @@ const MainTabs = () => {
             tabBarIcon: ({ color, focused }) => (
               <View style={styles.tabIconContainer}>
                 <Animatable.View
-                  animation={focused ? 'pulse' : undefined}
-                  iterationCount={focused ? 'infinite' : 1}
-                  duration={2000}
+                  animation={focused ? 'bounceIn' : undefined}
+                  duration={500}
                 >
-                  <Home color={color} size={24} />
-                  {renderTabBarBadge(3)}
+                  <View style={focused ? styles.tabIconFocused : null}>
+                    <Home color={color} size={focused ? 24 : 22} />
+                    {renderTabBarBadge(3)}
+                  </View>
                 </Animatable.View>
               </View>
             ),
-            headerTitle: "Road Damage Reporter",
+            headerTitle: "Safe Streets",
             headerTitleAlign: 'center',
             headerBackground: () => (
               <LinearGradient
-                colors={['#2196f3', '#1976d2', '#0d47a1']}
+                colors={[theme.colors.primary, theme.colors.primary, '#002855']}
                 style={{ flex: 1 }}
                 start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
+                end={{ x: 1, y: 1 }}
               />
             ),
             headerTintColor: '#ffffff',
@@ -173,6 +212,15 @@ const MainTabs = () => {
                 </View>
               </TouchableOpacity>
             ),
+            headerLeft: () => (
+              <TouchableOpacity style={[styles.headerButton, {marginLeft: 15}]}>
+                <MaterialCommunityIcons 
+                  name="shield-check" 
+                  size={28} 
+                  color="#ffffff" 
+                />
+              </TouchableOpacity>
+            ),
           }}
         />
         <Tab.Screen 
@@ -182,25 +230,35 @@ const MainTabs = () => {
             tabBarIcon: ({ color, focused }) => (
               <View style={styles.tabIconContainer}>
                 <Animatable.View
-                  animation={focused ? 'pulse' : undefined}
-                  iterationCount={focused ? 'infinite' : 1}
-                  duration={2000}
+                  animation={focused ? 'bounceIn' : undefined}
+                  duration={500}
                 >
-                  <Camera color={color} size={24} />
+                  <View style={focused ? styles.tabIconFocused : null}>
+                    <Camera color={color} size={focused ? 24 : 22} />
+                  </View>
                 </Animatable.View>
               </View>
             ),
-            headerTitle: "Report Damage",
+            headerTitle: "Report Issues",
             headerTitleAlign: 'center',
             headerBackground: () => (
               <LinearGradient
-                colors={['#2196f3', '#1976d2', '#0d47a1']}
+                colors={[theme.colors.primary, theme.colors.primary, '#002855']}
                 style={{ flex: 1 }}
                 start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
+                end={{ x: 1, y: 1 }}
               />
             ),
             headerTintColor: '#ffffff',
+            headerLeft: () => (
+              <TouchableOpacity style={[styles.headerButton, {marginLeft: 15}]}>
+                <MaterialCommunityIcons 
+                  name="shield-check" 
+                  size={28} 
+                  color="#ffffff" 
+                />
+              </TouchableOpacity>
+            ),
           }}
         />
         <Tab.Screen 
@@ -210,17 +268,36 @@ const MainTabs = () => {
             tabBarIcon: ({ color, focused }) => (
               <View style={styles.tabIconContainer}>
                 <Animatable.View
-                  animation={focused ? 'pulse' : undefined}
-                  iterationCount={focused ? 'infinite' : 1}
-                  duration={2000}
+                  animation={focused ? 'bounceIn' : undefined}
+                  duration={500}
                 >
-                  <Clipboard color={color} size={24} />
-                  {renderTabBarBadge(2)}
+                  <View style={focused ? styles.tabIconFocused : null}>
+                    <Clipboard color={color} size={focused ? 24 : 22} />
+                    {renderTabBarBadge(2)}
+                  </View>
                 </Animatable.View>
               </View>
             ),
             headerTitle: "My Reports",
             headerTitleAlign: 'center',
+            headerBackground: () => (
+              <LinearGradient
+                colors={[theme.colors.primary, theme.colors.primary, '#002855']}
+                style={{ flex: 1 }}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              />
+            ),
+            headerTintColor: '#ffffff',
+            headerLeft: () => (
+              <TouchableOpacity style={[styles.headerButton, {marginLeft: 15}]}>
+                <MaterialCommunityIcons 
+                  name="shield-check" 
+                  size={28} 
+                  color="#ffffff" 
+                />
+              </TouchableOpacity>
+            ),
             headerBackground: () => (
               <LinearGradient
                 colors={['#2196f3', '#1976d2', '#0d47a1']}
@@ -418,9 +495,12 @@ export default function App() {
         <PaperProvider theme={theme}>
           <NavigationContainer
             onStateChange={(state) => {
-              // Add navigation state tracking if needed
+              // Check if user is logged in when navigation state changes
+              if (state?.routes?.[state.index]?.name === 'MainTabs' && !isLoggedIn) {
+                setIsLoggedIn(true);
+              }
             }}
-            fallback={<ActivityIndicator size="large" color="#1a73e8" />}
+            fallback={<ActivityIndicator size="large" color="#003366" />}
           >
             <Stack.Navigator
               screenOptions={{
@@ -449,22 +529,27 @@ export default function App() {
                 },
               }}
             >
+              {/* Define initial route based on login state */}
               {!isLoggedIn ? (
                 <Stack.Screen 
                   name="Login" 
                   component={LoginScreen}
                   options={{ headerShown: false }}
-                  initialParams={{ 
-                    onLogin: handleLogin 
-                  }}
                 />
-              ) : (
-                <Stack.Screen 
-                  name="MainTabs" // Changed from "Main" to "MainTabs"
-                  component={MainTabs} 
-                  options={{ headerShown: false }}
-                />
-              )}
+              ) : null}
+              <Stack.Screen 
+                name="MainTabs"
+                component={MainTabs} 
+                options={{ headerShown: false }}
+                listeners={{
+                  focus: () => {
+                    // When MainTabs is focused, update login state
+                    if (!isLoggedIn) {
+                      setIsLoggedIn(true);
+                    }
+                  },
+                }}
+              />
               <Stack.Screen
                 name="ViewReport"
                 component={ViewReportScreen}
@@ -557,44 +642,70 @@ const styles = StyleSheet.create({
     bottom: 20,
     right: 20,
   },
+  headerLogo: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  tabIconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 4,
+  },
+  tabIconFocused: {
+    backgroundColor: 'rgba(0, 51, 102, 0.1)',
+    borderRadius: 12,
+    padding: 6,
+    transform: [{translateY: -4}],
+  },
   badge: {
     position: 'absolute',
     right: -6,
     top: -3,
-    backgroundColor: '#f44336',
+    backgroundColor: '#FF3B30',
     borderRadius: 10,
-    width: 16,
-    height: 16,
+    width: 18,
+    height: 18,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
+    elevation: 2,
   },
   badgeText: {
     color: '#ffffff',
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: 'bold',
   },
   headerButton: {
     marginRight: 15,
     position: 'relative',
+    padding: 4,
   },
   notificationBadge: {
     position: 'absolute',
     right: -5,
     top: -5,
-    backgroundColor: '#f44336',
+    backgroundColor: '#FF3B30',
     borderRadius: 10,
-    width: 16,
-    height: 16,
+    width: 18,
+    height: 18,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
   },
   notificationText: {
     color: '#ffffff',
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: 'bold',
   },
   modalContainer: {
@@ -667,9 +778,5 @@ const styles = StyleSheet.create({
   errorButton: {
     backgroundColor: '#1a73e8',
     paddingHorizontal: 30,
-  },
-  tabIconContainer: {
-    padding: 2,
-    overflow: 'visible',
   },
 });

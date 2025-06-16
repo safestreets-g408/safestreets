@@ -578,6 +578,106 @@ const getGeneratedFromAiReports = async (req, res) => {
   }
 };
 
+// Update a damage report
+const updateReport = async (req, res) => {
+  try {
+    const { reportId } = req.params;
+    const { 
+      damageType, 
+      severity, 
+      priority, 
+      action, 
+      region, 
+      location, 
+      description,
+      status
+    } = req.body;
+
+    // Check if report exists
+    const report = await DamageReport.findOne({ reportId });
+    if (!report) {
+      return res.status(404).json({
+        message: 'Damage report not found',
+        success: false
+      });
+    }
+
+    // Update fields if provided
+    if (damageType) report.damageType = damageType;
+    if (severity) report.severity = severity;
+    if (priority) report.priority = priority;
+    if (action) report.action = action;
+    if (region) report.region = region;
+    if (location) report.location = location;
+    if (description) report.description = description;
+    if (status) {
+      report.status = status;
+      // If completed, add resolvedAt date
+      if (status === 'Completed' && !report.resolvedAt) {
+        report.resolvedAt = new Date();
+      }
+    }
+
+    await report.save();
+
+    res.status(200).json({
+      message: 'Report updated successfully',
+      success: true,
+      report: {
+        id: report._id,
+        reportId: report.reportId,
+        damageType: report.damageType,
+        severity: report.severity,
+        priority: report.priority,
+        action: report.action,
+        region: report.region,
+        location: report.location,
+        description: report.description,
+        status: report.status,
+        createdAt: report.createdAt,
+        updatedAt: report.updatedAt
+      }
+    });
+  } catch (err) {
+    console.error('Error updating report:', err);
+    res.status(500).json({ 
+      message: 'Failed to update report', 
+      error: err.message,
+      success: false
+    });
+  }
+};
+
+// Delete a damage report
+const deleteReport = async (req, res) => {
+  try {
+    const { reportId } = req.params;
+
+    // Check if report exists
+    const report = await DamageReport.findOne({ reportId });
+    if (!report) {
+      return res.status(404).json({
+        message: 'Damage report not found',
+        success: false
+      });
+    }
+
+    await DamageReport.deleteOne({ reportId });
+
+    res.status(200).json({
+      message: 'Report deleted successfully',
+      success: true,
+    });
+  } catch (err) {
+    console.error('Error deleting report:', err);
+    res.status(500).json({ 
+      message: 'Failed to delete report', 
+      error: err.message,
+      success: false
+    });
+  }
+};
+
 module.exports = { 
   uploadDamageReport, 
   getDamageHistory, 
@@ -590,5 +690,7 @@ module.exports = {
   unassignRepair,
   updateRepairStatus,
   upload,
-  getGeneratedFromAiReports
+  getGeneratedFromAiReports,
+  updateReport,
+  deleteReport
 };

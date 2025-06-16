@@ -320,17 +320,6 @@ function Analytics() {
 
   return (
     <Box>
-      <Typography 
-        variant="h4" 
-        gutterBottom 
-        sx={{
-          fontWeight: 600,
-          color: colors.text.primary,
-          mb: 3
-        }}
-      >
-        Analytics & Insights
-        </Typography>
         
         <Box sx={{ mb: 4, display: 'flex', justifyContent: 'flex-end' }}>
           <FormControl 

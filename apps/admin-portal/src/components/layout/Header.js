@@ -147,9 +147,11 @@ const Header = ({ onDrawerToggle }) => {
         width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
         ml: { md: `${DRAWER_WIDTH}px` },
         background: '#ffffff',
-        borderBottom: '1px solid #e5e7eb',
+        borderBottom: '0.5px solid #e5e7eb',
         color: theme.palette.text.primary,
         zIndex: theme.zIndex.drawer + 1,
+        borderRadius: '0 0 0px 0px',
+        height: '68px',
       }}
     >
       <Toolbar sx={{ 
@@ -157,7 +159,7 @@ const Header = ({ onDrawerToggle }) => {
         height: 64,
         minHeight: 64,
         px: { xs: 2, sm: 3 },
-        gap: 2,
+        gap: 1,
       }}>
         {/* Left Section */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
@@ -232,11 +234,9 @@ const Header = ({ onDrawerToggle }) => {
             <Paper
               sx={{
                 display: 'flex',
-                alignItems: 'center',
-                background: '#f9fafb',
-                borderRadius: 1,
-                px: 2,
-                py: 0.5,
+                alignItems: 'center',              background: '#f9fafb',
+              px: 2,
+              py: 0.5,
                 border: '1px solid #d1d5db',
                 transition: 'all 0.15s ease',
                 '&:hover': {
@@ -341,7 +341,6 @@ const Header = ({ onDrawerToggle }) => {
           PaperProps={{
             sx: {
               width: 280,
-              borderRadius: 2,
               boxShadow: theme.shadows[4],
               mt: 1,
               background: '#ffffff',
@@ -419,7 +418,6 @@ const Header = ({ onDrawerToggle }) => {
             sx: {
               width: 380,
               maxHeight: 500,
-              borderRadius: 2,
               boxShadow: theme.shadows[4],
               mt: 1,
               background: '#ffffff',
@@ -464,7 +462,6 @@ const Header = ({ onDrawerToggle }) => {
                       sx={{
                         width: 8,
                         height: 8,
-                        borderRadius: '50%',
                         backgroundColor: getNotificationColor(notification.type),
                         mt: 1,
                         flexShrink: 0,

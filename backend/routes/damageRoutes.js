@@ -11,6 +11,8 @@ const {
   assignRepair,
   unassignRepair,
   updateRepairStatus,
+  updateReport,
+  deleteReport,
   upload 
 } = require('../controllers/damageController');
 const protect = require('../middleware/authMiddleware');
@@ -30,5 +32,7 @@ router.get('/reports/generated-from-ai', protect, getGeneratedFromAiReports);
 router.patch('/reports/:reportId/assign', protect, assignRepair);
 router.patch('/reports/:reportId/unassign', protect, unassignRepair);
 router.patch('/reports/:reportId/status', protect, updateRepairStatus);
+router.put('/report/:reportId', protect, updateReport);
+router.delete('/report/:reportId', protect, deleteReport);
 
 module.exports = router;

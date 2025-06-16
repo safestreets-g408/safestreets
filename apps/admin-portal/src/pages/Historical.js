@@ -251,9 +251,6 @@ const Historical = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" gutterBottom component="h1" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
-        Historical Analysis
-      </Typography>
       
       <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: 3 }}>
         <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
@@ -342,18 +339,6 @@ const Historical = () => {
           <Tab label="Archived Reports" value="reports" />
           <Tab label="Trend Analysis" value="trends" />
         </Tabs>
-        
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <Button 
-            variant="outlined" 
-            color="primary" 
-            onClick={handleExportData}
-            startIcon={<FileDownloadIcon />}
-            sx={{ borderRadius: 2 }}
-          >
-            Export Data
-          </Button>
-        </Box>
       </Box>
 
       {loading && (

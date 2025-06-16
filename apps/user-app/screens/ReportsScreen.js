@@ -98,15 +98,15 @@ const ReportsScreen = ({ navigation }) => {
   const getStatusColor = (status) => {
     switch (status.toLowerCase()) {
       case 'pending':
-        return '#f39c12';
+        return '#FF9800'; // Orange for pending
       case 'in_progress': 
-        return '#3498db';
+        return '#03A9F4'; // Blue for in progress
       case 'resolved':
-        return '#2ecc71';
+        return '#4CAF50'; // Green for resolved
       case 'rejected':
-        return '#e74c3c';
+        return '#F44336'; // Red for rejected
       default:
-        return '#95a5a6';
+        return '#78909C'; // Gray for unknown status
     }
   };
 
@@ -134,7 +134,7 @@ const ReportsScreen = ({ navigation }) => {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#3498db" />
+        <ActivityIndicator size="large" color="#003366" />
         <Text style={styles.loadingText}>Loading your reports...</Text>
       </View>
     );
@@ -143,19 +143,20 @@ const ReportsScreen = ({ navigation }) => {
   if (reports.length === 0) {
     return (
       <View style={styles.centerContainer}>
-        <Surface style={styles.emptySurface}>
-          <Ionicons name="document-text-outline" size={64} color="#95a5a6" />
-          <Text style={styles.emptyText}>No reports submitted yet</Text>
+        <Surface style={styles.emptySurface} elevation={2}>
+          <Ionicons name="document-text-outline" size={70} color="#78909C" />
+          <Text style={styles.emptyText}>No Reports Submitted</Text>
           <Text style={styles.emptySubText}>
-            Submit a new report to track road issues in your area
+            Help improve your community by submitting reports about road issues in your area
           </Text>
           <Button 
             mode="contained"
             icon="camera"
             style={styles.emptyButton}
             onPress={() => navigation.navigate('Camera')}
+            buttonColor="#003366"
           >
-            Submit a Report
+            Submit New Report
           </Button>
         </Surface>
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -165,7 +166,7 @@ const ReportsScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar backgroundColor="#f5f5f5" barStyle="dark-content" />
+      <StatusBar backgroundColor="#003366" barStyle="light-content" />
       
       <FlatList
         data={reports}
@@ -174,7 +175,8 @@ const ReportsScreen = ({ navigation }) => {
           <RefreshControl 
             refreshing={refreshing} 
             onRefresh={onRefresh}
-            colors={['#3498db']} 
+            colors={['#003366', '#0055a4']} 
+            tintColor="#003366"
           />
         }
         contentContainerStyle={styles.listContent}
@@ -183,30 +185,27 @@ const ReportsScreen = ({ navigation }) => {
             onPress={() => handleReportPress(item)}
             activeOpacity={0.7}
           >
-            <Card style={styles.card}>
+            <Card style={styles.card} elevation={2}>
               <Card.Content>
                 <View style={styles.cardHeader}>
                   <View style={styles.idContainer}>
-                    <Text style={styles.idLabel}>ID</Text>
-                    <Text style={styles.idNumber}>{item.id}</Text>
+                    <Text style={styles.idLabel}>REPORT</Text>
+                    <Text style={styles.idNumber}>#{item.id}</Text>
                   </View>
-                  <Chip 
-                    style={[
-                      styles.statusChip, 
-                      { backgroundColor: getStatusColor(item.status) }
-                    ]}
-                    icon={() => (
-                      <Ionicons 
-                        name={getStatusIcon(item.status)} 
-                        size={14} 
-                        color="white" 
-                      />
-                    )}
-                  >
+                  <View style={[
+                    styles.statusIndicator, 
+                    { backgroundColor: getStatusColor(item.status) }
+                  ]}>
+                    <Ionicons 
+                      name={getStatusIcon(item.status)} 
+                      size={14} 
+                      color="white" 
+                      style={{marginRight: 4}}
+                    />
                     <Text style={styles.statusText}>
-                      {item.status.replace('_', ' ')}
+                      {item.status.replace('_', ' ').toUpperCase()}
                     </Text>
-                  </Chip>
+                  </View>
                 </View>
                 
                 <Divider style={styles.divider} />
@@ -263,7 +262,7 @@ const ReportsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f7f9fc',
   },
   listContent: {
     padding: 16,
@@ -273,48 +272,57 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f7f9fc',
     padding: 20,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#3498db',
+    color: '#003366',
+    fontWeight: '500',
+    letterSpacing: 0.3,
   },
   card: {
     marginBottom: 16,
-    elevation: 3,
-    borderRadius: 12,
+    elevation: 2,
+    borderRadius: 8,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 51, 102, 0.08)',
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 10,
   },
   idContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
   },
   idLabel: {
-    fontSize: 14,
-    color: '#7f8c8d',
-    marginRight: 4,
+    fontSize: 12,
+    color: '#78909C',
+    marginBottom: 2,
+    letterSpacing: 0.5,
   },
   idNumber: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2c3e50',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#263238',
   },
-  statusChip: {
-    height: 32,
-    paddingHorizontal: 4,
+  statusIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 4,
   },
   statusText: {
     color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
   divider: {
     marginVertical: 12,

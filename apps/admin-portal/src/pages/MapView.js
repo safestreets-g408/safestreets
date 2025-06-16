@@ -134,10 +134,6 @@ function MapView() {
 
   return (
     <>
-      <Typography variant="h4" gutterBottom sx={{ fontWeight: 'semi-bold'}}>
-        Damage Map View
-      </Typography>
-      
       <Paper sx={{ p: 2, mb: 3, borderRadius: 2, boxShadow: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Stack direction="row" spacing={1}>

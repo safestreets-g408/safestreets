@@ -201,9 +201,6 @@ function Repair() {
 
   return (
     <>
-      <Typography variant="h4" gutterBottom sx={{fontWeight: 'semi-bold'}}>
-        Repair Management
-      </Typography>
       
       <Tabs 
         value={tabValue} 

@@ -254,19 +254,35 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor="#1a73e8" />
+      <StatusBar barStyle="light-content" backgroundColor="#003366" />
       <LinearGradient
-        colors={['#4285f4', '#4285f4', '#4285f4']}
+        colors={['#003366', '#004080', '#0055a4']}
         style={styles.header}
+        start={{x: 0, y: 0}}
+        end={{x: 1, y: 1}}
       >
         <View style={styles.headerContent}>
           <View>
-            <Text style={styles.greeting}>Hello, John</Text>
-            <Text style={styles.subGreeting}>Welcome back to Road Reporter</Text>
+            <Animatable.Text 
+              animation="fadeInDown" 
+              duration={800} 
+              style={styles.greeting}
+            >
+              Hello, John
+            </Animatable.Text>
+            <Animatable.Text 
+              animation="fadeInDown" 
+              duration={800} 
+              delay={200}
+              style={styles.subGreeting}
+            >
+              Welcome to Safe Streets
+            </Animatable.Text>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.headerButton}>
-              <IconButton icon="magnify" color="#fff" size={28} />
+            <TouchableOpacity style={styles.avatarContainer}>
+              <Avatar.Text size={40} label="JD" style={styles.avatar} />
+              <View style={styles.onlineIndicator} />
             </TouchableOpacity>
           </View>
         </View>
@@ -276,48 +292,62 @@ const HomeScreen = ({ navigation }) => {
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#1a73e8']} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#003366', '#0055a4']} tintColor="#003366" />
         }
         showsVerticalScrollIndicator={false}
       >
-        {showWeather && (
-          <Animatable.View animation="fadeIn" duration={800}>
-            <Card style={styles.weatherCard}>
-              <LinearGradient
-                colors={['#1a73e8', '#4285f4', '#5e97f6']}
-                style={styles.weatherGradient}
-                start={{x: 0, y: 0}}
-                end={{x: 1, y: 0}}
-              >
-                <View style={styles.weatherHeader}>
-                  <View>
-                    <Text style={styles.weatherCity}>{locationName}</Text>
-                    <Text style={styles.weatherDate}>Today, June 15</Text>
-                  </View>
-                  <TouchableOpacity onPress={() => setShowWeather(false)}>
-                    <IconButton icon="close" color="#fff" size={20} />
-                  </TouchableOpacity>
+        <Animatable.View animation="fadeInUp" duration={800} delay={300}>
+          <Card style={styles.locationCard} elevation={3}>
+            <View style={styles.locationCardContent}>
+              <View style={styles.locationIconContainer}>
+                <MaterialCommunityIcons name="map-marker" size={24} color="#003366" />
+              </View>
+              <View style={styles.locationTextContainer}>
+                <Text style={styles.locationTitle}>{locationName}</Text>
+                <Text style={styles.locationDate}>
+                  {new Date().toLocaleDateString('en-US', {
+                    weekday: 'long', 
+                    month: 'long', 
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}
+                </Text>
+              </View>
+              <View style={styles.statusBadge}>
+                <Text style={styles.statusText}>Active</Text>
+              </View>
+            </View>
+          </Card>
+        </Animatable.View>
+        <Animatable.View animation="fadeInUp" duration={800} delay={300}>
+          <Card style={styles.weatherCard}>
+            <LinearGradient
+              colors={['#4facfe', '#00f2fe']}
+              style={styles.weatherGradient}
+            >
+              <View style={styles.weatherHeader}>
+                <Text style={styles.weatherCity}>{locationName}</Text>
+                <Text style={styles.weatherDate}>Today</Text>
+              </View>
+              <View style={styles.weatherContent}>
+                <View style={styles.weatherMain}>
+                  <Text style={styles.weatherTemp}>72°</Text>
+                  <Text style={styles.weatherDesc}>Sunny</Text>
                 </View>
-                <View style={styles.weatherContent}>
-                  <View style={styles.weatherMain}>
-                    <Text style={styles.weatherTemp}>72°</Text>
-                    <Text style={styles.weatherDesc}>Sunny</Text>
+                <View style={styles.weatherDetails}>
+                  <View style={styles.weatherDetailItem}>
+                    <IconButton icon="water" color="#fff" size={20} />
+                    <Text style={styles.weatherDetailText}>10%</Text>
                   </View>
-                  <View style={styles.weatherDetails}>
-                    <View style={styles.weatherDetailItem}>
-                      <IconButton icon="water" color="#fff" size={20} />
-                      <Text style={styles.weatherDetailText}>10%</Text>
-                    </View>
-                    <View style={styles.weatherDetailItem}>
-                      <IconButton icon="weather-windy" color="#fff" size={20} />
-                      <Text style={styles.weatherDetailText}>8 mph</Text>
-                    </View>
+                  <View style={styles.weatherDetailItem}>
+                    <IconButton icon="weather-windy" color="#fff" size={20} />
+                    <Text style={styles.weatherDetailText}>8 mph</Text>
                   </View>
                 </View>
-              </LinearGradient>
-            </Card>
-          </Animatable.View>
-        )}
+              </View>
+            </LinearGradient>
+          </Card>
+        </Animatable.View>
 
         <Animatable.View animation="fadeInUp" duration={800}>
           <Card style={styles.statsCard}>
@@ -492,18 +522,18 @@ const HomeScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f8ff',
+    backgroundColor: '#f7f9fc',
   },
   header: {
     paddingHorizontal: 20,
     paddingVertical: 20,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    elevation: 8,
-    shadowColor: '#1a73e8',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
+    borderBottomLeftRadius: 0,  // Remove rounded corners for more professional look
+    borderBottomRightRadius: 0,
+    elevation: 4,
+    shadowColor: 'rgba(0,51,102,0.4)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
     marginTop: Platform.OS === 'ios' ? -50 : 0
   },
   headerContent: {
@@ -514,25 +544,51 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
   },
+  avatarContainer: {
+    position: 'relative',
+  },
+  avatar: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  onlineIndicator: {
+    width: 12,
+    height: 12,
+    backgroundColor: '#4CAF50',
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#003366',
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+  },
   headerButton: {
     position: 'relative',
-    padding: 5,
+    padding: 8,
   },
   notificationBadge: {
     position: 'absolute',
-    top: 5,
-    right: 5,
-    backgroundColor: '#ff5252',
+    top: 2,
+    right: 2,
+    backgroundColor: '#ff3b30',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
   },
   greeting: {
-    fontSize: 26,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: '600',
     color: '#fff',
+    letterSpacing: 0.5,
   },
   subGreeting: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.85)',
     marginTop: 4,
+    letterSpacing: 0.2,
   },
   content: {
     flex: 1,
@@ -541,16 +597,66 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: Platform.OS === 'ios' ? 120 : 100, // Adjusted for iOS
   },
-  weatherCard: {
-    marginVertical: 10,
-    borderRadius: 20,
-    elevation: 4,
+  locationCard: {
+    marginVertical: 12,
+    borderRadius: 8,
+    elevation: 2,
     overflow: 'hidden',
     borderWidth: 0,
-    shadowColor: '#1a73e8',
-    shadowOffset: { width: 0, height: 2 },
+    backgroundColor: '#ffffff',
+    shadowColor: 'rgba(0,51,102,0.1)',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    padding: 16,
+  },
+  locationCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  locationIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,51,102,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  locationTextContainer: {
+    flex: 1,
+  },
+  locationTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#263238',
+    marginBottom: 3,
+  },
+  locationDate: {
+    fontSize: 13,
+    color: '#78909C',
+  },
+  statusBadge: {
+    backgroundColor: 'rgba(0,153,102,0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  statusText: {
+    color: '#00755E',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  weatherCard: {
+    marginVertical: 12,
+    borderRadius: 8,
+    elevation: 3,
+    overflow: 'hidden',
+    borderWidth: 0,
+    shadowColor: 'rgba(0,51,102,0.2)',
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
-    shadowRadius: 3,
+    shadowRadius: 4,
   },
   weatherGradient: {
     borderRadius: 20,
@@ -603,63 +709,66 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   statsCard: {
-    marginVertical: 10,
-    borderRadius: 20,
-    elevation: 4,
+    marginVertical: 12,
+    borderRadius: 8,
+    elevation: 2,
     overflow: 'hidden',
-    borderColor: 'rgba(26, 115, 232, 0.2)',
+    borderColor: 'rgba(0, 51, 102, 0.08)',
     borderWidth: 1,
     backgroundColor: '#fff',
-    shadowColor: '#1a73e8',
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: 'rgba(0, 51, 102, 0.1)',
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
-    shadowRadius: 3,
+    shadowRadius: 4,
   },
   statsGradient: {
-    borderRadius: 20,
+    borderRadius: 0,
   },
   statsContent: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: 20,
+    paddingVertical: 24,
   },
   statItem: {
     alignItems: 'center',
-    paddingHorizontal: 5,
+    paddingHorizontal: 8,
   },
   statNumber: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#1a73e8',
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#003366',
   },
   statLabel: {
-    fontSize: 14,
-    color: '#4285f4',
-    marginTop: 4,
+    fontSize: 13,
+    color: '#546e7a',
+    marginTop: 6,
     fontWeight: '500',
     textAlign: 'center',
   },
   statDivider: {
-    width: 1,
-    backgroundColor: 'rgba(26, 115, 232, 0.2)',
+    width: 1.5,
+    backgroundColor: 'rgba(0, 51, 102, 0.08)',
+    height: '70%',
+    alignSelf: 'center',
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 24,
+    marginTop: 28,
     marginBottom: 16,
     paddingHorizontal: 4,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#0d47a1',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#003366',
+    letterSpacing: 0.3,
   },
   seeAllText: {
-    color: '#1a73e8',
+    color: '#0055a4',
     fontWeight: '500',
-    padding: 8, // Added padding for better touch target
+    padding: 8,
   },
   quickActionsContainer: {
     flexDirection: 'row',
@@ -671,64 +780,72 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   quickAction: {
-    borderRadius: 20,
+    borderRadius: 8,
     overflow: 'hidden',
-    elevation: 5,
-    shadowColor: '#1a73e8',
-    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+    shadowColor: 'rgba(0,51,102,0.2)',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowRadius: 3,
   },
   quickActionGradient: {
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 130,
+    height: 110,
   },
   quickActionText: {
     color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-    marginTop: 8,
+    fontWeight: '600',
+    fontSize: 14,
+    marginTop: 10,
     textAlign: 'center',
+    letterSpacing: 0.2,
   },
   cityStatsCard: {
-    marginTop: 10,
-    borderRadius: 20,
-    elevation: 4,
-    shadowColor: '#1a73e8',
-    shadowOffset: { width: 0, height: 2 },
+    marginTop: 12,
+    marginBottom: 12,
+    borderRadius: 8,
+    elevation: 2,
+    shadowColor: 'rgba(0,51,102,0.1)',
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
-    shadowRadius: 3,
+    shadowRadius: 4,
     backgroundColor: '#fff',
-    padding: 16, // Added explicit padding
+    padding: 20, 
   },
   cityStatsTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#0d47a1',
-    marginBottom: 15,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#003366',
+    marginBottom: 16,
+    letterSpacing: 0.3,
   },
   cityStatsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 15,
+    marginBottom: 16,
     flexWrap: 'wrap',
   },
   cityStatItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
     width: '48%',
-    marginBottom: 10,
+    marginBottom: 12,
+    padding: 12,
+    backgroundColor: 'rgba(0,51,102,0.03)',
+    borderRadius: 6,
   },
   cityStatValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#0d47a1',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#003366',
+    marginBottom: 4,
   },
   cityStatLabel: {
     fontSize: 12,
-    color: '#4285f4',
+    color: '#546e7a',
+    letterSpacing: 0.2,
   },
   progressContainer: {
     marginTop: 10,

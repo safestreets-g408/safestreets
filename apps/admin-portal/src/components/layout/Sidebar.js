@@ -99,7 +99,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
     }}>
       {/* Header Section */}
       <Box sx={{
-        p: 3,
+        p: 1,
         display: 'flex',
         alignItems: 'center',
         gap: 2,

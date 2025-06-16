@@ -2,7 +2,7 @@ import React, { useState, useEffect} from 'react';
 import { 
   Box, Paper, Typography, Grid, TextField, MenuItem, 
   Button, FormControl, InputLabel, Select, Chip, Stack,
-  Card, CardContent, IconButton, Tooltip,
+  Card, CardContent, IconButton,
   Pagination, Menu, ListItemIcon, ListItemText, CircularProgress,
   Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
@@ -11,9 +11,10 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import GridViewIcon from '@mui/icons-material/GridView';
 import TableRowsIcon from '@mui/icons-material/TableRows';
 import CloseIcon from '@mui/icons-material/Close';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import ViewDamageReport from '../components/reports/ViewDamageReport';
+import ReportActions from '../components/reports/ReportActions';
 import { api } from '../utils/api';
+import { API_BASE_URL, TOKEN_KEY } from '../config/constants';
 
 // Professional color palette
 const colors = {
@@ -51,6 +52,11 @@ function Reports() {
   const [fetchError, setFetchError] = useState(null);
   const [selectedReport, setSelectedReport] = useState(null);
   const [viewReportOpen, setViewReportOpen] = useState(false);
+  const [editReportOpen, setEditReportOpen] = useState(false);
+  const [editReportData, setEditReportData] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [reportToDelete, setReportToDelete] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const exportMenuOpen = Boolean(anchorEl);
 
@@ -194,9 +200,128 @@ function Reports() {
   };
 
   const handleExport = (format) => {
-    // Export logic implementation
-    console.log(`Exporting as ${format}`);
+    const reportsToExport = filteredReports();
+    
+    if (reportsToExport.length === 0) {
+      // TODO: Show notification that there are no reports to export
+      handleExportMenuClose();
+      return;
+    }
+    
+    if (format === 'csv') {
+      exportToCSV(reportsToExport);
+    } else if (format === 'pdf') {
+      exportToPDF(reportsToExport);
+    }
+    
     handleExportMenuClose();
+  };
+  
+  const exportToCSV = (data) => {
+    // Format the data for CSV
+    const headers = [
+      'ReportID', 
+      'Date', 
+      'Region', 
+      'Location', 
+      'Damage Type', 
+      'Severity', 
+      'Priority', 
+      'Status',
+      'Description'
+    ];
+    
+    const csvRows = [
+      headers.join(','),
+      ...data.map(report => [
+        report.reportId,
+        new Date(report.createdAt).toLocaleDateString(),
+        report.region || '',
+        report.location || '',
+        report.damageType || '',
+        report.severity || '',
+        report.priority || '',
+        report.status || '',
+        `"${(report.description || '').replace(/"/g, '""')}"`, // Escape quotes in CSV
+      ].join(','))
+    ];
+    
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `damage-reports-${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+  
+  const exportToPDF = (data) => {
+    // For PDF export, we'll use client-side HTML to PDF conversion
+    // Create a new window with formatted content
+    const newWindow = window.open('', '_blank');
+    
+    // Base styles for the PDF
+    const styles = `
+      body { font-family: Arial, sans-serif; margin: 20px; }
+      h1 { color: #2563eb; margin-bottom: 20px; }
+      .report-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+      .report-table th, .report-table td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; }
+      .report-table th { background-color: #f8fafc; color: #1e293b; }
+      .low { color: #059669; }
+      .medium { color: #d97706; }
+      .high, .critical { color: #dc2626; }
+      .pending { color: #d97706; }
+      .completed { color: #059669; }
+      .in-progress { color: #2563eb; }
+    `;
+    
+    // Create HTML content
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Damage Reports - ${new Date().toLocaleDateString()}</title>
+        <style>${styles}</style>
+      </head>
+      <body>
+        <h1>Damage Reports - ${new Date().toLocaleDateString()}</h1>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Report ID</th>
+              <th>Date</th>
+              <th>Region</th>
+              <th>Damage Type</th>
+              <th>Severity</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.map(report => `
+              <tr>
+                <td>${report.reportId}</td>
+                <td>${new Date(report.createdAt).toLocaleDateString()}</td>
+                <td>${report.region || ''}</td>
+                <td>${report.damageType || ''}</td>
+                <td class="${report.severity?.toLowerCase() || ''}">${report.severity || ''}</td>
+                <td class="${report.status?.toLowerCase().replace(' ', '-') || ''}">${report.status || ''}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <p><em>Generated on ${new Date().toLocaleString()}</em></p>
+        <script>
+          window.onload = function() { window.print(); }
+        </script>
+      </body>
+      </html>
+    `;
+    
+    newWindow.document.write(htmlContent);
+    newWindow.document.close();
   };
 
   const handlePageChange = (event, newPage) => {
@@ -218,6 +343,106 @@ function Reports() {
       ...filters,
       [key]: '',
     });
+  };
+
+  const handleEditReport = (report) => {
+    setEditReportData({...report});
+    setEditReportOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      setActionLoading(true);
+      const response = await api.put(`/damage/report/${editReportData.reportId}`, editReportData);
+      
+      // Update the reports state with the updated report
+      setReports(reports.map(r => 
+        r.reportId === response.report.reportId ? {...r, ...response.report} : r
+      ));
+      
+      setEditReportOpen(false);
+      setEditReportData(null);
+    } catch (err) {
+      console.error('Error updating report:', err);
+      // TODO: Add error notification
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteReport = (report) => {
+    setReportToDelete(report);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteReport = async () => {
+    try {
+      setActionLoading(true);
+      await api.delete(`/damage/report/${reportToDelete.reportId}`);
+      
+      // Remove the deleted report from the state
+      setReports(reports.filter(r => r.reportId !== reportToDelete.reportId));
+      
+      setDeleteDialogOpen(false);
+      setReportToDelete(null);
+    } catch (err) {
+      console.error('Error deleting report:', err);
+      // TODO: Add error notification
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDownloadReport = async (report) => {
+    try {
+      // Fetch the report data with image
+      const reportData = await api.get(`/damage/report/${report.reportId}`);
+      
+      // Fetch the image separately
+      const imageBlob = await fetch(`${API_BASE_URL}/damage/report/${report.reportId}/image/before`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
+        }
+      }).then(res => res.blob());
+      
+      // Create a URL for the image
+      const imageUrl = URL.createObjectURL(imageBlob);
+      
+      // Create a formatted report for downloading
+      const formattedReport = {
+        reportId: reportData.reportId,
+        createdAt: new Date(reportData.createdAt).toLocaleString(),
+        damageType: reportData.damageType,
+        severity: reportData.severity,
+        priority: reportData.priority,
+        region: reportData.region,
+        location: reportData.location,
+        description: reportData.description,
+        status: reportData.status,
+        action: reportData.action,
+        imageUrl,
+      };
+      
+      // Download as JSON
+      const jsonString = JSON.stringify(formattedReport, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const downloadUrl = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `report-${report.reportId}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      // Clean up URLs
+      URL.revokeObjectURL(imageUrl);
+      URL.revokeObjectURL(downloadUrl);
+      
+    } catch (err) {
+      console.error('Error downloading report:', err);
+      // TODO: Add error notification
+    }
   };
 
   // Build options from data
@@ -418,23 +643,14 @@ function Reports() {
                   />
                 </td>
                 <td style={{ padding: 8 }}>
-                  <Stack direction="row" spacing={1}>
-                    <Tooltip title="View Details" arrow>
-                      <IconButton 
-                        size="small"
-                        onClick={() => handleViewReport(report)}
-                        sx={{ 
-                          color: colors.primary,
-                          '&:hover': { 
-                            backgroundColor: colors.border,
-                          }
-                        }}
-                      >
-                        <VisibilityIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    {/* Add more action buttons as needed */}
-                  </Stack>
+                  <ReportActions 
+                    report={report}
+                    onView={handleViewReport}
+                    onEdit={handleEditReport}
+                    onDelete={handleDeleteReport}
+                    onDownload={handleDownloadReport}
+                    colors={colors}
+                  />
                 </td>
               </tr>
             ))}
@@ -546,6 +762,240 @@ function Reports() {
     </Grid>
   );
 
+  // Edit Report Dialog
+  const EditReportDialog = () => (
+    <Dialog 
+      open={editReportOpen} 
+      onClose={() => {
+        if (!actionLoading) {
+          setEditReportOpen(false);
+          setEditReportData(null);
+        }
+      }}
+      maxWidth="md"
+      fullWidth
+    >
+      <DialogTitle sx={{ 
+        pb: 2, 
+        display: 'flex', 
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <Typography variant="h6">Edit Report</Typography>
+        <IconButton 
+          onClick={() => {
+            if (!actionLoading) {
+              setEditReportOpen(false);
+              setEditReportData(null);
+            }
+          }}
+          size="small"
+          disabled={actionLoading}
+          sx={{
+            color: colors.text.secondary,
+            '&:hover': { color: colors.text.primary }
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent dividers>
+        {editReportData && (
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Report ID"
+                value={editReportData.reportId || ''}
+                disabled
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Date Created"
+                value={new Date(editReportData.createdAt).toLocaleString() || ''}
+                disabled
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Damage Type</InputLabel>
+                <Select
+                  value={editReportData.damageType || ''}
+                  label="Damage Type"
+                  onChange={(e) => setEditReportData({...editReportData, damageType: e.target.value})}
+                  disabled={actionLoading}
+                >
+                  {damageTypeOptions.map(option => (
+                    <MenuItem key={option} value={option}>{option}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Severity</InputLabel>
+                <Select
+                  value={editReportData.severity || ''}
+                  label="Severity"
+                  onChange={(e) => setEditReportData({...editReportData, severity: e.target.value})}
+                  disabled={actionLoading}
+                >
+                  <MenuItem value="Low">Low</MenuItem>
+                  <MenuItem value="Medium">Medium</MenuItem>
+                  <MenuItem value="High">High</MenuItem>
+                  <MenuItem value="Critical">Critical</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Priority</InputLabel>
+                <Select
+                  value={editReportData.priority || ''}
+                  label="Priority"
+                  onChange={(e) => setEditReportData({...editReportData, priority: e.target.value})}
+                  disabled={actionLoading}
+                >
+                  <MenuItem value="Low">Low</MenuItem>
+                  <MenuItem value="Medium">Medium</MenuItem>
+                  <MenuItem value="High">High</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={editReportData.status || ''}
+                  label="Status"
+                  onChange={(e) => setEditReportData({...editReportData, status: e.target.value})}
+                  disabled={actionLoading}
+                >
+                  <MenuItem value="Pending">Pending</MenuItem>
+                  <MenuItem value="Assigned">Assigned</MenuItem>
+                  <MenuItem value="In Progress">In Progress</MenuItem>
+                  <MenuItem value="Completed">Completed</MenuItem>
+                  <MenuItem value="Rejected">Rejected</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Region"
+                value={editReportData.region || ''}
+                onChange={(e) => setEditReportData({...editReportData, region: e.target.value})}
+                disabled={actionLoading}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Location"
+                value={editReportData.location || ''}
+                onChange={(e) => setEditReportData({...editReportData, location: e.target.value})}
+                disabled={actionLoading}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Description"
+                multiline
+                rows={4}
+                value={editReportData.description || ''}
+                onChange={(e) => setEditReportData({...editReportData, description: e.target.value})}
+                disabled={actionLoading}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Action Required"
+                multiline
+                rows={2}
+                value={editReportData.action || ''}
+                onChange={(e) => setEditReportData({...editReportData, action: e.target.value})}
+                disabled={actionLoading}
+              />
+            </Grid>
+          </Grid>
+        )}
+      </DialogContent>
+      <DialogActions sx={{ px: 3, py: 2 }}>
+        <Button 
+          onClick={() => {
+            if (!actionLoading) {
+              setEditReportOpen(false);
+              setEditReportData(null);
+            }
+          }}
+          color="inherit"
+          disabled={actionLoading}
+        >
+          Cancel
+        </Button>
+        <Button 
+          variant="contained" 
+          onClick={handleSaveEdit}
+          disabled={actionLoading}
+          startIcon={actionLoading ? <CircularProgress size={20} color="inherit" /> : null}
+        >
+          {actionLoading ? 'Saving...' : 'Save Changes'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+  
+  // Delete Confirmation Dialog
+  const DeleteConfirmationDialog = () => (
+    <Dialog 
+      open={deleteDialogOpen} 
+      onClose={() => {
+        if (!actionLoading) {
+          setDeleteDialogOpen(false);
+          setReportToDelete(null);
+        }
+      }}
+      maxWidth="sm"
+      fullWidth
+    >
+      <DialogTitle sx={{ pb: 2 }}>
+        <Typography variant="h6">Confirm Delete</Typography>
+      </DialogTitle>
+      <DialogContent>
+        <Typography>
+          Are you sure you want to delete the report {reportToDelete?.reportId}? This action cannot be undone.
+        </Typography>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, py: 2 }}>
+        <Button 
+          onClick={() => {
+            if (!actionLoading) {
+              setDeleteDialogOpen(false);
+              setReportToDelete(null);
+            }
+          }}
+          color="inherit"
+          disabled={actionLoading}
+        >
+          Cancel
+        </Button>
+        <Button 
+          variant="contained" 
+          color="error"
+          onClick={confirmDeleteReport}
+          disabled={actionLoading}
+          startIcon={actionLoading ? <CircularProgress size={20} color="inherit" /> : null}
+        >
+          {actionLoading ? 'Deleting...' : 'Delete'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+
   return (
     <>
       <Box sx={{ py: 3 }}>
@@ -559,17 +1009,7 @@ function Reports() {
             gap: 2,
           }}
         >
-          <Typography
-            variant="h4"
-            sx={{
-              fontSize: { xs: '1.5rem', sm: '1.875rem' },
-              fontWeight: 700,
-              color: colors.text.primary,
-              letterSpacing: '-0.5px',
-            }}
-          >
-            Damage Reports
-          </Typography>
+      
 
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
@@ -739,6 +1179,12 @@ function Reports() {
 
         {/* Filters Dialog */}
         <FilterDialog />
+
+        {/* Edit Report Dialog */}
+        <EditReportDialog />
+        
+        {/* Delete Confirmation Dialog */}
+        <DeleteConfirmationDialog />
 
         {/* Render Export Menu */}
         <Menu
