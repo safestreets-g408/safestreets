@@ -401,7 +401,7 @@ const Dashboard = () => {
                   transition: 'all 0.3s ease',
                 }}
               >
-                View Analytics
+                AI Reports
               </Button>
             </Stack>
           </Stack>

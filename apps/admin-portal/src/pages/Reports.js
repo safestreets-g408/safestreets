@@ -11,10 +11,13 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import GridViewIcon from '@mui/icons-material/GridView';
 import TableRowsIcon from '@mui/icons-material/TableRows';
 import CloseIcon from '@mui/icons-material/Close';
+import AssignmentIcon from '@mui/icons-material/Assignment';
 import ViewDamageReport from '../components/reports/ViewDamageReport';
 import ReportActions from '../components/reports/ReportActions';
+import AiReportsDialog from '../components/dashboard/AiReportsDialog';
+import CreateDamageReportDialog from '../components/dashboard/CreateDamageReportDialog';
 import { api } from '../utils/api';
-import { API_BASE_URL, TOKEN_KEY } from '../config/constants';
+import { API_BASE_URL, TOKEN_KEY, API_ENDPOINTS } from '../config/constants';
 
 // Professional color palette
 const colors = {
@@ -58,6 +61,31 @@ function Reports() {
   const [reportToDelete, setReportToDelete] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // AI Reports state
+  const [aiReports, setAiReports] = useState([]);
+  const [aiReportsLoading, setAiReportsLoading] = useState(false);
+  const [aiReportsError, setAiReportsError] = useState(null);
+  const [aiReportsOpen, setAiReportsOpen] = useState(false);
+  const [selectedAiReport, setSelectedAiReport] = useState(null);
+  
+  // Create Report state
+  const [fieldWorkers, setFieldWorkers] = useState([]);
+  const [selectedFieldWorker, setSelectedFieldWorker] = useState('');
+  const [createReportOpen, setCreateReportOpen] = useState(false);
+  const [reportFormData, setReportFormData] = useState({
+    region: '',
+    location: '',
+    damageType: '',
+    severity: '',
+    priority: '',
+    description: '',
+    reporter: 'admin@example.com', 
+    aiReportId: null, 
+    assignToWorker: false
+  });
+  const [createReportLoading, setCreateReportLoading] = useState(false);
+  const [createReportError, setCreateReportError] = useState(null);
+
   const exportMenuOpen = Boolean(anchorEl);
 
   // Pagination
@@ -92,6 +120,157 @@ function Reports() {
 
     fetchReports();
   }, [filters]); 
+
+  // AI Reports functions
+  const fetchAiReports = async () => {
+    try {
+      setAiReportsLoading(true);
+      setAiReportsError(null);
+      const response = await api.get(`${API_ENDPOINTS.IMAGES}/reports`);
+      
+      let reportsData = [];
+      if (Array.isArray(response)) {
+        reportsData = response;
+      } else if (response?.reports && Array.isArray(response.reports)) {
+        reportsData = response.reports;
+      } else if (response && typeof response === 'object') {
+        const possibleReports = Object.values(response).find(val => Array.isArray(val));
+        reportsData = Array.isArray(possibleReports) ? possibleReports : [];
+      }
+      
+      setAiReports(reportsData || []);
+    } catch (error) {
+      console.error('Error fetching AI reports:', error);
+      setAiReportsError(error.message || 'Failed to fetch AI reports');
+      setAiReports([]);
+    } finally {
+      setAiReportsLoading(false);
+    }
+  };
+
+  const fetchFieldWorkers = async () => {
+    try {
+      const workers = await api.get(`${API_ENDPOINTS.FIELD_WORKERS}`);
+      const workersData = Array.isArray(workers) ? workers : 
+                         (workers.fieldWorkers || workers.workers || []);
+      
+      setFieldWorkers(workersData);
+    } catch (error) {
+      console.error('Error fetching field workers:', error);
+      setFieldWorkers([]);
+    }
+  };
+
+  const handleViewAiReports = async () => {
+    try {
+      setAiReportsLoading(true);
+      await Promise.all([
+        fetchAiReports(),
+        fetchFieldWorkers()
+      ]);
+      setAiReportsOpen(true);
+    } catch (error) {
+      console.error('Error in View AI Reports handler:', error);
+      setAiReportsOpen(true);
+    }
+  };
+
+  const handleSelectAiReport = (report) => {
+    if (report.damageReportGenerated) {
+      alert('A damage report has already been generated from this AI report. Each AI report can only generate one damage report.');
+      return;
+    }
+    setSelectedAiReport(report);
+    setReportFormData({
+      ...reportFormData,
+      region: reportFormData.region || '',
+      location: reportFormData.location || '',
+      damageType: report.damageType || '',
+      severity: report.severity || '',
+      priority: report.priority || '',
+      description: report.description || `AI-detected ${report.damageType} damage`,
+      aiReportId: report._id || report.id,
+    });
+    setAiReportsOpen(false);
+    setCreateReportOpen(true);
+  };
+
+  const handleAiReportsClose = () => {
+    setAiReportsOpen(false);
+    setSelectedAiReport(null);
+  };
+
+  const handleDialogClose = () => {
+    setCreateReportOpen(false);
+    setSelectedAiReport(null);
+    setCreateReportError(null);
+    setReportFormData({
+      region: '',
+      location: '',
+      damageType: '',
+      severity: '',
+      priority: '',
+      description: '',
+      reporter: 'admin@example.com',
+      aiReportId: null,
+      assignToWorker: false
+    });
+  };
+
+  const handleFormInputChange = (field, value) => {
+    setReportFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleFieldWorkerChange = (workerId) => {
+    setSelectedFieldWorker(workerId);
+  };
+
+  const handleCreateReport = async (formData) => {
+    try {
+      setCreateReportLoading(true);
+      setCreateReportError(null);
+
+      const reportData = {
+        ...formData,
+        assignedWorker: formData.assignToWorker ? selectedFieldWorker : null,
+        status: 'Pending',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      console.log('Creating damage report with data:', reportData);
+
+      const response = await api.post('/damage/reports', reportData);
+      
+      if (selectedAiReport && selectedAiReport._id) {
+        try {
+          await api.put(`${API_ENDPOINTS.IMAGES}/reports/${selectedAiReport._id}`, {
+            damageReportGenerated: true,
+            damageReportId: response._id || response.id
+          });
+          console.log('AI report updated with damage report reference');
+        } catch (updateError) {
+          console.warn('Failed to update AI report reference:', updateError);
+        }
+      }
+
+      // Refresh reports list
+      const updatedReports = await api.get('/damage/reports');
+      setReports(updatedReports);
+
+      handleDialogClose();
+      alert('Damage report created successfully!');
+      
+    } catch (error) {
+      console.error('Error creating damage report:', error);
+      setCreateReportError(error.message || 'Failed to create damage report');
+    } finally {
+      setCreateReportLoading(false);
+    }
+  };
 
   // Utility functions
   const getStatusColor = (status) => {
@@ -1075,6 +1254,21 @@ function Reports() {
 
             <Button
               variant="contained"
+              startIcon={<AssignmentIcon />}
+              onClick={handleViewAiReports}
+              sx={{
+                bgcolor: colors.warning,
+                color: 'white',
+                '&:hover': {
+                  bgcolor: '#b45309',
+                },
+              }}
+            >
+              AI Reports
+            </Button>
+
+            <Button
+              variant="contained"
               startIcon={<FileDownloadIcon />}
               onClick={(e) => setAnchorEl(e.currentTarget)}
               sx={{
@@ -1246,6 +1440,31 @@ function Reports() {
             <Button onClick={handleCloseReport}>Close</Button>
           </DialogActions>
         </Dialog>
+
+        {/* AI Reports Dialog */}
+        <AiReportsDialog 
+          open={aiReportsOpen}
+          onClose={handleAiReportsClose}
+          reports={aiReports}
+          loading={aiReportsLoading}
+          error={aiReportsError}
+          onSelectReport={handleSelectAiReport}
+        />
+
+        {/* Create Damage Report Dialog */}
+        <CreateDamageReportDialog 
+          open={createReportOpen}
+          onClose={handleDialogClose}
+          onSubmit={handleCreateReport}
+          selectedAiReport={selectedAiReport}
+          formData={reportFormData}
+          onFormChange={handleFormInputChange}
+          fieldWorkers={fieldWorkers}
+          onFieldWorkerChange={handleFieldWorkerChange}
+          selectedFieldWorker={selectedFieldWorker}
+          loading={createReportLoading}
+          error={createReportError}
+        />
       </Box>
     </>
   );

@@ -81,16 +81,30 @@ const AiReportsDialog = ({
                     borderRadius: 2,
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
                     transition: 'transform 0.2s ease-in-out',
+                    opacity: report.damageReportGenerated ? 0.7 : 1,
+                    border: report.damageReportGenerated ? '2px solid #4caf50' : 'none',
                     '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: '0 12px 24px rgba(0, 0, 0, 0.1)',
+                      transform: report.damageReportGenerated ? 'none' : 'translateY(-4px)',
+                      boxShadow: report.damageReportGenerated 
+                        ? '0 4px 12px rgba(0, 0, 0, 0.05)' 
+                        : '0 12px 24px rgba(0, 0, 0, 0.1)',
                     }
                   }}
                 >
                   <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      {report.damageType || 'Damage Report'}
-                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                      <Typography variant="h6" gutterBottom sx={{ mb: 0 }}>
+                        {report.damageType || 'Damage Report'}
+                      </Typography>
+                      {report.damageReportGenerated && (
+                        <Chip 
+                          label="Used" 
+                          size="small" 
+                          color="success"
+                          sx={{ fontWeight: 'bold' }}
+                        />
+                      )}
+                    </Box>
                     
                     <Stack spacing={1} sx={{ mb: 2 }}>
                       <Stack direction="row" justifyContent="space-between">
@@ -139,18 +153,37 @@ const AiReportsDialog = ({
                         </Box>
                       )}
                       
-                      <Button
-                        variant="contained"
-                        fullWidth
-                        startIcon={<AssignmentIcon />}
-                        onClick={() => onSelectReport(report)}
-                        sx={{ 
-                          mt: 1,
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        }}
-                      >
-                        Generate Damage Report
-                      </Button>
+                      {report.damageReportGenerated ? (
+                        <Button
+                          variant="outlined"
+                          fullWidth
+                          disabled
+                          sx={{ 
+                            mt: 1,
+                            borderColor: '#4caf50',
+                            color: '#4caf50',
+                            '&.Mui-disabled': {
+                              borderColor: '#4caf50',
+                              color: '#4caf50',
+                            }
+                          }}
+                        >
+                          ✓ Already Generated
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="contained"
+                          fullWidth
+                          startIcon={<AssignmentIcon />}
+                          onClick={() => onSelectReport(report)}
+                          sx={{ 
+                            mt: 1,
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          }}
+                        >
+                          Generate Damage Report
+                        </Button>
+                      )}
                     </Box>
                   </CardContent>
                 </Card>

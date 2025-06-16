@@ -351,7 +351,7 @@ const AiAnalysis = () => {
                                 <Typography variant="subtitle2" color="text.secondary">Severity</Typography>
                                 <Chip 
                                   label={prediction.prediction.severity} 
-                                  color={prediction.prediction.severity.toLowerCase() === 'high' ? 'error' : 'warning'} 
+                                  color={prediction.prediction.severity && String(prediction.prediction.severity).toLowerCase() === 'high' ? 'error' : 'warning'} 
                                   sx={{ fontWeight: 'bold' }}
                                 />
                               </Box>
@@ -363,7 +363,7 @@ const AiAnalysis = () => {
                                 <Typography variant="subtitle2" color="text.secondary">Priority</Typography>
                                 <Chip 
                                   label={prediction.prediction.priority} 
-                                  color={prediction.prediction.priority.toLowerCase() === 'high' ? 'error' : 'info'} 
+                                  color={prediction.prediction.priority && String(prediction.prediction.priority).toLowerCase() === 'high' ? 'error' : 'info'} 
                                   sx={{ fontWeight: 'bold' }}
                                 />
                               </Box>
