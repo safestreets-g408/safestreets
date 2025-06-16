@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const Admin = require('../models/Admin');
 
-const protect = async (req, res, next) => {
+const protectAdmin = async (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
 
   if (!token) {
@@ -10,11 +10,11 @@ const protect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = { id: decoded.userId };
+    req.admin = { id: decoded.adminId };
     next();
   } catch (err) {
     res.status(401).json({ message: 'Token is not valid' });
   }
 };
 
-module.exports =  protect ;
+module.exports = { protectAdmin };

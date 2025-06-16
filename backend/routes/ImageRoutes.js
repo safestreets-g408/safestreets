@@ -8,7 +8,7 @@ const {
     getReportById,
     testAiServer 
 } = require('../controllers/ImageController');
-const protect = require('../middleware/authMiddleware');
+const { protectAdmin: protect } = require('../middleware/adminAuthMiddleware');
 
 // Test endpoint
 router.get('/test-ai-server', protect, testAiServer);

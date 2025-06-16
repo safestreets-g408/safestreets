@@ -7,16 +7,16 @@ export const API_ENDPOINTS = {
   DAMAGE_REPORTS: '/damage',
   REPAIRS: '/repairs',
   ANALYTICS: '/analytics',
-  AUTH: '/auth',
-  PROFILE: '/profile',
+  AUTH: '/admin/auth',
+  PROFILE: '/admin/profile',
   USERS: '/users',
   FIELD_WORKERS: '/field/workers',
   IMAGES: '/images',
 };
 
 // Auth
-export const TOKEN_KEY = 'auth_token';
-export const USER_KEY = 'user_data';
+export const TOKEN_KEY = 'admin_auth_token';
+export const USER_KEY = 'admin_data';
 
 // Date formats
 export const DATE_FORMAT = 'yyyy-MM-dd';

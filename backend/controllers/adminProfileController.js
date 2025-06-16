@@ -1,21 +1,21 @@
-const User = require('../models/User');
+const Admin = require('../models/Admin');
 
-// Get user profile
-const getProfile = async (req, res) => {
+// Get admin profile
+const getAdminProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    const admin = await Admin.findById(req.admin.id).select('-password');
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found' });
     }
-    res.status(200).json(user);
+    res.status(200).json(admin);
   } catch (err) {
-    console.error('Error getting profile:', err.message);
+    console.error('Error getting admin profile:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
 
-// Update user profile
-const updateProfile = async (req, res) => {
+// Update admin profile
+const updateAdminProfile = async (req, res) => {
   const { name, email, profile } = req.body;
   
   // Build profile object
@@ -26,7 +26,7 @@ const updateProfile = async (req, res) => {
   // Build profile object
   profileFields.profile = {};
   if (profile) {
-    if (profile.role) profileFields.profile.role = profile.role;
+    if (profile.position) profileFields.profile.position = profile.position;
     if (profile.phone) profileFields.profile.phone = profile.phone;
     if (profile.location) profileFields.profile.location = profile.location;
     if (profile.department) profileFields.profile.department = profile.department;
@@ -37,32 +37,32 @@ const updateProfile = async (req, res) => {
   }
   
   try {
-    let user = await User.findById(req.user.id);
+    let admin = await Admin.findById(req.admin.id);
     
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found' });
     }
     
     // Check if email is being updated and it's not the same as current
-    if (email && email !== user.email) {
-      const existingUser = await User.findOne({ email });
-      if (existingUser) {
+    if (email && email !== admin.email) {
+      const existingAdmin = await Admin.findOne({ email });
+      if (existingAdmin) {
         return res.status(400).json({ message: 'Email is already in use' });
       }
     }
     
-    // Update user
-    user = await User.findByIdAndUpdate(
-      req.user.id,
+    // Update admin
+    admin = await Admin.findByIdAndUpdate(
+      req.admin.id,
       { $set: profileFields },
       { new: true }
     ).select('-password');
     
-    res.json(user);
+    res.json(admin);
   } catch (err) {
-    console.error('Error updating profile:', err.message);
+    console.error('Error updating admin profile:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
 
-module.exports = { getProfile, updateProfile };
+module.exports = { getAdminProfile, updateAdminProfile };

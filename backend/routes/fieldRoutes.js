@@ -6,7 +6,7 @@ const {
     updateFieldWorker,
     getFieldWorkerById 
 } = require('../controllers/fieldWorkerController');
-const protect = require('../middleware/authMiddleware');
+const { protectAdmin: protect } = require('../middleware/adminAuthMiddleware');
 
 // Protected routes
 router.post('/add', protect, addFieldWorker);

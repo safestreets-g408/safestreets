@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import SecurityIcon from '@mui/icons-material/Security';
 import HomeIcon from '@mui/icons-material/Home';
-import { api } from '../utils/api';
+import { useAuth } from '../hooks/useAuth';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -25,6 +25,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width:768px)');
+  const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,9 +38,10 @@ const Login = () => {
 
     try {
       setLoading(true);
-      const response = await api.post('/auth/login', { email, password });
-      localStorage.setItem('auth_token', response.token);
-      navigate('/');
+      const success = await login(email, password);
+      if (!success) {
+        throw new Error('Login failed. Please check your credentials.');
+      }
     } catch (err) {
       setError(err.message || 'Login failed. Please check your credentials.');
       setShowError(true);

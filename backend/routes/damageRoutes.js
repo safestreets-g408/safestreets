@@ -15,7 +15,7 @@ const {
   deleteReport,
   upload 
 } = require('../controllers/damageController');
-const protect = require('../middleware/authMiddleware');
+const { protectAdmin: protect } = require('../middleware/adminAuthMiddleware');
 const router = express.Router();
 
 // Protected routes

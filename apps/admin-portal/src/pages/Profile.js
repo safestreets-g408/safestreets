@@ -33,7 +33,7 @@ import {
   Dashboard,
 } from "@mui/icons-material";
 import { useAuth } from "../hooks/useAuth";
-import { API_BASE_URL, API_ENDPOINTS } from "../config/constants";
+import { API_BASE_URL, API_ENDPOINTS, TOKEN_KEY } from "../config/constants";
 
 // Professional color palette
 const colors = {
@@ -61,7 +61,8 @@ const Profile = () => {
   const [userData, setUserData] = useState({
     name: user?.name || "",
     email: user?.email || "",
-    role: user?.profile?.role || "Staff Member",
+    role: user?.role || "admin",
+    position: user?.profile?.position || "Administrator",
     phone: user?.profile?.phone || "",
     location: user?.profile?.location || "",
     department: user?.profile?.department || "",
@@ -76,7 +77,8 @@ const Profile = () => {
       setUserData({
         name: user.name || "",
         email: user.email || "",
-        role: user.profile?.role || "Staff Member",
+        role: user.role || "admin",
+        position: user.profile?.position || "Administrator",
         phone: user.profile?.phone || "",
         location: user.profile?.location || "",
         department: user.profile?.department || "",
@@ -111,13 +113,13 @@ const Profile = () => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
         },
         body: JSON.stringify({
           name: userData.name,
           email: userData.email,
           profile: {
-            role: userData.role,
+            position: userData.position,
             phone: userData.phone,
             location: userData.location,
             department: userData.department,
@@ -232,7 +234,7 @@ const Profile = () => {
                           {userData.name}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          {userData.role}
+                          {userData.position}
                         </Typography>
                       </Box>
                     </Box>
@@ -312,7 +314,7 @@ const Profile = () => {
                       {userData.name}
                     </Typography>
                     <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>
-                      {userData.role}
+                      {userData.position}
                     </Typography>
                   </Box>
                   <CardContent sx={{ p: 3 }}>
@@ -427,8 +429,8 @@ const Profile = () => {
                         <Grid item xs={12} sm={6}>
                           <TextField
                             label="Job Title"
-                            name="role"
-                            value={userData.role}
+                            name="position"
+                            value={userData.position}
                             onChange={handleInputChange}
                             fullWidth
                             variant="outlined"
