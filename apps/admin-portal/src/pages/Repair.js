@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Box, Typography,  TextField, Button, 
-  Select, MenuItem, FormControl, InputLabel,Avatar, 
-   Tab, Tabs, Badge, 
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  FormHelperText, useTheme, CircularProgress,
+  Box, Typography, Button, 
+  Tab, Tabs, Badge, 
+  useTheme, CircularProgress,
   Snackbar, Alert
 } from '@mui/material';
 import { 
@@ -21,10 +19,6 @@ import FieldWorker from '../components/RepairManagement/FieldWorker';
 function Repair() {
   const theme = useTheme();
   const [tabValue, setTabValue] = useState(0);
-  const [selectedRepair, setSelectedRepair] = useState(null);
-  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
-  const [selectedWorker, setSelectedWorker] = useState('');
-  const [assignmentNotes, setAssignmentNotes] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [fieldWorkers, setFieldWorkers] = useState([]);
@@ -93,46 +87,53 @@ function Repair() {
     setTabValue(newValue);
   };
 
-  const handleAssignDialogOpen = (repair) => {
-    console.log('Opening assign dialog with repair:', repair);
-    setSelectedRepair(repair);
-    setAssignDialogOpen(true);
-  };
+  // No longer need handleAssignDialogClose as we're using the dialog in PendingAssignments component
 
-  const handleAssignDialogClose = () => {
-    setAssignDialogOpen(false);
-    setSelectedWorker('');
-    setAssignmentNotes('');
-  };
-
-  const handleAssignRepair = async () => {
-    if (!selectedRepair || !selectedWorker) {
+  const handleAssignRepair = async (reportId, workerId, notes) => {
+    if (!reportId || !workerId) {
       console.error('Cannot assign: Missing repair or worker', { 
-        repair: selectedRepair, 
-        worker: selectedWorker 
+        reportId, 
+        workerId 
       });
       return;
     }
     
-    const reportId = selectedRepair._id || selectedRepair.id;
-    console.log('Assigning repair', { reportId, workerId: selectedWorker, notes: assignmentNotes });
+    console.log('Assigning repair', { reportId, workerId, notes });
     
     try {
+      // Find worker details to get worker name
+      const worker = fieldWorkers.find(w => w.id === workerId);
+      if (!worker) {
+        console.error('Worker not found with ID:', workerId);
+        setError(`Worker not found with ID: ${workerId}`);
+        return;
+      }
+      
       const response = await api.patch(`/damage/reports/${reportId}/assign`, {
-        workerId: selectedWorker,
-        notes: assignmentNotes
+        workerId,
+        notes
       });
       
       if (response && response.success) {
         // Show success message
         console.log('Repair assigned successfully', response);
         setError(null);
-        handleAssignDialogClose();
+        
+        // Show success notification
+        setSnackbarMessage(`Repair assigned to ${worker.name} successfully`);
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+        
         fetchRepairs(); // Refresh data after API call
       }
     } catch (err) {
       console.error('Error assigning repair:', err);
       setError(`Failed to assign repair: ${err.message || 'Unknown error'}`);
+      
+      // Show error notification
+      setSnackbarMessage(`Failed to assign repair: ${err.message || 'Unknown error'}`);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
     }
   };
 
@@ -183,15 +184,7 @@ function Repair() {
     }
   };
 
-  const getSeverityColor = (severity) => {
-    switch(severity) {
-      case 'Low': return theme.palette.info.main;
-      case 'Medium': return theme.palette.warning.main;
-      case 'High': return theme.palette.error.main;
-      case 'Critical': return theme.palette.secondary.main;
-      default: return theme.palette.grey[500];
-    }
-  };
+  // Severity color handling is now done in child components
 
   // Helper to close the snackbar
   const handleSnackbarClose = (event, reason) => {
@@ -239,8 +232,8 @@ function Repair() {
       {tabValue === 0 && (
         <PendingAssignments 
           pendingRepairs={pendingRepairs}
-          getSeverityColor={getSeverityColor}
-          handleAssignDialogOpen={handleAssignDialogOpen}
+          fieldWorkers={fieldWorkers}
+          onAssignRepair={handleAssignRepair}
         />
       )}
       
@@ -281,77 +274,7 @@ function Repair() {
         </>
       )}
       
-      {/* Assignment Dialog */}
-      <Dialog open={assignDialogOpen} onClose={handleAssignDialogClose} maxWidth="sm" fullWidth>
-        <DialogTitle>Assign Repair Task</DialogTitle>
-        <DialogContent>
-          <Box sx={{ mb: 2, mt: 1 }}>
-            <Typography variant="subtitle1">
-              Damage Report: {selectedRepair?.id}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {selectedRepair?.description}
-            </Typography>
-          </Box>
-          
-          <FormControl fullWidth sx={{ mb: 3 }}>
-            <InputLabel>Assign to Field Worker</InputLabel>
-            <Select
-              value={selectedWorker}
-              label="Assign to Field Worker"
-              onChange={(e) => setSelectedWorker(e.target.value)}
-            >
-              {fieldWorkers.map(worker => (
-                <MenuItem 
-                  key={worker.id} 
-                  value={worker.name}
-                  disabled={worker.status !== 'Available'}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Avatar 
-                      sx={{ 
-                        width: 24, 
-                        height: 24, 
-                        mr: 1, 
-                        bgcolor: worker.status === 'Available' ? theme.palette.success.main : theme.palette.warning.main 
-                      }}
-                    >
-                      {worker.name.split(' ').map(n => n[0]).join('')}
-                    </Avatar>
-                    <Box>
-                      {worker.name}
-                      <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary' }}>
-                        {worker.specialization} • {worker.region} • {worker.activeAssignments} active tasks
-                      </Typography>
-                    </Box>
-                  </Box>
-                </MenuItem>
-              ))}
-            </Select>
-            <FormHelperText>Select an available field worker to assign this repair task</FormHelperText>
-          </FormControl>
-          
-          <TextField
-            label="Assignment Notes"
-            multiline
-            rows={4}
-            fullWidth
-            value={assignmentNotes}
-            onChange={(e) => setAssignmentNotes(e.target.value)}
-            placeholder="Add any specific instructions or notes for the field worker..."
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleAssignDialogClose}>Cancel</Button>
-          <Button 
-            variant="contained" 
-            onClick={handleAssignRepair}
-            disabled={!selectedWorker}
-          >
-            Assign Task
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Assignment Dialog is now handled within the PendingAssignments component */}
       
       {/* Snackbar for status updates and notifications */}
       <Snackbar

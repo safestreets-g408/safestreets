@@ -77,7 +77,14 @@ const getReports = async (req, res) => {
     
     let query = {};
     
-    if (status) query.status = status;
+    if (status) {
+      // Handle special case for status not equal (format: !Status)
+      if (status.startsWith('!')) {
+        query.status = { $ne: status.substring(1) };
+      } else {
+        query.status = status;
+      }
+    }
     if (region) query.region = region;
     if (severity) query.severity = severity;
     if (startDate || endDate) {
@@ -85,6 +92,8 @@ const getReports = async (req, res) => {
       if (startDate) query.createdAt.$gte = new Date(startDate);
       if (endDate) query.createdAt.$lte = new Date(endDate);
     }
+
+    console.log('Reports query:', JSON.stringify(query));
 
     const reports = await DamageReport.find(query)
       .select('-beforeImage.data -afterImage.data') // Exclude image data from response

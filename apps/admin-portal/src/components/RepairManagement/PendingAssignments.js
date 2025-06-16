@@ -35,6 +35,8 @@ function PendingAssignments({ pendingRepairs = [], fieldWorkers = [], onAssignRe
 
   const handleAssignRepair = () => {
     if (!selectedRepair || !selectedWorker) return;
+    
+    // Call the parent handler with the correct parameters
     onAssignRepair(selectedRepair._id || selectedRepair.id, selectedWorker, assignmentNotes);
     handleAssignDialogClose();
   };
