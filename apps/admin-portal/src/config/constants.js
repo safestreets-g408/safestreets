@@ -8,6 +8,7 @@ export const API_ENDPOINTS = {
   REPAIRS: '/repairs',
   ANALYTICS: '/analytics',
   AUTH: '/auth',
+  PROFILE: '/profile',
   USERS: '/users',
   FIELD_WORKERS: '/field/workers',
   IMAGES: '/images',

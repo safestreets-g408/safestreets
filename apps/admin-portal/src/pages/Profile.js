@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Container,
@@ -16,6 +16,8 @@ import {
   Badge,
   Tooltip,
   Chip as MuiChip,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import {
   Edit as EditIcon,
@@ -30,6 +32,8 @@ import {
   Person,
   Dashboard,
 } from "@mui/icons-material";
+import { useAuth } from "../hooks/useAuth";
+import { API_BASE_URL, API_ENDPOINTS } from "../config/constants";
 
 // Professional color palette
 const colors = {
@@ -50,16 +54,38 @@ const colors = {
 const Profile = () => {
   const [tabValue, setTabValue] = useState(0);
   const [editMode, setEditMode] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+  const { user, updateUser } = useAuth();
   const [userData, setUserData] = useState({
-    name: "Sarah Johnson",
-    role: "Senior Road Safety Administrator",
-    email: "sarah.johnson@safestreets.org",
-    phone: "+1 (555) 123-4567",
-    location: "San Francisco, CA",
-    department: "Infrastructure Management",
-    joinDate: "March 2020",
-    bio: "Road safety expert with over 10 years of experience in infrastructure management and damage assessment. Specialized in implementing AI-based solutions for road maintenance prioritization.",
+    name: user?.name || "",
+    email: user?.email || "",
+    role: user?.profile?.role || "Staff Member",
+    phone: user?.profile?.phone || "",
+    location: user?.profile?.location || "",
+    department: user?.profile?.department || "",
+    joinDate: user?.profile?.joinDate ? new Date(user.profile.joinDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : "Recently joined",
+    bio: user?.profile?.bio || "No bio available",
+    skills: user?.profile?.skills || []
   });
+
+  // Load user profile data
+  useEffect(() => {
+    if (user) {
+      setUserData({
+        name: user.name || "",
+        email: user.email || "",
+        role: user.profile?.role || "Staff Member",
+        phone: user.profile?.phone || "",
+        location: user.profile?.location || "",
+        department: user.profile?.department || "",
+        joinDate: user.profile?.joinDate ? new Date(user.profile.joinDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : "Recently joined",
+        bio: user.profile?.bio || "No bio available",
+        skills: user.profile?.skills || []
+      });
+    }
+  }, [user]);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -77,14 +103,83 @@ const Profile = () => {
     });
   };
 
-  const handleSave = () => {
-    // Here you would typically save the data to your backend
-    setEditMode(false);
+  const handleSave = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.PROFILE}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({
+          name: userData.name,
+          email: userData.email,
+          profile: {
+            role: userData.role,
+            phone: userData.phone,
+            location: userData.location,
+            department: userData.department,
+            bio: userData.bio,
+            skills: userData.skills
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update profile');
+      }
+
+      const updatedUser = await response.json();
+      
+      // Update local user state
+      updateUser(updatedUser);
+      setSuccess('Profile updated successfully');
+      setEditMode(false);
+    } catch (err) {
+      setError(err.message || 'An error occurred while updating profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setError(null);
+    setSuccess(null);
   };
 
   return (
     <Box sx={{ flexGrow: 1, minHeight: "100vh", bgcolor: "#f8fafc", py: 4 }}>
       <Container maxWidth="lg">
+        {/* Error Snackbar */}
+        <Snackbar 
+          open={!!error} 
+          autoHideDuration={6000} 
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+          <Alert onClose={handleCloseSnackbar} severity="error" sx={{ width: '100%' }}>
+            {error}
+          </Alert>
+        </Snackbar>
+        
+        {/* Success Snackbar */}
+        <Snackbar 
+          open={!!success} 
+          autoHideDuration={6000} 
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+          <Alert onClose={handleCloseSnackbar} severity="success" sx={{ width: '100%' }}>
+            {success}
+          </Alert>
+        </Snackbar>
+        
         <Box
           sx={{
             borderRadius: 2,
@@ -161,6 +256,7 @@ const Profile = () => {
                         variant="contained"
                         startIcon={editMode ? <SaveIcon /> : <EditIcon />}
                         onClick={editMode ? handleSave : handleEditToggle}
+                        disabled={isLoading}
                         sx={{
                           borderRadius: 1.5,
                           px: 3,
@@ -172,7 +268,11 @@ const Profile = () => {
                           boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
                         }}
                       >
-                        {editMode ? "Save Changes" : "Edit Profile"}
+                        {isLoading 
+                          ? "Saving..." 
+                          : editMode 
+                            ? "Save Changes" 
+                            : "Edit Profile"}
                       </Button>
                     </Box>
                   </Box>
@@ -395,15 +495,45 @@ const Profile = () => {
                         Skills & Expertise
                       </Typography>
                       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                        {["Road Safety", "Infrastructure Management", "Damage Assessment", "AI Solutions", "Project Management", "Data Analysis"].map((skill) => (
-                          <MuiChip 
-                            key={skill} 
-                            label={skill} 
-                            color="primary" 
-                            variant="outlined" 
+                        {(userData.skills && userData.skills.length > 0)
+                          ? userData.skills.map((skill) => (
+                              <MuiChip 
+                                key={skill} 
+                                label={skill} 
+                                color="primary" 
+                                variant="outlined" 
+                                size="small"
+                                onDelete={editMode ? () => {
+                                  setUserData({
+                                    ...userData,
+                                    skills: userData.skills.filter(s => s !== skill)
+                                  });
+                                } : undefined}
+                              />
+                            ))
+                          : !editMode && 
+                            <Typography variant="body2" color="text.secondary">
+                              No skills listed yet.
+                            </Typography>
+                        }
+                        
+                        {editMode && (
+                          <TextField
+                            placeholder="Add skill and press Enter"
                             size="small"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && e.target.value.trim()) {
+                                setUserData({
+                                  ...userData,
+                                  skills: [...(userData.skills || []), e.target.value.trim()]
+                                });
+                                e.target.value = '';
+                                e.preventDefault();
+                              }
+                            }}
+                            sx={{ ml: 1, mt: 1 }}
                           />
-                        ))}
+                        )}
                       </Box>
                     </Box>
                   )}

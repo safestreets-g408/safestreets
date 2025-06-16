@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { AuthProvider } from './hooks/useAuth';
 
 // Theme
 import theme from './theme';
@@ -27,23 +28,25 @@ function App() {
       <ThemeProvider theme={theme}>
         <LocalizationProvider dateAdapter={AdapterDateFns}>
           <CssBaseline />
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            
-            <Route element={<MainLayout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/map" element={<MapView />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/repairs" element={<Repair />} />
-              <Route path="/historical" element={<Historical />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/ai-analysis" element={<AiAnalysis />} />
-            </Route>
-
-            {/* Catch all route */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <AuthProvider>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              
+              <Route element={<MainLayout />}>
+                <Route index element={<Dashboard />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/map" element={<MapView />} />
+                <Route path="/analytics" element={<Analytics />} />
+                <Route path="/repairs" element={<Repair />} />
+                <Route path="/historical" element={<Historical />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/ai-analysis" element={<AiAnalysis />} />
+              </Route>
+  
+              {/* Catch all route */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </AuthProvider>
         </LocalizationProvider>
       </ThemeProvider>
     </BrowserRouter>
