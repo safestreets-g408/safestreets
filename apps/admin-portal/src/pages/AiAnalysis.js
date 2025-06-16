@@ -10,10 +10,15 @@ import {
   Tabs,
   Tab,
   Paper,
-  Grid
+  Grid,
+  Divider,
+  Container,
+  Chip
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import ImageIcon from '@mui/icons-material/Image';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 import { api } from '../utils/api';
 import { TOKEN_KEY } from '../config/constants';
 
@@ -159,147 +164,319 @@ const AiAnalysis = () => {
     }
   };
 
-  const renderReports = () => {
-    if (reportsLoading) {
-      return <CircularProgress />;
-    }
-
-    if (!reports.length) {
-      return (
-        <Alert severity="info">
-          No reports found
-        </Alert>
-      );
-    }
-
-    return (
-      <Grid container spacing={3}>
-        {reports.map((report) => (
-          <Grid item xs={12} md={6} key={report.id}>
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Damage Report
-              </Typography>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Uploaded by: {report.userEmail}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Date: {new Date(report.createdAt).toLocaleDateString()}
-              </Typography>
-              <Typography variant="body1" gutterBottom>
-                Damage Type: {report.damageType}
-              </Typography>
-              <Typography variant="body1" gutterBottom>
-                Severity: {report.severity}
-              </Typography>
-              <Typography variant="body1" gutterBottom>
-                Priority: {report.priority}
-              </Typography>
-              {report.annotatedImage && (
-                <Box sx={{ mt: 2 }}>
-                  <img
-                    src={report.annotatedImage}
-                    alt="Annotated damage"
-                    style={{
-                      width: '100%',
-                      maxHeight: 200,
-                      objectFit: 'contain',
-                      borderRadius: 4,
-                      border: '1px solid rgba(0,0,0,0.1)'
-                    }}
-                  />
-                </Box>
-              )}
-            </Paper>
-          </Grid>
-        ))}
-      </Grid>
-    );
-  };
+  // Reports are now rendered directly in the JSX of TabPanel with index 1
 
   return (
     <Box sx={{ p: 3 }}>
 
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-        <Tabs value={tabValue} onChange={handleTabChange}>
-          <Tab label="Upload Image" />
-          <Tab label="View Reports" />
-        </Tabs>
-      </Box>
+      <Paper 
+        elevation={2} 
+        sx={{ 
+          borderRadius: 2,
+          overflow: 'hidden',
+          mb: 4
+        }}
+      >
+        <Box sx={{ px: 2, borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs 
+            value={tabValue} 
+            onChange={handleTabChange}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{ 
+              '& .MuiTab-root': {
+                minHeight: '64px',
+                textTransform: 'none',
+                fontSize: '1rem',
+                fontWeight: 500,
+              }
+            }}
+          >
+            <Tab 
+              label="Upload Image" 
+              icon={<CloudUploadIcon />} 
+              iconPosition="start"
+            />
+            <Tab 
+              label="View Reports" 
+              icon={<AssessmentIcon />}
+              iconPosition="start"
+            />
+          </Tabs>
+        </Box>
 
-      <TabPanel value={tabValue} index={0}>
-        <Card>
-          <CardContent>
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-              <Button
-                component="label"
-                variant="contained"
-                startIcon={<CloudUploadIcon />}
-                disabled={loading}
-              >
-                Upload Image
-                <VisuallyHiddenInput
-                  type="file"
-                  accept="image/jpeg,image/png"
-                  onChange={handleImageSelect}
-                />
-              </Button>
+        <TabPanel value={tabValue} index={0}>
+          <Card sx={{ boxShadow: 'none' }}>
+            <CardContent sx={{ px: { xs: 2, sm: 4 }, py: 4 }}>
+              <Grid container spacing={4}>
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    gap: 3,
+                    height: '100%',
+                    justifyContent: 'center'
+                  }}>
+                    <Paper 
+                      elevation={0} 
+                      sx={{ 
+                        width: '100%', 
+                        height: 300, 
+                        borderRadius: 2,
+                        border: '2px dashed #ccc',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: '#f8f9fa',
+                        position: 'relative',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {previewUrl ? (
+                        <img
+                          src={previewUrl}
+                          alt="Preview"
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'contain',
+                            padding: '16px'
+                          }}
+                        />
+                      ) : (
+                        <>
+                          <ImageIcon sx={{ fontSize: 60, color: 'text.secondary', opacity: 0.5, mb: 2 }} />
+                          <Typography variant="body1" color="text.secondary">
+                            No image selected
+                          </Typography>
+                        </>
+                      )}
+                    </Paper>
+                    
+                    <Box sx={{ display: 'flex', gap: 2, width: '100%', justifyContent: 'center' }}>
+                      <Button
+                        component="label"
+                        variant="contained"
+                        startIcon={<CloudUploadIcon />}
+                        disabled={loading}
+                        size="large"
+                        sx={{ px: 3, py: 1, borderRadius: 2 }}
+                      >
+                        Select Image
+                        <VisuallyHiddenInput
+                          type="file"
+                          accept="image/jpeg,image/png"
+                          onChange={handleImageSelect}
+                        />
+                      </Button>
 
-              {previewUrl && (
-                <Box sx={{ mt: 2, width: '100%', maxHeight: 300, overflow: 'hidden' }}>
-                  <img
-                    src={previewUrl}
-                    alt="Preview"
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'contain'
+                      {selectedImage && (
+                        <Button
+                          variant="contained"
+                          color="secondary"
+                          onClick={analyzeImage}
+                          disabled={loading}
+                          size="large"
+                          sx={{ px: 3, py: 1, borderRadius: 2 }}
+                        >
+                          {loading ? (
+                            <>
+                              <CircularProgress size={20} sx={{ mr: 1, color: 'white' }} />
+                              Analyzing...
+                            </>
+                          ) : 'Analyze Image'}
+                        </Button>
+                      )}
+                    </Box>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <Paper 
+                    elevation={1} 
+                    sx={{ 
+                      p: 3, 
+                      height: '100%', 
+                      borderRadius: 2,
+                      backgroundColor: '#f8f8ff'
                     }}
-                  />
-                </Box>
-              )}
-
-              {selectedImage && (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={analyzeImage}
-                  disabled={loading}
-                >
-                  {loading ? <CircularProgress size={24} /> : 'Analyze Image'}
-                </Button>
-              )}
-
-              {error && (
-                <Alert severity="error" sx={{ width: '100%', mt: 2 }}>
-                  {error}
-                </Alert>
-              )}
-
-              {prediction && (
-                <Box sx={{ width: '100%' }}>
-                  <Alert severity="success">
-                    <Typography variant="h6">Analysis Results:</Typography>
-                    <Typography variant="body1" sx={{ mt: 1 }}>
-                      Damage Type: {prediction.prediction.damageType}
+                  >
+                    <Typography variant="h6" gutterBottom sx={{ mb: 2, fontWeight: 500 }}>
+                      Analysis Results
                     </Typography>
-                    <Typography variant="body1">
-                      Severity: {prediction.prediction.severity}
-                    </Typography>
-                    <Typography variant="body1">
-                      Priority: {prediction.prediction.priority}
-                    </Typography>
-                  </Alert>
-                </Box>
-              )}
-            </Box>
-          </CardContent>
-        </Card>
-      </TabPanel>
+                    
+                    {error && (
+                      <Alert severity="error" sx={{ width: '100%', mb: 2 }}>
+                        {error}
+                      </Alert>
+                    )}
 
-      <TabPanel value={tabValue} index={1}>
-        {renderReports()}
-      </TabPanel>
+                    {loading && (
+                      <Box sx={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center',
+                        justifyContent: 'center', 
+                        my: 6,
+                        gap: 2
+                      }}>
+                        <CircularProgress />
+                        <Typography variant="body2" color="text.secondary">
+                          Processing image with AI...
+                        </Typography>
+                      </Box>
+                    )}
+
+                    {!loading && !error && prediction ? (
+                      <Box sx={{ pt: 2 }}>
+                        <Grid container spacing={2}>
+                          <Grid item xs={12}>
+                            <Paper sx={{ p: 2, borderRadius: 2, bgcolor: '#e3f2fd', mb: 2 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                                <Typography variant="subtitle1" fontWeight="medium">Damage Type</Typography>
+                                <Chip 
+                                  label={prediction.prediction.damageType} 
+                                  color="primary" 
+                                  variant="filled" 
+                                  size="medium"
+                                />
+                              </Box>
+                            </Paper>
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <Paper sx={{ p: 2, borderRadius: 2, bgcolor: '#fff8e1', height: '100%' }}>
+                              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="subtitle2" color="text.secondary">Severity</Typography>
+                                <Chip 
+                                  label={prediction.prediction.severity} 
+                                  color={prediction.prediction.severity.toLowerCase() === 'high' ? 'error' : 'warning'} 
+                                  sx={{ fontWeight: 'bold' }}
+                                />
+                              </Box>
+                            </Paper>
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <Paper sx={{ p: 2, borderRadius: 2, bgcolor: '#f9fbe7', height: '100%' }}>
+                              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="subtitle2" color="text.secondary">Priority</Typography>
+                                <Chip 
+                                  label={prediction.prediction.priority} 
+                                  color={prediction.prediction.priority.toLowerCase() === 'high' ? 'error' : 'info'} 
+                                  sx={{ fontWeight: 'bold' }}
+                                />
+                              </Box>
+                            </Paper>
+                          </Grid>
+                        </Grid>
+                      </Box>
+                    ) : !loading && !error && (
+                      <Box sx={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center',
+                        justifyContent: 'center', 
+                        my: 6,
+                        gap: 2
+                      }}>
+                        <Typography variant="body1" color="text.secondary" align="center">
+                          Select and analyze an image to view AI assessment results
+                        </Typography>
+                      </Box>
+                    )}
+                  </Paper>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={1}>
+          <Box sx={{ px: { xs: 1, sm: 3 }, py: 3 }}>
+            {reportsLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : reports.length === 0 ? (
+              <Paper sx={{ p: 4, borderRadius: 2, textAlign: 'center', bgcolor: '#f5f5f5' }}>
+                <AssessmentIcon sx={{ fontSize: 60, color: 'text.secondary', opacity: 0.5, mb: 2 }} />
+                <Typography variant="h6" gutterBottom>No Reports Available</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Upload and analyze images to create damage reports
+                </Typography>
+              </Paper>
+            ) : (
+              <Grid container spacing={3}>
+                {reports.map((report) => (
+                  <Grid item xs={12} md={6} lg={4} key={report.id}>
+                    <Paper 
+                      elevation={2} 
+                      sx={{ 
+                        p: 0,
+                        borderRadius: 2,
+                        overflow: 'hidden',
+                        transition: 'transform 0.2s, box-shadow 0.2s',
+                        '&:hover': {
+                          transform: 'translateY(-4px)',
+                          boxShadow: 4
+                        }
+                      }}
+                    >
+                      {report.annotatedImage && (
+                        <Box sx={{ 
+                          width: '100%',
+                          height: 200, 
+                          overflow: 'hidden',
+                          backgroundColor: '#f0f0f0'
+                        }}>
+                          <img
+                            src={report.annotatedImage}
+                            alt="Annotated damage"
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover'
+                            }}
+                          />
+                        </Box>
+                      )}
+                      
+                      <Box sx={{ p: 2.5 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 500 }}>
+                            Damage Report
+                          </Typography>
+                          <Chip 
+                            size="small" 
+                            label={report.severity} 
+                            color={report.severity === 'High' ? 'error' : report.severity === 'Medium' ? 'warning' : 'success'} 
+                          />
+                        </Box>
+                        
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="body2" color="text.secondary">Type</Typography>
+                            <Typography variant="body2" fontWeight="medium">{report.damageType}</Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="body2" color="text.secondary">Priority</Typography>
+                            <Typography variant="body2" fontWeight="medium">{report.priority}</Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="body2" color="text.secondary">Date</Typography>
+                            <Typography variant="body2">{new Date(report.createdAt).toLocaleDateString()}</Typography>
+                          </Box>
+                        </Box>
+                      </Box>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Box>
+        </TabPanel>
+      </Paper>
     </Box>
   );
 };
