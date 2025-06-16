@@ -25,7 +25,6 @@ import {
 import MenuIcon from '@mui/icons-material/Menu';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SearchIcon from '@mui/icons-material/Search';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
@@ -389,13 +388,6 @@ const Header = ({ onDrawerToggle }) => {
               <AccountCircleIcon />
             </ListItemIcon>
             <Typography sx={{ color: '#374151' }}>My Profile</Typography>
-          </MenuItem>
-          
-          <MenuItem onClick={handleProfileMenuClose} sx={{ py: 1.5, px: 3 }}>
-            <ListItemIcon sx={{ color: '#6b7280' }}>
-              <SettingsIcon />
-            </ListItemIcon>
-            <Typography sx={{ color: '#374151' }}>Settings</Typography>
           </MenuItem>
           
           <MenuItem onClick={() => {

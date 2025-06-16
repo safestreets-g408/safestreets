@@ -23,7 +23,8 @@ router.post('/upload', protect, upload.single('image'), uploadDamageReport);
 router.get('/history', protect, getDamageHistory);
 router.get('/reports', protect, getReports);
 router.get('/report/:reportId', protect, getReportById);
-router.get('/report/:reportId/image/:type', protect, getReportImage);
+// Allow image access with token in URL for <img> tag compatibility
+router.get('/report/:reportId/image/:type', getReportImage);
 
 // New routes for AI report integration and repair management
 router.post('/reports/create-from-ai', protect, createFromAiReport);

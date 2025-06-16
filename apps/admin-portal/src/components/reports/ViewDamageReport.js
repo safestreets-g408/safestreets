@@ -8,37 +8,51 @@ import {
   Paper,
   CircularProgress
 } from '@mui/material';
-import {api} from '../../utils/api';
+// API constants are imported directly
+import { API_BASE_URL, API_ENDPOINTS, TOKEN_KEY } from '../../config/constants';
 
 const ViewDamageReport = ({ report }) => {
   const [imageUrl, setImageUrl] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Get image URL with authentication token
+  const getAuthenticatedImageUrl = (reportId, type) => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    return `${API_BASE_URL}${API_ENDPOINTS.DAMAGE_REPORTS}/report/${reportId}/image/${type}?token=${token}`;
+  };
+
   useEffect(() => {
-    const fetchImage = async () => {
-      if (report.beforeImage?._id) {
-        try {
-          const response = await api.get(
-            `/damage/report/${report.reportId}/image/before`,
-            { responseType: 'blob' }
-          );
-          setImageUrl(URL.createObjectURL(response.data));
-        } catch (error) {
-          console.error('Error fetching image:', error);
-        } finally {
+    const loadImage = () => {
+      if (report && report.reportId) {
+        setLoading(true);
+        console.log('Loading image for report:', report.reportId);
+        
+        // Using direct URL with authentication token
+        const directImageUrl = getAuthenticatedImageUrl(report.reportId, 'before');
+        
+        // Create an image element to test loading
+        const img = new Image();
+        img.onload = () => {
+          console.log('Image loaded successfully');
+          setImageUrl(directImageUrl);
           setLoading(false);
-        }
+        };
+        img.onerror = (e) => {
+          console.error('Error loading image:', e);
+          setImageUrl(null);
+          setLoading(false);
+        };
+        img.src = directImageUrl;
+      } else {
+        setLoading(false);
       }
     };
 
-    fetchImage();
+    loadImage();
+    
     return () => {
-      // Cleanup URL object on unmount
-      if (imageUrl) {
-        URL.revokeObjectURL(imageUrl);
-      }
+      // No cleanup needed for direct URLs
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [report]);
 
   const getStatusColor = (status) => {
@@ -182,6 +196,11 @@ const ViewDamageReport = ({ report }) => {
                       width: '100%',
                       height: '100%',
                       objectFit: 'contain'
+                    }}
+                    onError={(e) => {
+                      console.error('Image failed to load in view');
+                      e.target.onerror = null;
+                      e.target.src = 'https://via.placeholder.com/400x300?text=Image+Not+Available';
                     }}
                   />
                 ) : (
