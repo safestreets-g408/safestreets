@@ -106,7 +106,7 @@ const ViewDamageReport = ({ report }) => {
         <Grid item xs={12} sm={6}>
           <Paper sx={{ p: 2, height: '100%' }}>
             <Typography variant="subtitle2" gutterBottom>Assignment</Typography>
-            <Typography>{report.assignedTo || 'Unassigned'}</Typography>
+            <Typography>{report.assignedTo ? report.assignedTo.name : 'Unassigned'}</Typography>
           </Paper>
         </Grid>
 

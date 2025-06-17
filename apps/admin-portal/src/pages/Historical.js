@@ -569,7 +569,7 @@ const Historical = () => {
                       </Grid>
                       <Grid item xs={6}>
                         <Typography variant="subtitle2" color="textSecondary">Assigned To:</Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>{selectedReport.assignedTo || 'Unassigned'}</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>{selectedReport.assignedTo ? selectedReport.assignedTo.name : 'Unassigned'}</Typography>
                       </Grid>
                       {selectedReport.resolvedAt && (
                         <Grid item xs={12}>

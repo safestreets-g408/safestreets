@@ -268,7 +268,6 @@ function Repair() {
           ) : (
             <FieldWorker 
               fieldWorkers={fieldWorkers}
-              theme={theme}
             />
           )}
         </>
