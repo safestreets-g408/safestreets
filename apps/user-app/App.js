@@ -14,7 +14,7 @@ import { BlurView } from 'expo-blur';
 import ErrorBoundary from 'react-native-error-boundary';
 import * as Updates from 'expo-updates';
 
-// Import screens
+// Import screens and context
 import CameraScreen from './screens/CameraScreen';
 import ReportsScreen from './screens/ReportsScreen';
 import ViewReportScreen from './screens/ViewReportScreen';
@@ -22,6 +22,7 @@ import ProfileScreen from './screens/ProfileScreen';
 import LoginScreen from './screens/LoginScreen';
 import TaskManagement from './screens/TaskManagement';
 import HomeScreen from './screens/HomeScreen';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
 LogBox.ignoreLogs(['non-serializable values']);
 
@@ -408,16 +409,68 @@ const MainTabs = () => {
   );
 }
 
+// AppContent component that uses auth context
+const AppContent = () => {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <ActivityIndicator size="large" color="#003366" style={{ flex: 1, justifyContent: 'center' }} />;
+  }
+
+  return (
+    <NavigationContainer
+      fallback={<ActivityIndicator size="large" color="#003366" />}
+    >
+      <Stack.Navigator
+        screenOptions={{
+          headerStyle: {
+            elevation: 0,
+            shadowOpacity: 0,
+          },
+        }}
+      >
+        {!isAuthenticated ? (
+          <Stack.Screen 
+            name="Login" 
+            component={LoginScreen}
+            options={{ headerShown: false }}
+          />
+        ) : (
+          <>
+            <Stack.Screen 
+              name="MainTabs"
+              component={MainTabs} 
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ViewReport"
+              component={ViewReportScreen}
+              options={{ 
+                title: "Report Details",
+                headerTitleAlign: 'center',
+                headerBackground: () => (
+                  <LinearGradient
+                    colors={['#2196f3', '#1976d2', '#0d47a1']}
+                    style={{ flex: 1 }}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  />
+                ),
+                headerTintColor: '#ffffff',
+                headerBackTitleVisible: false,
+              }}
+            />
+          </>
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+};
+
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const appState = useRef(AppState.currentState);
-
-  const handleLogin = () => {
-    setIsLoggedIn(true);
-    // The navigation will happen automatically due to conditional rendering
-  };
 
   // Initialize app with error handling
   const initializeApp = async () => {
@@ -493,83 +546,9 @@ export default function App() {
     >
       <SafeAreaProvider>
         <PaperProvider theme={theme}>
-          <NavigationContainer
-            onStateChange={(state) => {
-              // Check if user is logged in when navigation state changes
-              if (state?.routes?.[state.index]?.name === 'MainTabs' && !isLoggedIn) {
-                setIsLoggedIn(true);
-              }
-            }}
-            fallback={<ActivityIndicator size="large" color="#003366" />}
-          >
-            <Stack.Navigator
-              screenOptions={{
-                headerStyle: {
-                  elevation: 0,
-                  shadowOpacity: 0,
-                },
-                cardStyle: { backgroundColor: '#f5f8ff' },
-                headerTitleStyle: {
-                  fontWeight: 'bold',
-                },
-                headerBackTitleVisible: false,
-                cardStyleInterpolator: ({ current, layouts }) => {
-                  return {
-                    cardStyle: {
-                      transform: [
-                        {
-                          translateX: current.progress.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [layouts.screen.width, 0],
-                          }),
-                        },
-                      ],
-                    },
-                  };
-                },
-              }}
-            >
-              {/* Define initial route based on login state */}
-              {!isLoggedIn ? (
-                <Stack.Screen 
-                  name="Login" 
-                  component={LoginScreen}
-                  options={{ headerShown: false }}
-                />
-              ) : null}
-              <Stack.Screen 
-                name="MainTabs"
-                component={MainTabs} 
-                options={{ headerShown: false }}
-                listeners={{
-                  focus: () => {
-                    // When MainTabs is focused, update login state
-                    if (!isLoggedIn) {
-                      setIsLoggedIn(true);
-                    }
-                  },
-                }}
-              />
-              <Stack.Screen
-                name="ViewReport"
-                component={ViewReportScreen}
-                options={{ 
-                  title: "Report Details",
-                  headerTitleAlign: 'center',
-                  headerBackground: () => (
-                    <LinearGradient
-                      colors={['#2196f3', '#1976d2', '#0d47a1']}
-                      style={{ flex: 1 }}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                    />
-                  ),
-                  headerTintColor: '#ffffff',
-                  headerBackTitleVisible: false,
-                }}
-              />
-            </Stack.Navigator>
-          </NavigationContainer>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
         </PaperProvider>
       </SafeAreaProvider>
     </ErrorBoundary>

@@ -11,21 +11,33 @@ import {
   Alert
 } from 'react-native';
 import { TextInput, Button, Title, Paragraph } from 'react-native-paper';
+import { loginFieldWorker } from '../utils/auth';
+import { useAuth } from '../context/AuthContext';
 
 const LoginScreen = ({ navigation, route }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [secureTextEntry, setSecureTextEntry] = useState(true);
+  const { login } = useAuth();
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please enter both email and password');
+      return;
+    }
+
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      // Instead of using the function from params, just set a flag in AsyncStorage
-      // that the main app can check - this avoids the non-serializable warning
+    
+    try {
+      const response = await loginFieldWorker(email, password);
+      login(response.fieldWorker);
       navigation.replace('MainTabs');
-    }, 1000);
+    } catch (error) {
+      Alert.alert('Login Failed', error.message || 'Invalid credentials');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const toggleSecureEntry = () => {
@@ -96,6 +108,20 @@ const LoginScreen = ({ navigation, route }) => {
           >
             SIGN IN
           </Button>
+
+          {/* Field Worker Credentials Info */}
+          <View style={styles.credentialsInfo}>
+            <Text style={styles.credentialsTitle}>Field Worker Credentials</Text>
+            <Text style={styles.credentialsText}>
+              • Email: firstname.lastname@safestreets.worker
+            </Text>
+            <Text style={styles.credentialsText}>
+              • Password: first3lettersofname + workerID
+            </Text>
+            <Text style={styles.credentialsExample}>
+              Example: john.doe@safestreets.worker, password: johFW001
+            </Text>
+          </View>
 
           <View style={styles.forgotPasswordContainer}>
             <TouchableOpacity onPress={() => Alert.alert('Reset Password', 'A password reset link will be sent to your email address.')}>
@@ -212,6 +238,32 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontSize: 14,
     letterSpacing: 0.2,
+  },
+  credentialsInfo: {
+    backgroundColor: '#E3F2FD',
+    padding: 16,
+    borderRadius: 8,
+    marginTop: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#003366',
+  },
+  credentialsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#003366',
+    marginBottom: 8,
+  },
+  credentialsText: {
+    fontSize: 14,
+    color: '#37474F',
+    marginBottom: 4,
+    lineHeight: 20,
+  },
+  credentialsExample: {
+    fontSize: 12,
+    color: '#546E7A',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
   signupContainer: {
     flexDirection: 'row',

@@ -2,23 +2,42 @@ const FieldWorker = require('../models/FieldWorker');
 
 const addFieldWorker = async (req, res) => {
     try {
-        const { name, workerId, specialization, region } = req.body;
+        const { name, workerId, specialization, region, email, password } = req.body;
 
-        const existingWorker = await FieldWorker.findOne({ workerId });
+        const existingWorker = await FieldWorker.findOne({ 
+            $or: [{ workerId }, { email }] 
+        });
         if (existingWorker) {
-            return res.status(400).json({ message: 'Worker ID already exists' });
+            return res.status(400).json({ 
+                message: 'Worker ID or email already exists' 
+            });
         }
 
         const fieldWorker = new FieldWorker({
             name,
             workerId,
             specialization,
-            region
+            region,
+            email,
+            password
         });
 
         await fieldWorker.save();
 
-        res.status(201).json(fieldWorker);
+        // Return field worker data (excluding password)
+        const fieldWorkerData = {
+            _id: fieldWorker._id,
+            name: fieldWorker.name,
+            workerId: fieldWorker.workerId,
+            email: fieldWorker.email,
+            specialization: fieldWorker.specialization,
+            region: fieldWorker.region,
+            activeAssignments: fieldWorker.activeAssignments,
+            profile: fieldWorker.profile || {},
+            createdAt: fieldWorker.createdAt
+        };
+
+        res.status(201).json(fieldWorkerData);
     } catch (error) {
         res.status(500).json({ message: 'Error adding field worker', error: error.message });
     }
@@ -26,7 +45,7 @@ const addFieldWorker = async (req, res) => {
 
 const getFieldWorkers = async (req, res) => {
     try {
-        const fieldWorkers = await FieldWorker.find();
+        const fieldWorkers = await FieldWorker.find().select('-password');
         res.status(200).json(fieldWorkers);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching field workers', error: error.message });
@@ -35,7 +54,7 @@ const getFieldWorkers = async (req, res) => {
 const getFieldWorkerById = async (req, res) => {
     try {
         const { workerId } = req.params;
-        const fieldWorker = await FieldWorker.findOne({ workerId });
+        const fieldWorker = await FieldWorker.findOne({ workerId }).select('-password');
 
         if (!fieldWorker) {
             return res.status(404).json({ message: 'Field worker not found' });
