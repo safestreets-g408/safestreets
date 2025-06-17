@@ -2,13 +2,13 @@ import React from 'react';
 import { StatusBar } from 'react-native';
 
 // Import layout components
-import { AppProvider } from './components/layout';
+import AppProvider from './components/layout/AppProvider';
 
 // Import navigation
 import AppNavigator from './components/navigation/AppNavigator';
 
 // Import UI components
-import { LoadingSpinner, ErrorFallback } from './components/ui';
+import { LoadingSpinner } from './components/ui';
 
 // Import hooks
 import { useAppState } from './hooks';
