@@ -16,7 +16,7 @@ const DamageReportSchema = new mongoose.Schema({
   action: { type: String, required: true },
   description: { type: String },
   status: { type: String, default: 'Pending' },
-  assignedTo: { type: String, default: 'Unassigned' },
+  assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'FieldWorker', default: null },
   assignedAt: { type: Date },
   resolvedAt: { type: Date },
   reporter: { type: String, required: true },

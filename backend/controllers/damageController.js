@@ -97,6 +97,7 @@ const getReports = async (req, res) => {
 
     const reports = await DamageReport.find(query)
       .select('-beforeImage.data -afterImage.data') // Exclude image data from response
+      .populate('assignedTo', 'name workerId specialization') // Populate assignedTo with worker details
       .sort({ createdAt: -1 });
       
     res.status(200).json(reports);
@@ -113,7 +114,8 @@ const getReports = async (req, res) => {
 const getReportById = async (req, res) => {
   try {
     const report = await DamageReport.findOne({ reportId: req.params.reportId })
-      .select('-beforeImage.data -afterImage.data');
+      .select('-beforeImage.data -afterImage.data')
+      .populate('assignedTo', 'name workerId specialization'); // Populate assignedTo with worker details
       
     if (!report) {
       return res.status(404).json({ message: 'Report not found' });
@@ -237,7 +239,7 @@ const createFromAiReport = async (req, res) => {
       description: description || '',
       reporter,
       status: 'Pending',
-      assignedTo: 'Unassigned',
+      assignedTo: null,
       aiReportId: aiReportId
     });
 
@@ -326,7 +328,7 @@ const createAndAssignFromAiReport = async (req, res) => {
       description: description || '',
       reporter,
       status: 'Pending',
-      assignedTo: 'Unassigned',
+      assignedTo: null,
       aiReportId
     });
 
@@ -354,7 +356,7 @@ const createAndAssignFromAiReport = async (req, res) => {
       }
 
       // Update report
-      newReport.assignedTo = fieldWorker.name;
+      newReport.assignedTo = fieldWorker._id;
       newReport.assignedAt = new Date();
       newReport.status = 'Assigned';
       
@@ -368,7 +370,12 @@ const createAndAssignFromAiReport = async (req, res) => {
         id: newReport._id,
         reportId: newReport.reportId,
         status: newReport.status,
-        assignedTo: newReport.assignedTo,
+        assignedTo: workerId ? {
+          _id: fieldWorker._id,
+          name: fieldWorker.name,
+          workerId: fieldWorker.workerId,
+          specialization: fieldWorker.specialization
+        } : null,
         createdAt: newReport.createdAt
       }
     });
@@ -449,7 +456,7 @@ const assignRepair = async (req, res) => {
     });
 
     // Update report
-    report.assignedTo = fieldWorker.name;
+    report.assignedTo = fieldWorker._id;
     report.assignedAt = new Date();
     report.status = 'Assigned';
     
@@ -461,7 +468,12 @@ const assignRepair = async (req, res) => {
       report: {
         id: report._id,
         reportId: report.reportId,
-        assignedTo: report.assignedTo,
+        assignedTo: {
+          _id: fieldWorker._id,
+          name: fieldWorker.name,
+          workerId: fieldWorker.workerId,
+          specialization: fieldWorker.specialization
+        },
         status: report.status
       }
     });
@@ -497,7 +509,7 @@ const unassignRepair = async (req, res) => {
     }
 
     // Update report
-    report.assignedTo = 'Unassigned';
+    report.assignedTo = null;
     report.status = 'Pending';
     
     await report.save();
@@ -508,7 +520,7 @@ const unassignRepair = async (req, res) => {
       report: {
         id: report._id,
         reportId: report.reportId,
-        assignedTo: report.assignedTo,
+        assignedTo: null,
         status: report.status
       }
     });

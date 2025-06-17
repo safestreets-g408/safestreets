@@ -101,7 +101,7 @@ function Repair() {
     console.log('Assigning repair', { reportId, workerId, notes });
     
     try {
-      // Find worker details to get worker name
+      // Find worker details to get worker name for success message
       const worker = fieldWorkers.find(w => w.id === workerId);
       if (!worker) {
         console.error('Worker not found with ID:', workerId);

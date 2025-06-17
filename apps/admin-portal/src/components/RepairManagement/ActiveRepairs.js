@@ -52,13 +52,14 @@ function ActiveRepairs({ assignedRepairs = [], fieldWorkers = [], onStatusChange
 
   const filteredAssignedRepairs = assignedRepairs.filter(repair => {
     const matchesStatus = statusFilter === 'all' || repair.status === statusFilter;
-    const matchesWorker = workerFilter === 'all' || repair.assignedTo === workerFilter;
+    const assignedWorkerName = repair.assignedTo ? repair.assignedTo.name : null;
+    const matchesWorker = workerFilter === 'all' || assignedWorkerName === workerFilter;
     const matchesRegion = regionFilter === 'all' || repair.region === regionFilter;
     const matchesSearch = searchQuery === '' ||
       (repair.id && repair.id.toString().toLowerCase().includes(searchQuery.toLowerCase())) ||
       (repair.description && repair.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (repair.reporter && repair.reporter.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (repair.assignedTo && repair.assignedTo.toLowerCase().includes(searchQuery.toLowerCase()));
+      (assignedWorkerName && assignedWorkerName.toLowerCase().includes(searchQuery.toLowerCase()));
 
     return matchesStatus && matchesWorker && matchesRegion && matchesSearch;
   });
@@ -187,7 +188,7 @@ function ActiveRepairs({ assignedRepairs = [], fieldWorkers = [], onStatusChange
                       <PersonIcon sx={{ fontSize: 16 }} />
                     </Avatar>
                     <Typography variant="body2">
-                      {repair.assignedTo}
+                      {repair.assignedTo ? repair.assignedTo.name : 'Unassigned'}
                     </Typography>
                   </Box>
 

@@ -10,7 +10,7 @@ const getFieldWorkerReports = async (req, res) => {
     // Find reports assigned to this field worker
     const reports = await DamageReport.find({ 
       assignedTo: fieldWorkerId 
-    }).sort({ assignedAt: -1 });
+    }).populate('assignedTo', 'name workerId specialization').sort({ assignedAt: -1 });
 
     res.status(200).json(reports);
   } catch (error) {
