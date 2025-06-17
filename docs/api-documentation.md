@@ -7,7 +7,7 @@ This document provides comprehensive information about the SafeStreets API, incl
 The base URL for all API endpoints is:
 
 ```
-http://your-server-address:5000/api
+http://your-server-address:5030/api
 ```
 
 ## Authentication

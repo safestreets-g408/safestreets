@@ -92,7 +92,7 @@ For detailed documentation on various aspects of the project, please refer to:
 - [Admin Portal Guide](./docs/admin-portal-guide.md) - Admin dashboard documentation
 - [AI Model Documentation](./docs/ai-model-documentation.md) - ML model details
 - [Features Overview](./docs/features.md) - Comprehensive feature list
-- [Field Worker Authentication](./docs/field-worker-auth.md) - Authentication system
+
 
 ## 🏗️ Project Structure
 

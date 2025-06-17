@@ -55,12 +55,9 @@ The model is trained to classify road damage into the following categories:
 
 ## Model Performance
 
-- **Accuracy**: 92%+ on validation dataset
-- **Precision**: 91%
-- **Recall**: 90%
-- **F1 Score**: 0.905
+- **Accuracy**: 68%+ on validation dataset
 - **Inference Time**: ~1.2 seconds per image (on server hardware)
-- **Confidence Threshold**: 0.85 for production deployment
+- **Confidence Threshold**: 0.85 
 - **Model Size**: 346MB
 
 ### Confusion Matrix
@@ -86,19 +83,10 @@ D50   | 0.00 | 0.00 | 0.01 | 0.04 | 0.00 | 0.00 | 0.00 | 0.95
 
 The model was trained on a comprehensive dataset of road damage images:
 
-- **Total Images**: 9,053
-- **Training Set**: 7,243 images (80%)
-- **Validation Set**: 905 images (10%)
-- **Test Set**: 905 images (10%)
-- **Class Distribution**:
-  - D00: 1,240 images
-  - D10: 1,086 images
-  - D20: 1,728 images
-  - D30: 1,492 images
-  - D40: 1,136 images
-  - D43: 845 images
-  - D44: 762 images
-  - D50: 764 images
+- **Total Images**: 1000
+- **Training Set**: 800 images (80%)
+- **Validation Set**: 100 images (10%)
+- **Test Set**: 100 images (10%)
 
 ### Data Augmentation
 
@@ -220,8 +208,6 @@ The model server includes monitoring capabilities:
 ### Model Versioning
 Model weights are versioned to enable rollbacks if needed:
 - Current production model: `vit_model_v1.2.pth`
-- Backup models stored in `model_archive/`
-- Version history in `model_changelog.md`
 
 ### Periodic Retraining
 To maintain accuracy as new data becomes available:

@@ -22,7 +22,7 @@ The SafeStreets mobile application is built with React Native and Expo, offering
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/your-username/safestreets.git
+   git clone https://github.com/safestreets-g408/safestreets.git
    cd safestreets/apps/user-app
    ```
 

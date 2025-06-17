@@ -16,7 +16,7 @@ Ensure you have the following installed on your system:
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/safestreets.git
+git clone https://github.com/safestreets-g408/safestreets.git
 cd safestreets
 ```
 
@@ -94,7 +94,7 @@ pip install -r requirements.txt
 # Start the model server
 python app.py
 
-# Model server will be available at http://localhost:5001
+# Model server will be available at http://localhost:5000
 ```
 
 ## Configuration Details
@@ -122,16 +122,16 @@ AI_MODEL_URL=http://localhost:5001
 Update `apps/admin-portal/src/config/constants.js`:
 
 ```javascript
-export const API_BASE_URL = 'http://localhost:5000/api';
-export const AI_MODEL_URL = 'http://localhost:5001';
+export const API_BASE_URL = 'http://localhost:5030/api';
+export const AI_MODEL_URL = 'http://localhost:5000';
 ```
 
 ### Mobile App Configuration
 Update `apps/user-app/config.js`:
 
 ```javascript
-export const API_BASE_URL = 'http://your-backend-ip:5000/api';
-export const AI_MODEL_URL = 'http://your-ai-server-ip:5001';
+export const API_BASE_URL = 'http://your-backend-ip:5030/api';
+export const AI_MODEL_URL = 'http://your-ai-server-ip:5000';
 ```
 
 ## Running the System
@@ -162,9 +162,9 @@ If you're using VS Code, you can use the pre-configured task:
 
 ## Testing the Installation
 
-1. **Backend API**: Visit `http://localhost:5000/health` - should return health status
+1. **Backend API**: Visit `http://localhost:5030/health` - should return health status
 2. **Admin Portal**: Visit `http://localhost:3000` - should load the login page
-3. **AI Model Server**: Visit `http://localhost:5001/health` - should return AI server status
+3. **AI Model Server**: Visit `http://localhost:5000/health` - should return AI server status
 4. **Mobile App**: Scan QR code with Expo Go app
 
 ## Mobile App Installation Options
