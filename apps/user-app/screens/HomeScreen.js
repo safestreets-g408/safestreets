@@ -10,7 +10,8 @@ import {
   Dimensions,
   RefreshControl,
   StatusBar,
-  ActivityIndicator
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { Card, Title, Paragraph, Badge, IconButton, Divider, Button, Avatar, Chip, ProgressBar } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,19 +20,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { Platform } from 'react-native';
+import { useAuth } from '../context/AuthContext';
+import { getDashboardStats, updateRepairStatus } from '../utils/auth';
 
 
 const HomeScreen = ({ navigation }) => {
+  const { fieldWorker } = useAuth();
   const [notifications, setNotifications] = useState([]);
+  const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showWeather, setShowWeather] = useState(true);
   const [activeTab, setActiveTab] = useState('home');
   const [cityStats, setCityStats] = useState({
-    reportsThisWeek: 87,
-    repairsCompleted: 42,
-    pendingIssues: 31,
-    completionRate: 0.68
+    reportsThisWeek: 0,
+    repairsCompleted: 0,
+    pendingIssues: 0,
+    completionRate: 0
   });
   const [location, setLocation] = useState(null);
   const [locationName, setLocationName] = useState('Loading...');
@@ -44,92 +49,190 @@ const HomeScreen = ({ navigation }) => {
       animationRef.current.play();
     }
     
+    // Load initial data
+    loadDashboardData();
+    
     // Get current location
-    (async () => {
+    getCurrentLocation();
+  }, [fieldWorker]);
+
+  const getCurrentLocation = async () => {
+    try {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setErrorMsg('Permission to access location was denied');
-        setLocationName('Location unavailable');
+        setLocationName(fieldWorker?.region || 'Location unavailable');
         return;
       }
 
-      try {
-        let location = await Location.getCurrentPositionAsync({});
-        setLocation(location);
-        
-        // Get location name from coordinates
-        let geocode = await Location.reverseGeocodeAsync({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude
-        });
-        
-        if (geocode && geocode.length > 0) {
-          const { city, region } = geocode[0];
-          setLocationName(city || region || 'Unknown location');
-        }
-      } catch (error) {
-        setErrorMsg('Could not fetch location');
-        setLocationName('Location unavailable');
-      }
-    })();
-    
-    // Simulate fetching notifications
-    setTimeout(() => {
-      setNotifications([
-        {
-          id: '1',
-          title: 'New Report Approved',
-          message: 'Your pothole report on Main Street has been approved',
-          time: '2 hours ago',
-          read: false,
-          type: 'success',
-          icon: 'check-circle'
-        },
-        {
-          id: '2',
-          title: 'Maintenance Scheduled',
-          message: 'Road repair scheduled for your reported damage on Oak Avenue',
-          time: '1 day ago',
-          read: true,
-          type: 'info',
-          icon: 'calendar'
-        },
-        {
-          id: '3',
-          title: 'Report Status Update',
-          message: 'Your report #1234 is now under review by city officials',
-          time: '2 days ago',
-          read: true,
-          type: 'info',
-          icon: 'eye'
-        },
-        {
-          id: '4',
-          title: 'Repair Completed',
-          message: 'The pothole you reported on Pine Street has been fixed',
-          time: '3 days ago',
-          read: true,
-          type: 'success',
-          icon: 'check-circle'
-        }
-      ]);
-      setLoading(false);
-    }, 1000);
-  }, []);
-
-  const onRefresh = React.useCallback(() => {
-    setRefreshing(true);
-    // Simulate data refresh
-    setTimeout(() => {
-      // Update with new data
-      setCityStats({
-        ...cityStats,
-        reportsThisWeek: cityStats.reportsThisWeek + Math.floor(Math.random() * 5),
-        repairsCompleted: cityStats.repairsCompleted + Math.floor(Math.random() * 3)
+      let location = await Location.getCurrentPositionAsync({});
+      setLocation(location);
+      
+      // Get location name from coordinates
+      let geocode = await Location.reverseGeocodeAsync({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude
       });
+      
+      if (geocode && geocode.length > 0) {
+        const { city, region } = geocode[0];
+        setLocationName(city || region || fieldWorker?.region || 'Unknown location');
+      }
+    } catch (error) {
+      setErrorMsg('Could not fetch location');
+      setLocationName(fieldWorker?.region || 'Location unavailable');
+    }
+  };
+
+  const loadDashboardData = async () => {
+    if (!fieldWorker) return;
+    
+    try {
+      setLoading(true);
+      
+      // Load dashboard data (includes stats and recent reports)
+      const dashboardData = await getDashboardStats();
+      
+      setReports(dashboardData.recentReports || []);
+      setCityStats(dashboardData.stats || {
+        reportsThisWeek: 0,
+        repairsCompleted: 0,
+        pendingIssues: 0,
+        completionRate: 0
+      });
+      
+      // Generate notifications from recent reports
+      const recentNotifications = generateNotifications(dashboardData.recentReports || []);
+      setNotifications(recentNotifications);
+      
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      Alert.alert('Error', 'Failed to load dashboard data. Please try again.');
+      
+      // Set default empty state
+      setReports([]);
+      setCityStats({
+        reportsThisWeek: 0,
+        repairsCompleted: 0,
+        pendingIssues: 0,
+        completionRate: 0
+      });
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const calculateStats = (reports) => {
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    const reportsThisWeek = reports.filter(report => 
+      new Date(report.createdAt) >= oneWeekAgo
+    ).length;
+    
+    const repairsCompleted = reports.filter(report => 
+      report.repairStatus === 'completed'
+    ).length;
+    
+    const pendingIssues = reports.filter(report => 
+      report.repairStatus === 'pending' || report.repairStatus === 'in_progress'
+    ).length;
+    
+    const completionRate = reports.length > 0 ? repairsCompleted / reports.length : 0;
+    
+    return {
+      reportsThisWeek,
+      repairsCompleted,
+      pendingIssues,
+      completionRate
+    };
+  };
+
+  const generateNotifications = (reports) => {
+    const notifications = [];
+    
+    // Recent assignments
+    const recentReports = reports
+      .filter(report => report.assignedAt)
+      .sort((a, b) => new Date(b.assignedAt) - new Date(a.assignedAt))
+      .slice(0, 3);
+    
+    recentReports.forEach((report, index) => {
+      notifications.push({
+        id: `assignment_${report._id}`,
+        title: 'New Assignment',
+        message: `You've been assigned to repair ${report.damageType} on ${report.location}`,
+        time: formatTimeAgo(new Date(report.assignedAt)),
+        read: false,
+        type: 'info',
+        icon: 'clipboard-text',
+        reportId: report._id
+      });
+    });
+    
+    // Completed repairs
+    const completedReports = reports
+      .filter(report => report.repairStatus === 'completed')
+      .slice(0, 2);
+    
+    completedReports.forEach((report) => {
+      notifications.push({
+        id: `completed_${report._id}`,
+        title: 'Repair Completed',
+        message: `Great job! Repair on ${report.location} marked as completed`,
+        time: formatTimeAgo(new Date(report.updatedAt)),
+        read: true,
+        type: 'success',
+        icon: 'check-circle',
+        reportId: report._id
+      });
+    });
+    
+    return notifications.slice(0, 4); // Limit to 4 notifications
+  };
+
+  const formatTimeAgo = (date) => {
+    const now = new Date();
+    const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+    
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes} minutes ago`;
+    } else if (diffInMinutes < 1440) {
+      const hours = Math.floor(diffInMinutes / 60);
+      return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    } else {
+      const days = Math.floor(diffInMinutes / 1440);
+      return `${days} day${days > 1 ? 's' : ''} ago`;
+    }
+  };
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await loadDashboardData();
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
       setRefreshing(false);
-    }, 1500);
-  }, [cityStats]);
+    }
+  }, [fieldWorker]);
+
+  const handleNotificationPress = (notification) => {
+    if (notification.reportId) {
+      navigation.navigate('ViewReport', { reportId: notification.reportId });
+    }
+  };
+
+  const handleQuickStatusUpdate = async (reportId, status) => {
+    try {
+      await updateRepairStatus(reportId, status, `Status updated from home screen`);
+      Alert.alert('Success', 'Repair status updated successfully');
+      await loadDashboardData(); // Reload data
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update repair status');
+    }
+  };
 
   const quickActions = [
     {
@@ -187,9 +290,9 @@ const HomeScreen = ({ navigation }) => {
     <Animatable.View 
       animation="fadeIn" 
       duration={800} 
-      delay={parseInt(item.id) * 100}
+      delay={parseInt(item.id.split('_')[1] || item.id) * 100}
     >
-      <TouchableOpacity>
+      <TouchableOpacity onPress={() => handleNotificationPress(item)}>
         <Card style={[styles.notificationCard, !item.read && styles.unreadCard]}>
           <Card.Content style={styles.notificationContent}>
             <View style={styles.notificationHeader}>
@@ -198,7 +301,8 @@ const HomeScreen = ({ navigation }) => {
                   size={36} 
                   icon={item.icon} 
                   style={{
-                    backgroundColor: item.type === 'success' ? '#4caf50' : '#2196f3'
+                    backgroundColor: item.type === 'success' ? '#4caf50' : 
+                                   item.type === 'info' ? '#2196f3' : '#ff9800'
                   }} 
                 />
                 <View style={{marginLeft: 10, flex: 1}}>
@@ -212,12 +316,24 @@ const HomeScreen = ({ navigation }) => {
             <View style={styles.notificationActions}>
               <Chip 
                 icon={item.read ? "check" : "email-open"} 
-                onPress={() => {}} 
+                onPress={() => {
+                  // Mark as read logic could be added here
+                  const updatedNotifications = notifications.map(n => 
+                    n.id === item.id ? { ...n, read: true } : n
+                  );
+                  setNotifications(updatedNotifications);
+                }} 
                 style={{height: 30}}
               >
                 {item.read ? "Read" : "Mark as read"}
               </Chip>
-              <IconButton icon="dots-vertical" size={20} onPress={() => {}} />
+              {item.reportId && (
+                <IconButton 
+                  icon="eye" 
+                  size={20} 
+                  onPress={() => navigation.navigate('ViewReport', { reportId: item.reportId })} 
+                />
+              )}
             </View>
           </Card.Content>
         </Card>
@@ -228,26 +344,55 @@ const HomeScreen = ({ navigation }) => {
   const renderRecentReportItem = (item) => (
     <TouchableOpacity 
       style={styles.recentReportCard}
-      onPress={() => navigation.navigate('ViewReport', { reportId: item.id })}
+      onPress={() => navigation.navigate('ViewReport', { reportId: item._id })}
     >
       <Image 
-        source={{ uri: item.image }} 
+        source={{ 
+          uri: item.imageUrl || 'https://via.placeholder.com/100?text=No+Image' 
+        }} 
         style={styles.recentReportImage} 
       />
       <View style={styles.recentReportContent}>
-        <Text style={styles.recentReportTitle}>{item.title}</Text>
+        <Text style={styles.recentReportTitle}>
+          {item.damageType || 'Road Damage'} - {item.location || 'Unknown Location'}
+        </Text>
         <View style={styles.recentReportFooter}>
           <Chip 
             style={{
-              backgroundColor: item.status === 'approved' ? '#e8f5e9' : '#e3f2fd',
+              backgroundColor: item.repairStatus === 'completed' ? '#e8f5e9' : 
+                             item.repairStatus === 'in_progress' ? '#fff3e0' : '#e3f2fd',
               height: 24
             }}
             textStyle={{fontSize: 10}}
           >
-            {item.status}
+            {item.repairStatus || 'pending'}
           </Chip>
-          <Text style={styles.recentReportDate}>{item.date}</Text>
+          <Text style={styles.recentReportDate}>
+            {formatTimeAgo(new Date(item.createdAt))}
+          </Text>
         </View>
+        {item.repairStatus === 'pending' && (
+          <View style={styles.quickActions}>
+            <TouchableOpacity 
+              style={styles.quickActionButton}
+              onPress={() => handleQuickStatusUpdate(item._id, 'in_progress')}
+            >
+              <MaterialCommunityIcons name="play" size={14} color="#fff" />
+              <Text style={styles.quickActionText}>Start</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {item.repairStatus === 'in_progress' && (
+          <View style={styles.quickActions}>
+            <TouchableOpacity 
+              style={[styles.quickActionButton, { backgroundColor: '#4caf50' }]}
+              onPress={() => handleQuickStatusUpdate(item._id, 'completed')}
+            >
+              <MaterialCommunityIcons name="check" size={14} color="#fff" />
+              <Text style={styles.quickActionText}>Complete</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -268,7 +413,7 @@ const HomeScreen = ({ navigation }) => {
               duration={800} 
               style={styles.greeting}
             >
-              Hello, John
+              Hello, {fieldWorker?.name?.split(' ')[0] || 'Field Worker'}
             </Animatable.Text>
             <Animatable.Text 
               animation="fadeInDown" 
@@ -276,12 +421,19 @@ const HomeScreen = ({ navigation }) => {
               delay={200}
               style={styles.subGreeting}
             >
-              Welcome to Safe Streets
+              {fieldWorker?.specialization || 'Road Maintenance'} - {fieldWorker?.region || 'Your Region'}
             </Animatable.Text>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.avatarContainer}>
-              <Avatar.Text size={40} label="JD" style={styles.avatar} />
+            <TouchableOpacity 
+              style={styles.avatarContainer}
+              onPress={() => navigation.navigate('Profile')}
+            >
+              <Avatar.Text 
+                size={40} 
+                label={fieldWorker?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'FW'} 
+                style={styles.avatar} 
+              />
               <View style={styles.onlineIndicator} />
             </TouchableOpacity>
           </View>
@@ -466,11 +618,17 @@ const HomeScreen = ({ navigation }) => {
           style={styles.recentReportsContainer}
           contentContainerStyle={styles.recentReportsContentContainer}
         >
-          {recentReports.map(item => (
-            <Animatable.View key={item.id} animation="fadeInRight" duration={500} delay={parseInt(item.id) * 100}>
+          {reports.slice(0, 3).map(item => (
+            <Animatable.View key={item._id} animation="fadeInRight" duration={500} delay={100}>
               {renderRecentReportItem(item)}
             </Animatable.View>
           ))}
+          {reports.length === 0 && !loading && (
+            <View style={styles.noReportsContainer}>
+              <MaterialCommunityIcons name="clipboard-list" size={48} color="#ccc" />
+              <Text style={styles.noReportsText}>No assignments yet</Text>
+            </View>
+          )}
           <TouchableOpacity 
             style={styles.newReportCard}
             onPress={() => navigation.navigate('Camera')}
@@ -794,13 +952,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: 110,
   },
+  quickActions: {
+    flexDirection: 'row',
+    marginTop: 8,
+    gap: 6,
+  },
+  quickActionButton: {
+    backgroundColor: '#2196f3',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   quickActionText: {
     color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
-    marginTop: 10,
-    textAlign: 'center',
-    letterSpacing: 0.2,
+    fontSize: 10,
+    fontWeight: '500',
   },
   cityStatsCard: {
     marginTop: 12,
@@ -1007,6 +1176,18 @@ const styles = StyleSheet.create({
     color: '#4285f4',
     fontSize: 16,
     marginTop: 10,
+  },
+  noReportsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 30,
+    width: 200,
+  },
+  noReportsText: {
+    color: '#666',
+    fontSize: 14,
+    marginTop: 10,
+    textAlign: 'center',
   },
   spacer: {
     height: Platform.OS === 'ios' ? 100 : 80, 

@@ -7,6 +7,7 @@ const adminProfileRoutes = require('./routes/adminProfileRoutes');
 const imageRoutes = require('./routes/ImageRoutes');
 const fieldWorkerRoutes = require('./routes/fieldRoutes');
 const fieldWorkerAuthRoutes = require('./routes/fieldWorkerAuthRoutes');
+const fieldWorkerDamageRoutes = require('./routes/fieldWorkerDamageRoutes');
 const damageRoutes = require('./routes/damageRoutes')
 const path = require('path');
 
@@ -22,6 +23,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/field', fieldWorkerRoutes);
 app.use('/api/fieldworker/auth', fieldWorkerAuthRoutes);
+app.use('/api/fieldworker/damage', fieldWorkerDamageRoutes);
 
 app.use('/api/admin/auth', adminRoutes);
 app.use('/api/admin/profile', adminProfileRoutes);

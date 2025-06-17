@@ -21,6 +21,12 @@ The field worker authentication system has been implemented to provide secure ac
 - `GET /profile` - Get field worker profile (protected)
 - `PUT /profile` - Update field worker profile (protected)
 
+#### Field Worker Damage Management Routes (`/api/fieldworker/damage/`)
+- `GET /dashboard` - Get dashboard stats and recent reports (protected)
+- `GET /reports` - Get field worker's assigned reports (protected)
+- `PATCH /reports/:reportId/status` - Update repair status (protected)
+- `POST /reports/upload` - Upload new damage report (protected)
+
 #### Field Worker Management Routes (`/api/field/`)
 - `POST /add` - Add field worker (admin only)
 - `GET /workers` - Get all field workers (admin only)
