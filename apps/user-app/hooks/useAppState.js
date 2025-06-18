@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
-import { useAuth } from '../context/AuthContext';
 
 /**
  * Custom hook for handling app state changes and global app state
@@ -9,14 +8,24 @@ export const useAppState = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [appError, setAppError] = useState(null);
   const appStateRef = useRef(AppState.currentState);
-  const { checkAuthStatus } = useAuth();
+  
+  // Safely try to use Auth context, but don't require it
+  let auth = {};
+  try {
+    const { useAuth } = require('../context/AuthContext');
+    auth = useAuth();
+  } catch (e) {
+    console.warn('Auth context not available, continuing without authentication features');
+  }
 
   // Track app state changes (foreground/background)
   useEffect(() => {
     const handleAppStateChange = (nextAppState) => {
       if (appStateRef.current.match(/inactive|background/) && nextAppState === 'active') {
         // App has come to the foreground
-        checkAuthStatus();
+        if (auth.checkAuthStatus) {
+          auth.checkAuthStatus();
+        }
       }
       appStateRef.current = nextAppState;
     };
@@ -29,7 +38,7 @@ export const useAppState = () => {
     return () => {
       subscription.remove();
     };
-  }, [checkAuthStatus]);
+  }, [auth.checkAuthStatus]);
 
   /**
    * Global error handler

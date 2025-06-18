@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'react-native';
 
 // Import layout components
@@ -13,26 +13,61 @@ import { LoadingSpinner } from './components/ui';
 // Import hooks
 import { useAppState } from './hooks';
 
-// App content component
+// App content component with access to AuthContext
 const AppContent = () => {
-  return <AppNavigator />;
+  try {
+    const { isLoading } = useAppState();
+    
+    if (isLoading) {
+      return <LoadingSpinner />;
+    }
+    
+    return (
+      <>
+        <StatusBar barStyle="light-content" backgroundColor="#003366" />
+        <AppNavigator />
+      </>
+    );
+  } catch (error) {
+    console.error('Error in AppContent:', error);
+    return (
+      <>
+        <StatusBar barStyle="light-content" backgroundColor="#003366" />
+        <AppNavigator />
+      </>
+    );
+  }
 };
 
 // Main App component
 export default function App() {
-  const { isLoading, handleError } = useAppState();
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Handle global errors
+  const handleGlobalError = (error, stackTrace) => {
+    console.error('Global error:', error, stackTrace);
+    setError(error);
+  };
+  
+  // Simple initial loading effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setInitialLoading(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
-  if (isLoading) {
+  if (initialLoading) {
     return (
-      <AppProvider onError={handleError}>
+      <AppProvider>
         <LoadingSpinner />
       </AppProvider>
     );
   }
 
   return (
-    <AppProvider onError={handleError}>
-      <StatusBar barStyle="light-content" backgroundColor="#003366" />
+    <AppProvider>
       <AppContent />
     </AppProvider>
   );
