@@ -61,6 +61,8 @@ const AiAnalysis = () => {
   const [tabValue, setTabValue] = useState(0);
   const [reports, setReports] = useState([]);
   const [reportsLoading, setReportsLoading] = useState(false);
+  const [locationStatus, setLocationStatus] = useState('');
+  const [locationData, setLocationData] = useState(null);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -91,6 +93,81 @@ const AiAnalysis = () => {
     }
   };
 
+  const getLocation = () => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        setLocationStatus('Geolocation is not supported by your browser');
+        reject('Geolocation not supported');
+        return;
+      }
+
+      setLocationStatus('Fetching location...');
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude } = position.coords;
+            
+            // Get address using reverse geocoding
+            try {
+              const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+              );
+              const data = await response.json();
+              
+              const locationInfo = {
+                latitude,
+                longitude,
+                address: data.display_name || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+              };
+              
+              setLocationData(locationInfo);
+              setLocationStatus('Location fetched successfully');
+              resolve(locationInfo);
+            } catch (error) {
+              console.error('Error getting address:', error);
+              const locationInfo = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                address: `${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`
+              };
+              setLocationData(locationInfo);
+              setLocationStatus('Location coordinates fetched (address lookup failed)');
+              resolve(locationInfo);
+            }
+          } catch (error) {
+            console.error('Error processing location:', error);
+            setLocationStatus('Error processing location data');
+            reject(error);
+          }
+        },
+        (error) => {
+          let errorMsg = 'Unable to fetch location';
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMsg = 'Location access denied. Please enable location permissions.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMsg = 'Location information is unavailable.';
+              break;
+            case error.TIMEOUT:
+              errorMsg = 'Location request timed out.';
+              break;
+            default:
+              errorMsg = 'An unknown error occurred while fetching location.';
+          }
+          setLocationStatus(errorMsg);
+          console.error('Error getting location:', error);
+          reject(error);
+        },
+        { 
+          maximumAge: 60000,        // Use cached position if less than 1 minute old
+          timeout: 10000,           // Wait up to 10 seconds
+          enableHighAccuracy: false // Don't need high accuracy, save battery
+        }
+      );
+    });
+  };
+
   const analyzeImage = async () => {
     if (!selectedImage) return;
 
@@ -98,67 +175,51 @@ const AiAnalysis = () => {
     setError(null);
 
     try {
+      // Get location first
+      let locationInfo = null;
+      try {
+        locationInfo = await getLocation();
+      } catch (error) {
+        console.warn('Could not get location:', error);
+      }
+
       console.log('Processing image:', {
         name: selectedImage.name,
         type: selectedImage.type,
         size: selectedImage.size
       });
 
-      // Convert image to base64
-      const base64Promise = new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          try {
-            // Send only the base64 data without the prefix
-            const base64String = reader.result.split(',')[1];
-            resolve(base64String);
-          } catch (err) {
-            console.error('Error processing FileReader result:', err);
-            reject(err);
-          }
-        };
-        reader.onerror = (err) => {
-          console.error('FileReader error:', err);
-          reject(err);
-        };
-        reader.readAsDataURL(selectedImage);
-      });
-
-      const base64Image = await base64Promise;
-      console.log('Base64 conversion successful, length:', base64Image.length);
-
-      console.log('Making request to server...');
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5030'}/api/images/upload`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: selectedImage.name,
-          email: 'admin@example.com',
-          image: base64Image,
-          contentType: selectedImage.type
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Server response error:', errorData);
-        throw new Error(errorData.message || errorData.error || 'Failed to analyze image');
+      // Create form data
+      const formData = new FormData();
+      formData.append('image', selectedImage);
+      
+      // Add location data if available
+      if (locationInfo) {
+        formData.append('latitude', locationInfo.latitude.toString());
+        formData.append('longitude', locationInfo.longitude.toString());
+        if (locationInfo.address) {
+          formData.append('address', locationInfo.address);
+        }
       }
 
-      const data = await response.json();
-      console.log('Server response:', data);
-      setPrediction(data);
-      
-      // Refresh reports list if we're successful
-      if (data.reportId) {
-        fetchReports();
+      // Log the form data to ensure it's properly set
+      console.log('Form data entries:');
+      for (let [key, value] of formData.entries()) {
+        console.log(`${key}:`, typeof value === 'object' ? 'File object' : value);
+      }
+
+      // Use the new postFormData method instead of post
+      const response = await api.postFormData('/images/upload', formData);
+
+      if (response.success) {
+        setPrediction(response.prediction);
+        console.log('Response:', response);
+      } else {
+        throw new Error(response.message || 'Failed to process image');
       }
     } catch (err) {
-      console.error('Upload error details:', err);
-      setError(err.message || 'Failed to upload image');
+      console.error('Error analyzing image:', err);
+      setError(err.message || 'An error occurred while analyzing the image');
     } finally {
       setLoading(false);
     }
@@ -167,30 +228,26 @@ const AiAnalysis = () => {
   // Reports are now rendered directly in the JSX of TabPanel with index 1
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Container maxWidth="lg">
+      <Box sx={{ width: '100%', py: 3 }}>
+        <Typography variant="h4" gutterBottom>
+          AI Analysis
+        </Typography>
+        
+        {locationStatus && (
+          <Alert 
+            severity={locationStatus.includes('successfully') ? 'success' : 'info'} 
+            sx={{ mb: 2 }}
+          >
+            {locationStatus}
+          </Alert>
+        )}
 
-      <Paper 
-        elevation={2} 
-        sx={{ 
-          borderRadius: 2,
-          overflow: 'hidden',
-          mb: 4
-        }}
-      >
-        <Box sx={{ px: 2, borderBottom: 1, borderColor: 'divider' }}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
           <Tabs 
             value={tabValue} 
             onChange={handleTabChange}
-            variant="scrollable"
-            scrollButtons="auto"
-            sx={{ 
-              '& .MuiTab-root': {
-                minHeight: '64px',
-                textTransform: 'none',
-                fontSize: '1rem',
-                fontWeight: 500,
-              }
-            }}
+            aria-label="AI analysis tabs"
           >
             <Tab 
               label="Upload Image" 
@@ -199,197 +256,146 @@ const AiAnalysis = () => {
             />
             <Tab 
               label="View Reports" 
-              icon={<AssessmentIcon />}
+              icon={<AssessmentIcon />} 
               iconPosition="start"
             />
           </Tabs>
         </Box>
 
         <TabPanel value={tabValue} index={0}>
-          <Card sx={{ boxShadow: 'none' }}>
-            <CardContent sx={{ px: { xs: 2, sm: 4 }, py: 4 }}>
-              <Grid container spacing={4}>
-                <Grid item xs={12} md={6}>
-                  <Box sx={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center', 
-                    gap: 3,
-                    height: '100%',
-                    justifyContent: 'center'
-                  }}>
-                    <Paper 
-                      elevation={0} 
-                      sx={{ 
-                        width: '100%', 
-                        height: 300, 
-                        borderRadius: 2,
-                        border: '2px dashed #ccc',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: '#f8f9fa',
-                        position: 'relative',
-                        overflow: 'hidden'
-                      }}
-                    >
-                      {previewUrl ? (
-                        <img
-                          src={previewUrl}
-                          alt="Preview"
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'contain',
-                            padding: '16px'
-                          }}
-                        />
-                      ) : (
-                        <>
-                          <ImageIcon sx={{ fontSize: 60, color: 'text.secondary', opacity: 0.5, mb: 2 }} />
-                          <Typography variant="body1" color="text.secondary">
-                            No image selected
-                          </Typography>
-                        </>
-                      )}
-                    </Paper>
-                    
-                    <Box sx={{ display: 'flex', gap: 2, width: '100%', justifyContent: 'center' }}>
-                      <Button
-                        component="label"
-                        variant="contained"
-                        startIcon={<CloudUploadIcon />}
-                        disabled={loading}
-                        size="large"
-                        sx={{ px: 3, py: 1, borderRadius: 2 }}
-                      >
-                        Select Image
-                        <VisuallyHiddenInput
-                          type="file"
-                          accept="image/jpeg,image/png"
-                          onChange={handleImageSelect}
-                        />
-                      </Button>
+          <Paper elevation={3}>
+            <Box sx={{ p: 3 }}>
+              {/* Image Upload Section */}
+              <Box 
+                sx={{ 
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 2
+                }}
+              >
+                <Button
+                  component="label"
+                  role={undefined}
+                  variant="contained"
+                  tabIndex={-1}
+                  startIcon={<ImageIcon />}
+                >
+                  Choose Image
+                  <VisuallyHiddenInput 
+                    type="file" 
+                    accept="image/*"
+                    onChange={handleImageSelect}
+                  />
+                </Button>
 
-                      {selectedImage && (
+                {error && (
+                  <Alert severity="error" sx={{ width: '100%', mt: 2 }}>
+                    {error}
+                  </Alert>
+                )}
+
+                {selectedImage && (
+                  <Box sx={{ mt: 2, width: '100%' }}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      Selected Image
+                    </Typography>
+                    <Box
+                      sx={{
+                        width: '100%',
+                        height: 300,
+                        backgroundImage: `url(${previewUrl})`,
+                        backgroundSize: 'contain',
+                        backgroundPosition: 'center',
+                        backgroundRepeat: 'no-repeat',
+                        border: '1px solid #e0e0e0',
+                        borderRadius: 1
+                      }}
+                    />
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={analyzeImage}
+                      disabled={loading}
+                      sx={{ mt: 2 }}
+                    >
+                      {loading ? (
+                        <>
+                          <CircularProgress size={24} sx={{ mr: 1 }} />
+                          Analyzing...
+                        </>
+                      ) : (
+                        'Analyze Image'
+                      )}
+                    </Button>
+                  </Box>
+                )}
+
+                {locationData && (
+                  <Box sx={{ mt: 2, width: '100%' }}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      Location Information
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="body2" color="text.secondary">
+                          Latitude: {locationData.latitude}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="body2" color="text.secondary">
+                          Longitude: {locationData.longitude}
+                        </Typography>
+                      </Grid>
+                      {locationData.address && (
+                        <Grid item xs={12}>
+                          <Typography variant="body2" color="text.secondary">
+                            Address: {locationData.address}
+                          </Typography>
+                        </Grid>
+                      )}
+                    </Grid>
+                  </Box>
+                )}
+
+                {prediction && (
+                  <Box sx={{ mt: 3, width: '100%' }}>
+                    <Typography variant="h6" gutterBottom>
+                      Analysis Results
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="body1">
+                          Damage Type: <Chip label={prediction.damageType} color="primary" size="small" />
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="body1">
+                          Severity: <Chip label={prediction.severity} color="error" size="small" />
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="body1">
+                          Priority: <Chip label={prediction.priority} color="warning" size="small" />
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12}>
                         <Button
                           variant="contained"
                           color="secondary"
-                          onClick={analyzeImage}
-                          disabled={loading}
-                          size="large"
-                          sx={{ px: 3, py: 1, borderRadius: 2 }}
+                          onClick={() => {
+                            handleTabChange(null, 1);
+                          }}
                         >
-                          {loading ? (
-                            <>
-                              <CircularProgress size={20} sx={{ mr: 1, color: 'white' }} />
-                              Analyzing...
-                            </>
-                          ) : 'Analyze Image'}
+                          View All Reports
                         </Button>
-                      )}
-                    </Box>
+                      </Grid>
+                    </Grid>
                   </Box>
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <Paper 
-                    elevation={1} 
-                    sx={{ 
-                      p: 3, 
-                      height: '100%', 
-                      borderRadius: 2,
-                      backgroundColor: '#f8f8ff'
-                    }}
-                  >
-                    <Typography variant="h6" gutterBottom sx={{ mb: 2, fontWeight: 500 }}>
-                      Analysis Results
-                    </Typography>
-                    
-                    {error && (
-                      <Alert severity="error" sx={{ width: '100%', mb: 2 }}>
-                        {error}
-                      </Alert>
-                    )}
-
-                    {loading && (
-                      <Box sx={{ 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'center',
-                        justifyContent: 'center', 
-                        my: 6,
-                        gap: 2
-                      }}>
-                        <CircularProgress />
-                        <Typography variant="body2" color="text.secondary">
-                          Processing image with AI...
-                        </Typography>
-                      </Box>
-                    )}
-
-                    {!loading && !error && prediction ? (
-                      <Box sx={{ pt: 2 }}>
-                        <Grid container spacing={2}>
-                          <Grid item xs={12}>
-                            <Paper sx={{ p: 2, borderRadius: 2, bgcolor: '#e3f2fd', mb: 2 }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                                <Typography variant="subtitle1" fontWeight="medium">Damage Type</Typography>
-                                <Chip 
-                                  label={prediction.prediction.damageType} 
-                                  color="primary" 
-                                  variant="filled" 
-                                  size="medium"
-                                />
-                              </Box>
-                            </Paper>
-                          </Grid>
-                          <Grid item xs={12} sm={6}>
-                            <Paper sx={{ p: 2, borderRadius: 2, bgcolor: '#fff8e1', height: '100%' }}>
-                              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                                <Typography variant="subtitle2" color="text.secondary">Severity</Typography>
-                                <Chip 
-                                  label={prediction.prediction.severity} 
-                                  color={prediction.prediction.severity && String(prediction.prediction.severity).toLowerCase() === 'high' ? 'error' : 'warning'} 
-                                  sx={{ fontWeight: 'bold' }}
-                                />
-                              </Box>
-                            </Paper>
-                          </Grid>
-                          <Grid item xs={12} sm={6}>
-                            <Paper sx={{ p: 2, borderRadius: 2, bgcolor: '#f9fbe7', height: '100%' }}>
-                              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                                <Typography variant="subtitle2" color="text.secondary">Priority</Typography>
-                                <Chip 
-                                  label={prediction.prediction.priority} 
-                                  color={prediction.prediction.priority && String(prediction.prediction.priority).toLowerCase() === 'high' ? 'error' : 'info'} 
-                                  sx={{ fontWeight: 'bold' }}
-                                />
-                              </Box>
-                            </Paper>
-                          </Grid>
-                        </Grid>
-                      </Box>
-                    ) : !loading && !error && (
-                      <Box sx={{ 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'center',
-                        justifyContent: 'center', 
-                        my: 6,
-                        gap: 2
-                      }}>
-                        <Typography variant="body1" color="text.secondary" align="center">
-                          Select and analyze an image to view AI assessment results
-                        </Typography>
-                      </Box>
-                    )}
-                  </Paper>
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
+                )}
+              </Box>
+            </Box>
+          </Paper>
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
@@ -476,8 +482,8 @@ const AiAnalysis = () => {
             )}
           </Box>
         </TabPanel>
-      </Paper>
-    </Box>
+      </Box>
+    </Container>
   );
 };
 

@@ -180,16 +180,18 @@ function Reports() {
       alert('A damage report has already been generated from this AI report. Each AI report can only generate one damage report.');
       return;
     }
+    console.log('Selected AI report:', report);
     setSelectedAiReport(report);
     setReportFormData({
-      ...reportFormData,
-      region: reportFormData.region || '',
-      location: reportFormData.location || '',
+      region: '',
+      location: report.location?.address || `${report.location?.coordinates?.[1]}, ${report.location?.coordinates?.[0]}` || '',
       damageType: report.damageType || '',
       severity: report.severity || '',
       priority: report.priority || '',
       description: report.description || `AI-detected ${report.damageType} damage`,
+      reporter: 'admin@example.com',
       aiReportId: report._id || report.id,
+      assignToWorker: false
     });
     setAiReportsOpen(false);
     setCreateReportOpen(true);
@@ -204,6 +206,7 @@ function Reports() {
     setCreateReportOpen(false);
     setSelectedAiReport(null);
     setCreateReportError(null);
+    setSelectedFieldWorker('');
     setReportFormData({
       region: '',
       location: '',
@@ -217,15 +220,20 @@ function Reports() {
     });
   };
 
-  const handleFormInputChange = (field, value) => {
+  const handleFormInputChange = (e) => {
+    const { name, value } = e.target;
     setReportFormData(prev => ({
       ...prev,
-      [field]: value
+      [name]: value
     }));
   };
 
-  const handleFieldWorkerChange = (workerId) => {
-    setSelectedFieldWorker(workerId);
+  const handleFieldWorkerChange = (e) => {
+    setSelectedFieldWorker(e.target.value);
+    setReportFormData(prev => ({
+      ...prev,
+      assignToWorker: !!e.target.value
+    }));
   };
 
   const handleCreateReport = async (formData) => {

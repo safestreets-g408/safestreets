@@ -18,6 +18,7 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import { formatLocation, getCoordinatesString } from '../../utils/formatters';
 
 const AiReportsDialog = ({ 
   open, 
@@ -98,92 +99,41 @@ const AiReportsDialog = ({
                       </Typography>
                       {report.damageReportGenerated && (
                         <Chip 
-                          label="Used" 
-                          size="small" 
+                          label="Report Generated"
                           color="success"
-                          sx={{ fontWeight: 'bold' }}
+                          size="small"
                         />
                       )}
                     </Box>
-                    
-                    <Stack spacing={1} sx={{ mb: 2 }}>
-                      <Stack direction="row" justifyContent="space-between">
-                        <Typography variant="body2" color="text.secondary">
-                          Severity:
-                        </Typography>
-                        <Chip 
-                          label={report.severity} 
-                          size="small"
+                    <Stack spacing={1}>
+                      <Typography variant="body2" color="text.secondary">
+                        Priority: {report.priority}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Location: {formatLocation(report.location)}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Coordinates: {getCoordinatesString(report.location)}
+                      </Typography>
+                      <Box sx={{ mt: 1 }}>
+                        <Chip
+                          label={`Severity: ${report.severity}`}
                           color={getSeverityColor(report.severity)}
+                          size="small"
+                          sx={{ mr: 1 }}
                         />
-                      </Stack>
-                      
-                      <Stack direction="row" justifyContent="space-between">
-                        <Typography variant="body2" color="text.secondary">
-                          Priority:
-                        </Typography>
-                        <Typography variant="body2" fontWeight={500}>
-                          {report.priority}/10
-                        </Typography>
-                      </Stack>
-                      
-                      <Stack direction="row" justifyContent="space-between">
-                        <Typography variant="body2" color="text.secondary">
-                          Date:
-                        </Typography>
-                        <Typography variant="body2">
-                          {new Date(report.createdAt).toLocaleDateString()}
-                        </Typography>
-                      </Stack>
+                      </Box>
                     </Stack>
-                    
-                    <Box sx={{ mt: 2 }}>
-                      {report.annotatedImageBase64 && (
-                        <Box sx={{ mb: 2, position: 'relative', overflow: 'hidden', borderRadius: 1 }}>
-                          <img
-                            src={`data:image/jpeg;base64,${report.annotatedImageBase64}`}
-                            alt="Damage"
-                            style={{ 
-                              width: '100%', 
-                              height: '150px',
-                              objectFit: 'cover',
-                              borderRadius: '4px',
-                            }}
-                          />
-                        </Box>
-                      )}
-                      
-                      {report.damageReportGenerated ? (
-                        <Button
-                          variant="outlined"
-                          fullWidth
-                          disabled
-                          sx={{ 
-                            mt: 1,
-                            borderColor: '#4caf50',
-                            color: '#4caf50',
-                            '&.Mui-disabled': {
-                              borderColor: '#4caf50',
-                              color: '#4caf50',
-                            }
-                          }}
-                        >
-                          ✓ Already Generated
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="contained"
-                          fullWidth
-                          startIcon={<AssignmentIcon />}
-                          onClick={() => onSelectReport(report)}
-                          sx={{ 
-                            mt: 1,
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                          }}
-                        >
-                          Generate Damage Report
-                        </Button>
-                      )}
+                    <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<AssignmentIcon />}
+                        onClick={() => onSelectReport(report)}
+                        disabled={report.damageReportGenerated}
+                      >
+                        Generate Report
+                      </Button>
                     </Box>
                   </CardContent>
                 </Card>
@@ -192,14 +142,6 @@ const AiReportsDialog = ({
           </Grid>
         )}
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid #e5e7eb' }}>
-        <Button 
-          onClick={onClose} 
-          color="inherit"
-        >
-          Cancel
-        </Button>
-      </DialogActions>
     </Dialog>
   );
 };

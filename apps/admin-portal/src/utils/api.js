@@ -126,6 +126,34 @@ export const api = {
     }
   },
 
+  // Special method for FormData upload that doesn't set Content-Type header
+  // (browser will set it correctly with boundary)
+  postFormData: async (endpoint, formData) => {
+    try {
+      console.log(`API FormData POST request to ${API_BASE_URL}${endpoint}`);
+      
+      const token = localStorage.getItem(TOKEN_KEY);
+      const headers = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      // Don't set Content-Type here - browser will set it with boundary parameter
+
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'POST',
+        headers: headers,
+        body: formData,
+      });
+      return handleResponse(response);
+    } catch (error) {
+      console.error(`API FormData POST error for ${endpoint}:`, error);
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Network error. Please check your connection.');
+      }
+      throw error;
+    }
+  },
+
   put: async (endpoint, data) => {
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {

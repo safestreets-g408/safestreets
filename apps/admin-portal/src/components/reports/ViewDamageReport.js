@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 // API constants are imported directly
 import { API_BASE_URL, API_ENDPOINTS, TOKEN_KEY } from '../../config/constants';
+import { formatLocation, getCoordinatesString } from '../../utils/formatters';
 
 const ViewDamageReport = ({ report }) => {
   const [imageUrl, setImageUrl] = useState(null);
@@ -121,7 +122,11 @@ const ViewDamageReport = ({ report }) => {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Typography variant="body2" color="text.secondary">Location</Typography>
-                <Typography variant="body1">{report.location}</Typography>
+                <Typography variant="body1">{formatLocation(report.location)}</Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body2" color="text.secondary">Coordinates</Typography>
+                <Typography variant="body1">{getCoordinatesString(report.location)}</Typography>
               </Grid>
             </Grid>
           </Paper>

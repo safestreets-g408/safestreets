@@ -46,6 +46,9 @@ import { useAuth } from '../hooks/useAuth';
 import { api } from '../utils/api';
 import { API_ENDPOINTS } from '../config/constants';
 
+// Import formatters
+import { formatLocation } from '../utils/formatters';
+
 const Dashboard = () => {
   // Get user data to check role
   const { user } = useAuth();
@@ -144,9 +147,9 @@ const Dashboard = () => {
         
         recentReports = sortedReports.slice(0, 3).map(report => ({
           id: report._id,
-          title: `${report.damageType} at ${report.location}`,
+          title: `${report.damageType} ${report.location?.address ? `at ${report.location.address}` : ''}`,
           severity: report.severity,
-          location: report.location,
+          location: report.location || { address: 'Location not available' }, // Ensure location is an object
           timestamp: new Date(report.createdAt).toLocaleDateString(),
           status: report.status
         }));

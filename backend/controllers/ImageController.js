@@ -43,123 +43,86 @@ const calculateSeverityAndPriority = (predClass) => {
     return { severity, priority };
 };
 
+// Mapping function that combines damage type and severity/priority calculations
+const mapDamageClass = (predClass) => {
+    const damageType = getDamageType(predClass);
+    const { severity, priority } = calculateSeverityAndPriority(predClass);
+    return { damageType, severity, priority };
+};
+
 const uploadImage = async (req, res) => {
-    let newImageId = null;
-    
     try {
-        
-        const { name, email, image, contentType } = req.body;
+        console.log('Upload image request received');
+        console.log('Request headers:', req.headers);
+        console.log('Files:', req.file ? 'File present' : 'No file');
+        console.log('Body keys:', Object.keys(req.body));
 
-        // Validate required fields
-        if (!image) {
-            console.error('No image data received');
+        if (!req.file) {
+            console.error('No image file uploaded');
             return res.status(400).json({ 
-                message: 'Image data is required',
+                message: 'No image file uploaded', 
                 success: false 
             });
         }
 
-        if (!name || !email) {
-            console.error('Missing required fields:', { name: !!name, email: !!email });
-            return res.status(400).json({ 
-                message: 'Name and email are required',
-                success: false 
-            });
-        }
+        // Extract location data from request if available
+        const { latitude, longitude, address } = req.body;
+        console.log('Location data received:', { latitude, longitude, address });
 
-        // Validate base64 image data
-        if (typeof image !== 'string' || image.length === 0) {
-            console.error('Invalid image data format');
-            return res.status(400).json({ 
-                message: 'Invalid image data format',
-                success: false 
-            });
-        }
+        // Create a new image document
+        const newImage = new Image({
+            tenant: req.tenantId,
+            data: req.file.buffer,
+            contentType: req.file.mimetype,
+            result: 'Processing'
+        });
+
+        const savedImage = await newImage.save();
+        const newImageId = savedImage._id;
+        console.log('New image saved with ID:', newImageId);
 
         try {
-            const imageBuffer = Buffer.from(image, 'base64');
-
-            const newImage = new Image({
-                name,
-                email,
-                // Add tenant reference from middleware
-                tenant: req.tenantId,
-                image: {
-                    data: imageBuffer,
-                    contentType: contentType || 'image/jpeg'
-                },
-                result: 'Processing'
+            // Convert image buffer to base64
+            const base64Image = req.file.buffer.toString('base64');
+            console.log(`Base64 image created, length: ${base64Image.length}`);
+            
+            // Send image to AI server for processing
+            const aiServerUrl = process.env.AI_SERVER_URL || 'http://localhost:5000';
+            console.log(`Sending request to AI server: ${aiServerUrl}/predict`);
+            
+            const response = await axios.post(`${aiServerUrl}/predict`, {
+                image: base64Image
+            }, {
+                timeout: AI_REQUEST_TIMEOUT
             });
 
-            const savedImage = await newImage.save();
-            newImageId = savedImage._id;
-
+            console.log('AI server response received');
             
-            const requestConfig = {
-                timeout: AI_REQUEST_TIMEOUT,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                validateStatus: function (status) {
-                    return status < 500; // Resolve only if the status code is less than 500
-                }
-            };
-
-            const requestData = { image: image };
-
-            let aiResponse;
-            try {
-                aiResponse = await axios.post(`${AI_SERVER_URL}/predict`, requestData, requestConfig);
-            } catch (networkError) {
-                console.error('Network error calling AI server:', networkError.message);
-                if (networkError.code === 'ECONNREFUSED') {
-                    throw new Error('AI server is not available. Please ensure the AI service is running on port 5000.');
-                } else if (networkError.code === 'ETIMEDOUT') {
-                    throw new Error('AI server request timed out. Please try again.');
-                } else {
-                    throw new Error(`Network error: ${networkError.message}`);
-                }
+            if (!response.data || !response.data.success) {
+                console.error('Invalid response from AI server:', response.data);
+                throw new Error('Invalid response from AI server');
             }
 
-
-            // Handle non-200 responses
-            if (aiResponse.status !== 200) {
-                console.error('AI server returned non-200 status:', aiResponse.status);
-                const errorMsg = aiResponse.data?.error || aiResponse.data?.message || 'Unknown error';
-                throw new Error(`AI server error (${aiResponse.status}): ${errorMsg}`);
-            }
-
-            if (!aiResponse.data) {
-                throw new Error('No response data from AI server');
-            }
-
-            if (!aiResponse.data.success) {
-                throw new Error('AI prediction failed: ' + (aiResponse.data.error || 'Unknown error'));
-            }
-
-            const { prediction, annotated_image } = aiResponse.data;
+            // Extract prediction results
+            const { prediction, annotated_image, confidence } = response.data;
+            console.log('Prediction:', prediction, 'Confidence:', confidence);
             
-            if (!prediction) {
-                throw new Error('No prediction received from AI server');
-            }
+            // Map damage class to damage type, severity and priority
+            const { damageType, severity, priority } = mapDamageClass(prediction);
 
-            
-            // Calculate severity and priority
-            const damageType = getDamageType(prediction);
-            const { severity, priority } = calculateSeverityAndPriority(prediction);
-
-            console.log('Damage analysis:', { damageType, severity, priority });
-
-            // Create AI Report
-            console.log('Creating AI report...');
+            // Create AI report
             const aiReport = new AiReport({
-                imageId: savedImage._id,
+                imageId: newImageId,
+                tenant: req.tenantId,
                 predictionClass: prediction,
                 damageType,
                 severity,
                 priority,
-                annotatedImageBase64: annotated_image || null
+                annotatedImageBase64: annotated_image,
+                location: {
+                    coordinates: longitude && latitude ? [parseFloat(longitude), parseFloat(latitude)] : undefined,
+                    address: address || undefined
+                }
             });
 
             const savedReport = await aiReport.save();
@@ -196,32 +159,19 @@ const uploadImage = async (req, res) => {
                     console.error('Error updating image status:', updateError);
                 }
             }
-            
-            // Re-throw with the original error message
-            throw processError;
+
+            res.status(500).json({
+                message: 'Error processing image. Please try again.',
+                error: processError.message,
+                success: false
+            });
         }
     } catch (error) {
-        console.error('=== Upload Error ===');
-        console.error('Error message:', error.message);
-        console.error('Error stack:', error.stack);
-        
-        // Provide user-friendly error messages
-        let userMessage = 'Error processing road damage image. Please try again.';
-        
-        if (error.message.includes('AI server is not available')) {
-            userMessage = 'AI processing service is currently unavailable. Please try again later.';
-        } else if (error.message.includes('timeout')) {
-            userMessage = 'Request timed out. Please try again with a smaller image.';
-        } else if (error.message.includes('Invalid image')) {
-            userMessage = 'Invalid image format. Please use JPEG or PNG images.';
-        } else if (error.message.includes('AI server error')) {
-            userMessage = 'AI processing failed. Please try again.';
-        }
-        
+        console.error('Error uploading image:', error);
         res.status(500).json({ 
-            message: userMessage,
-            success: false,
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            message: 'Error uploading image. Please try again.',
+            error: error.message,
+            success: false 
         });
     }
 };
@@ -359,7 +309,8 @@ const getReports = async (req, res) => {
                 priority: report.priority,
                 predictionClass: report.predictionClass,
                 annotatedImage: report.annotatedImageBase64 ? `data:image/jpeg;base64,${report.annotatedImageBase64}` : null,
-                createdAt: report.createdAt
+                createdAt: report.createdAt,
+                location: report.location // Include location information from the report
             }))
         });
     } catch (error) {
@@ -397,7 +348,8 @@ const getReportById = async (req, res) => {
                 priority: report.priority,
                 predictionClass: report.predictionClass,
                 annotatedImage: report.annotatedImageBase64 ? `data:image/jpeg;base64,${report.annotatedImageBase64}` : null,
-                createdAt: report.createdAt
+                createdAt: report.createdAt,
+                location: report.location // Include location information
             }
         });
     } catch (error) {

@@ -30,6 +30,13 @@ const aiReportSchema = new mongoose.Schema({
         max: 10,
         required: true
     },
+    location: {
+        coordinates: {
+            type: [Number], // [longitude, latitude]
+            index: '2dsphere'
+        },
+        address: String
+    },
     annotatedImageBase64: {
         type: String,
         required: true

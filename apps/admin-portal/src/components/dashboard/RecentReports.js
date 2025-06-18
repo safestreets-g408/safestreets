@@ -14,6 +14,7 @@ import {
   Skeleton,
   Paper
 } from '@mui/material';
+import { formatLocation } from '../../utils/formatters';
 
 const RecentReports = memo(({ reports = [], loading }) => {
   // Helper function to get color based on severity
@@ -102,7 +103,7 @@ const RecentReports = memo(({ reports = [], loading }) => {
                 reports.map((report) => (
                   <TableRow key={report.id} hover>
                     <TableCell>{report.title}</TableCell>
-                    <TableCell>{report.location}</TableCell>
+                    <TableCell>{formatLocation(report.location)}</TableCell>
                     <TableCell>{report.timestamp}</TableCell>
                     <TableCell>
                       <Chip 
