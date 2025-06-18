@@ -24,9 +24,39 @@ import RepairIcon from '@mui/icons-material/Build';
 import HistoryIcon from '@mui/icons-material/History';
 import LogoutIcon from '@mui/icons-material/ExitToApp';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import BusinessIcon from '@mui/icons-material/Business';
 import { DRAWER_WIDTH } from '../../config/constants';
 
-const menuItems = [
+// Super admin menu items
+const superAdminMenuItems = [
+  { 
+    text: 'Dashboard', 
+    icon: <DashboardIcon />, 
+    path: '/', 
+    badge: null,
+  },
+  {
+    text: 'Tenant Management',
+    icon: <BusinessIcon />,
+    path: '/tenants',
+    badge: null,
+  },
+  { 
+    text: 'All Reports', 
+    icon: <ReportIcon />, 
+    path: '/reports', 
+    badge: null,
+  },
+  { 
+    text: 'AI Analysis', 
+    icon: <AutoAwesomeIcon />, 
+    path: '/ai-analysis', 
+    badge: 'AI',
+  }
+];
+
+// Regular admin menu items
+const regularMenuItems = [
   { 
     text: 'Dashboard', 
     icon: <DashboardIcon />, 
@@ -76,6 +106,11 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  
+  // Get user from localStorage for role-based rendering
+  const userString = localStorage.getItem('admin_data');
+  const user = userString ? JSON.parse(userString) : null;
+  const userRole = user?.role || 'admin';
 
   const handleNav = (path) => {
     navigate(path);
@@ -152,9 +187,10 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
         </Typography>
         
         <List sx={{ p: 0 }}>
-          {menuItems.map((item) => {
-            const isSelected = location.pathname === item.path;
-            return (
+          {(userRole === 'super-admin' ? superAdminMenuItems : regularMenuItems)
+            .map((item) => {
+              const isSelected = location.pathname === item.path;
+              return (
               <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
                 <ListItemButton
                   onClick={() => handleNav(item.path)}

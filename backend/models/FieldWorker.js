@@ -16,6 +16,11 @@ const FieldWorkerSchema = new mongoose.Schema({
         unique: true,
         lowercase: true
     },
+    tenant: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Tenant',
+        required: true
+    },
     password: {
         type: String,
         minlength: 6

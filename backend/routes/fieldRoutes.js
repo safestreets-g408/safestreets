@@ -6,13 +6,13 @@ const {
     updateFieldWorker,
     getFieldWorkerById 
 } = require('../controllers/fieldWorkerController');
-const { protectAdmin: protect } = require('../middleware/adminAuthMiddleware');
+const { protectAdmin, ensureTenantIsolation } = require('../middleware/adminAuthMiddleware');
 
-// Protected routes
-router.post('/add', protect, addFieldWorker);
-router.get('/workers', protect, getFieldWorkers); 
-router.get('/', protect, getFieldWorkers); 
-router.get('/:workerId', protect, getFieldWorkerById);
-router.put('/:workerId', protect, updateFieldWorker);
+// Protected routes with tenant isolation
+router.post('/add', protectAdmin, ensureTenantIsolation(), addFieldWorker);
+router.get('/workers', protectAdmin, ensureTenantIsolation(), getFieldWorkers); 
+router.get('/', protectAdmin, ensureTenantIsolation(), getFieldWorkers); 
+router.get('/:workerId', protectAdmin, ensureTenantIsolation(), getFieldWorkerById);
+router.put('/:workerId', protectAdmin, ensureTenantIsolation(), updateFieldWorker);
 
 module.exports = router;

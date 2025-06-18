@@ -4,6 +4,7 @@ import { ThemeProvider, CssBaseline } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { AuthProvider } from './hooks/useAuth';
+import { TenantProvider } from './context/TenantContext';
 
 // Theme
 import theme from './theme';
@@ -21,6 +22,8 @@ import Historical from './pages/Historical';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
 import AiAnalysis from './pages/AiAnalysis';
+import ManageTenants from './pages/ManageTenants';
+import TenantDetails from './pages/TenantDetails';
 
 function App() {
   return (
@@ -29,11 +32,12 @@ function App() {
         <LocalizationProvider dateAdapter={AdapterDateFns}>
           <CssBaseline />
           <AuthProvider>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              
-              <Route element={<MainLayout />}>
-                <Route index element={<Dashboard />} />
+            <TenantProvider>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                
+                <Route element={<MainLayout />}>
+                  <Route index element={<Dashboard />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/map" element={<MapView />} />
                 <Route path="/analytics" element={<Analytics />} />
@@ -41,11 +45,15 @@ function App() {
                 <Route path="/historical" element={<Historical />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/ai-analysis" element={<AiAnalysis />} />
+                {/* Tenant Management */}
+                <Route path="/tenants" element={<ManageTenants />} />
+                <Route path="/tenants/:tenantId" element={<TenantDetails />} />
               </Route>
   
               {/* Catch all route */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            </TenantProvider>
           </AuthProvider>
         </LocalizationProvider>
       </ThemeProvider>

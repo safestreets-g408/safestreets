@@ -25,6 +25,50 @@ http://your-server-address:3000
 - Passwords must contain at least 8 characters, including uppercase letters, lowercase letters, numbers, and special characters
 - Your account will be temporarily locked after 5 consecutive failed login attempts
 
+## Tenant Management
+
+The tenant management system allows super-administrators to create and manage multiple tenants in the SafeStreets system.
+
+### Creating a New Tenant
+
+1. From the super-admin dashboard, navigate to "Tenant Management"
+2. Click the "Create Tenant" button
+3. Fill in the required tenant information:
+   - Tenant Name (required)
+   - Tenant Code (required, unique identifier)
+   - Description (optional)
+   - Admin Details (required):
+     - Admin Name
+     - Admin Email
+     - Admin Password
+   - Tenant Settings:
+     - Max Admins
+     - Primary Color
+     - Secondary Color
+4. Click "Create Tenant" to complete the process
+
+### Managing Field Workers
+
+Field workers can be managed after the tenant is created:
+
+1. Navigate to the tenant details page
+2. Go to the "Field Workers" tab
+3. Click "Add Field Worker"
+4. Fill in the field worker details:
+   - Name (required)
+   - Worker ID (required, unique identifier)
+   - Email (required)
+   - Password (required)
+   - Specialization (required) - e.g., Pothole Repair, Street Light Maintenance
+   - Region (required) - Geographical working area
+   - Phone (optional)
+5. Click "Add Field Worker" to create the account
+
+### Field Worker Limits
+- Each tenant has a maximum limit on the number of field workers
+- The limit can be configured in the tenant settings
+- Super-admins can modify this limit when needed
+
 ## Dashboard Overview
 
 The admin portal dashboard is divided into several key sections:

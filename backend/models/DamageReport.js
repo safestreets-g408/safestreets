@@ -7,6 +7,11 @@ const ImageSchema = new mongoose.Schema({
 
 const DamageReportSchema = new mongoose.Schema({
   reportId: { type: String, required: true },
+  tenant: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Tenant',
+    required: true
+  },
   region: { type: String, required: true },
   beforeImage: ImageSchema,
   afterImage: ImageSchema,

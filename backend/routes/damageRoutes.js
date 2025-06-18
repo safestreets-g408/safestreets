@@ -15,25 +15,26 @@ const {
   deleteReport,
   upload 
 } = require('../controllers/damageController');
-const { protectAdmin: protect } = require('../middleware/adminAuthMiddleware');
+const { protectAdmin, ensureTenantIsolation } = require('../middleware/adminAuthMiddleware');
+const { enforceDamageTenantIsolation } = require('../middleware/tenantIsolationMiddleware');
 const router = express.Router();
 
-// Protected routes
-router.post('/upload', protect, upload.single('image'), uploadDamageReport);
-router.get('/history', protect, getDamageHistory);
-router.get('/reports', protect, getReports);
-router.get('/report/:reportId', protect, getReportById);
+// Protected routes with tenant isolation
+router.post('/upload', protectAdmin, ensureTenantIsolation(), upload.single('image'), uploadDamageReport);
+router.get('/history', protectAdmin, ensureTenantIsolation(), enforceDamageTenantIsolation, getDamageHistory);
+router.get('/reports', protectAdmin, ensureTenantIsolation(), enforceDamageTenantIsolation, getReports);
+router.get('/report/:reportId', protectAdmin, ensureTenantIsolation(), enforceDamageTenantIsolation, getReportById);
 // Allow image access with token in URL for <img> tag compatibility
-router.get('/report/:reportId/image/:type', getReportImage);
+router.get('/report/:reportId/image/:type', getReportImage); // Consider tenant isolation for this endpoint too
 
-// New routes for AI report integration and repair management
-router.post('/reports/create-from-ai', protect, createFromAiReport);
-router.post('/reports/create-and-assign', protect, createAndAssignFromAiReport);
-router.get('/reports/generated-from-ai', protect, getGeneratedFromAiReports);
-router.patch('/reports/:reportId/assign', protect, assignRepair);
-router.patch('/reports/:reportId/unassign', protect, unassignRepair);
-router.patch('/reports/:reportId/status', protect, updateRepairStatus);
-router.put('/report/:reportId', protect, updateReport);
-router.delete('/report/:reportId', protect, deleteReport);
+// New routes for AI report integration and repair management - adding tenant isolation
+router.post('/reports/create-from-ai', protectAdmin, ensureTenantIsolation(), createFromAiReport);
+router.post('/reports/create-and-assign', protectAdmin, ensureTenantIsolation(), createAndAssignFromAiReport);
+router.get('/reports/generated-from-ai', protectAdmin, ensureTenantIsolation(), getGeneratedFromAiReports);
+router.patch('/reports/:reportId/assign', protectAdmin, ensureTenantIsolation(), assignRepair);
+router.patch('/reports/:reportId/unassign', protectAdmin, ensureTenantIsolation(), unassignRepair);
+router.patch('/reports/:reportId/status', protectAdmin, ensureTenantIsolation(), updateRepairStatus);
+router.put('/report/:reportId', protectAdmin, ensureTenantIsolation(), updateReport);
+router.delete('/report/:reportId', protectAdmin, ensureTenantIsolation(), deleteReport);
 
 module.exports = router;

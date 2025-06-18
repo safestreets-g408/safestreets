@@ -9,9 +9,11 @@ export const API_ENDPOINTS = {
   ANALYTICS: '/analytics',
   AUTH: '/admin/auth',
   PROFILE: '/admin/profile',
+  ADMIN: '/admin',
   USERS: '/users',
   FIELD_WORKERS: '/field/workers',
   IMAGES: '/images',
+  TENANTS: '/admin/tenants',
 };
 
 // Auth

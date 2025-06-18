@@ -8,11 +8,12 @@ const imageRoutes = require('./routes/ImageRoutes');
 const fieldWorkerRoutes = require('./routes/fieldRoutes');
 const fieldWorkerAuthRoutes = require('./routes/fieldWorkerAuthRoutes');
 const fieldWorkerDamageRoutes = require('./routes/fieldWorkerDamageRoutes');
-const damageRoutes = require('./routes/damageRoutes')
+const damageRoutes = require('./routes/damageRoutes');
+const tenantRoutes = require('./routes/tenantRoutes');
 const path = require('path');
 
 dotenv.config();
-connectDB();
+connectDB()
 
 const app = express();
 app.use(cors());
@@ -27,6 +28,8 @@ app.use('/api/fieldworker/damage', fieldWorkerDamageRoutes);
 
 app.use('/api/admin/auth', adminRoutes);
 app.use('/api/admin/profile', adminProfileRoutes);
+app.use('/api/admin/tenants', tenantRoutes);
+app.use('/api/admin', require('./routes/tenantAdminRoutes'));
 app.use('/api/images', imageRoutes);
 app.use('/api/damage', damageRoutes)
 

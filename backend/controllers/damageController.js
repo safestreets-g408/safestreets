@@ -35,6 +35,8 @@ const uploadDamageReport = async (req, res) => {
     const reportId = 'DR-' + Date.now();
     const newReport = new DamageReport({
       reportId,
+      // Add tenant reference from middleware
+      tenant: req.tenantId,
       beforeImage: {
         data: req.file.buffer,
         contentType: req.file.mimetype
@@ -75,7 +77,12 @@ const getReports = async (req, res) => {
   try {
     const { status, region, severity, startDate, endDate } = req.query;
     
-    let query = {};
+    // Start with tenant filter from middleware
+    let query = { ...req.query };
+    
+    // Filter reports by tenant (this ensures tenant isolation)
+    // The tenant filter is added by the ensureTenantIsolation middleware
+    // in req.query.tenant
     
     if (status) {
       // Handle special case for status not equal (format: !Status)
@@ -92,8 +99,6 @@ const getReports = async (req, res) => {
       if (startDate) query.createdAt.$gte = new Date(startDate);
       if (endDate) query.createdAt.$lte = new Date(endDate);
     }
-
-    console.log('Reports query:', JSON.stringify(query));
 
     const reports = await DamageReport.find(query)
       .select('-beforeImage.data -afterImage.data') // Exclude image data from response
@@ -113,7 +118,13 @@ const getReports = async (req, res) => {
 // Get damage report by ID
 const getReportById = async (req, res) => {
   try {
-    const report = await DamageReport.findOne({ reportId: req.params.reportId })
+    // Include tenant filter from middleware
+    const tenantFilter = req.query.tenant ? { tenant: req.query.tenant } : {};
+    
+    const report = await DamageReport.findOne({ 
+      reportId: req.params.reportId,
+      ...tenantFilter // Apply tenant filter
+    })
       .select('-beforeImage.data -afterImage.data')
       .populate('assignedTo', 'name workerId specialization'); // Populate assignedTo with worker details
       
@@ -135,7 +146,6 @@ const getReportById = async (req, res) => {
 const getReportImage = async (req, res) => {
   try {
     const { reportId, type } = req.params; // type can be 'before' or 'after'
-    console.log(`Fetching ${type} image for report: ${reportId}`);
     
     // If the JWT middleware isn't working, try to handle token from query param
     // This is just a workaround for image loading issues in <img> tags
@@ -159,7 +169,6 @@ const getReportImage = async (req, res) => {
       return res.status(404).json({ message: 'Image not found' });
     }
 
-    console.log(`Sending ${type} image for report: ${reportId}, content type: ${image.contentType}`);
     res.set('Content-Type', image.contentType);
     res.send(image.data);
   } catch (err) {
@@ -230,6 +239,8 @@ const createFromAiReport = async (req, res) => {
 
     const newReport = new DamageReport({
       reportId,
+      // Add tenant reference
+      tenant: req.tenantId,
       region,
       location,
       damageType,
@@ -319,6 +330,8 @@ const createAndAssignFromAiReport = async (req, res) => {
     // Create the report
     const newReport = new DamageReport({
       reportId,
+      // Add tenant reference
+      tenant: req.tenantId,
       region,
       location,
       damageType,
@@ -345,12 +358,18 @@ const createAndAssignFromAiReport = async (req, res) => {
     await newReport.save();
 
     // If workerId is provided, assign the report to the worker
+    let fieldWorker;
     if (workerId) {
-      // Check if field worker exists
-      const fieldWorker = await FieldWorker.findById(workerId);
+      // Check if field worker exists and belongs to the same tenant
+      const tenantFilter = req.tenantId ? { tenant: req.tenantId } : {};
+      fieldWorker = await FieldWorker.findOne({
+        _id: workerId,
+        ...tenantFilter // Ensure field worker belongs to the same tenant
+      });
+      
       if (!fieldWorker) {
         return res.status(404).json({
-          message: 'Field worker not found',
+          message: 'Field worker not found or not authorized for this tenant',
           success: false
         });
       }
@@ -422,10 +441,17 @@ const assignRepair = async (req, res) => {
       });
     }
 
-    // Check if report exists
-    const report = await DamageReport.findById(reportId);
+    // Apply tenant filter from middleware
+    const tenantFilter = req.tenantId ? { tenant: req.tenantId } : {};
+
+    // Check if report exists and belongs to the correct tenant
+    const report = await DamageReport.findOne({ 
+      _id: reportId,
+      ...tenantFilter
+    });
+    
     if (!report) {
-      console.log(`Report not found with ID: ${reportId}`);
+      console.log(`Report not found with ID: ${reportId} for tenant: ${req.tenantId}`);
       return res.status(404).json({
         message: 'Damage report not found',
         success: false
@@ -439,12 +465,16 @@ const assignRepair = async (req, res) => {
       assignedTo: report.assignedTo
     });
 
-    // Check if field worker exists
-    const fieldWorker = await FieldWorker.findById(workerId);
+    // Check if field worker exists and belongs to the correct tenant
+    const fieldWorker = await FieldWorker.findOne({
+      _id: workerId,
+      ...tenantFilter // Ensure field worker belongs to the same tenant
+    });
+    
     if (!fieldWorker) {
-      console.error(`Field worker not found with ID: ${workerId}`);
+      console.error(`Field worker not found with ID: ${workerId} for tenant: ${req.tenantId}`);
       return res.status(404).json({
-        message: `Field worker not found with ID: ${workerId}`,
+        message: `Field worker not found or not authorized for this tenant`,
         success: false
       });
     }
@@ -598,8 +628,15 @@ const updateRepairStatus = async (req, res) => {
 // Get reports generated from AI reports
 const getGeneratedFromAiReports = async (req, res) => {
   try {
-    // Find all damage reports that have aiReportId field
-    const reports = await DamageReport.find({ aiReportId: { $exists: true } })
+    // Apply tenant filter - only get reports for the current tenant
+    // req.tenantId is set by the ensureTenantIsolation middleware
+    const tenantFilter = req.tenantId ? { tenant: req.tenantId } : {};
+    
+    // Find all damage reports that have aiReportId field and belong to the tenant
+    const reports = await DamageReport.find({ 
+      aiReportId: { $exists: true },
+      ...tenantFilter // Apply tenant filter
+    })
       .select('aiReportId reportId createdAt')
       .sort({ createdAt: -1 });
       

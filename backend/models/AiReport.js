@@ -6,6 +6,11 @@ const aiReportSchema = new mongoose.Schema({
         ref: 'Image',
         required: true
     },
+    tenant: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Tenant',
+        required: true
+    },
     predictionClass: {
         type: String,
         required: true

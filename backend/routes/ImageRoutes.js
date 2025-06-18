@@ -8,18 +8,18 @@ const {
     getReportById,
     testAiServer 
 } = require('../controllers/ImageController');
-const { protectAdmin: protect } = require('../middleware/adminAuthMiddleware');
+const { protectAdmin, ensureTenantIsolation } = require('../middleware/adminAuthMiddleware');
 
 // Test endpoint
-router.get('/test-ai-server', protect, testAiServer);
+router.get('/test-ai-server', protectAdmin, testAiServer);
 
-// Protected routes - removed multer middleware since we're using base64
-router.post('/upload', protect, uploadImage);
-router.get('/email/:email', protect, getImage);
-router.get('/id/:imageId', protect, getImageById);
+// Protected routes with tenant isolation
+router.post('/upload', protectAdmin, ensureTenantIsolation(), uploadImage);
+router.get('/email/:email', protectAdmin, ensureTenantIsolation(), getImage);
+router.get('/id/:imageId', protectAdmin, ensureTenantIsolation(), getImageById);
 
-// Report routes
-router.get('/reports', protect, getReports);
-router.get('/reports/:reportId', protect, getReportById);
+// Report routes with tenant isolation
+router.get('/reports', protectAdmin, ensureTenantIsolation(), getReports);
+router.get('/reports/:reportId', protectAdmin, ensureTenantIsolation(), getReportById);
 
 module.exports = router;

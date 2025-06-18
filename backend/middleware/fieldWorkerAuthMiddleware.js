@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const FieldWorker = require('../models/FieldWorker');
+const Tenant = require('../models/Tenant');
 
 const protectFieldWorker = async (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -17,7 +18,9 @@ const protectFieldWorker = async (req, res, next) => {
     }
     
     // Verify field worker exists and is active
-    const fieldWorker = await FieldWorker.findById(decoded.fieldWorkerId).select('-password');
+    const fieldWorker = await FieldWorker.findById(decoded.fieldWorkerId)
+      .select('-password')
+      .populate('tenant');
     
     if (!fieldWorker) {
       return res.status(401).json({ message: 'Field worker not found' });
@@ -27,12 +30,31 @@ const protectFieldWorker = async (req, res, next) => {
       return res.status(401).json({ message: 'Field worker account is deactivated' });
     }
     
+    // Check if tenant exists and is active
+    if (!fieldWorker.tenant) {
+      return res.status(401).json({ message: 'No tenant associated with this account' });
+    }
+    
+    // If tenant is populated as an object
+    if (fieldWorker.tenant._id && !fieldWorker.tenant.active) {
+      return res.status(401).json({ message: 'Tenant account is inactive' });
+    }
+    
+    // If tenant is just an ID, fetch the tenant
+    if (typeof fieldWorker.tenant === 'string' || fieldWorker.tenant instanceof mongoose.Types.ObjectId) {
+      const tenant = await Tenant.findById(fieldWorker.tenant);
+      if (!tenant || !tenant.active) {
+        return res.status(401).json({ message: 'Tenant account is inactive' });
+      }
+    }
+    
     req.fieldWorker = { 
       id: decoded.fieldWorkerId,
       workerId: fieldWorker.workerId,
       name: fieldWorker.name,
       region: fieldWorker.region,
-      specialization: fieldWorker.specialization
+      specialization: fieldWorker.specialization,
+      tenant: fieldWorker.tenant._id || fieldWorker.tenant
     };
     
     next();

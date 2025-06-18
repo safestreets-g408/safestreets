@@ -1,10 +1,34 @@
 const FieldWorker = require('../models/FieldWorker');
+const Tenant = require('../models/Tenant');
 const jwt = require('jsonwebtoken');
 
 // Register Field Worker
 const registerFieldWorker = async (req, res) => {
-  const { name, workerId, specialization, region, email, password } = req.body;
+  const { name, workerId, specialization, region, email, password, tenantId } = req.body;
   try {
+    // Validate tenantId
+    if (!tenantId) {
+      return res.status(400).json({ message: 'Tenant ID is required' });
+    }
+    
+    // Check if tenant exists and is active
+    const tenant = await Tenant.findById(tenantId);
+    if (!tenant) {
+      return res.status(404).json({ message: 'Tenant not found' });
+    }
+    
+    if (!tenant.active) {
+      return res.status(400).json({ message: 'Cannot create field worker for inactive tenant' });
+    }
+    
+    // Check if max field workers limit is reached
+    const fieldWorkerCount = await FieldWorker.countDocuments({ tenant: tenantId });
+    if (fieldWorkerCount >= tenant.settings.maxFieldWorkers) {
+      return res.status(400).json({ 
+        message: `Maximum number of field workers (${tenant.settings.maxFieldWorkers}) reached for this tenant` 
+      });
+    }
+    
     const workerExists = await FieldWorker.findOne({ 
       $or: [{ email }, { workerId }] 
     });
@@ -21,7 +45,8 @@ const registerFieldWorker = async (req, res) => {
       specialization, 
       region,
       email,
-      password
+      password,
+      tenant: tenantId
     });
     
     const token = jwt.sign(

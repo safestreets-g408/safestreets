@@ -6,7 +6,18 @@ import {
   IconButton, 
   Button,
   Stack,
-  Tooltip
+  Tooltip,
+  Card,
+  CardContent,
+  CardHeader,
+  Divider,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Paper,
+  Tabs,
+  Tab
 } from '@mui/material';
 
 // Icons
@@ -16,6 +27,9 @@ import BuildIcon from '@mui/icons-material/Build';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'; 
 import WarningIcon from '@mui/icons-material/Warning';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import BusinessIcon from '@mui/icons-material/Business';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import PersonIcon from '@mui/icons-material/Person';
 
 // Custom Components
 import StatCard from '../components/dashboard/StatCard';
@@ -25,11 +39,18 @@ import QuickActions from '../components/dashboard/QuickActions';
 import AiReportsDialog from '../components/dashboard/AiReportsDialog';
 import CreateDamageReportDialog from '../components/dashboard/CreateDamageReportDialog';
 
+// Auth
+import { useAuth } from '../hooks/useAuth';
+
 // API
 import { api } from '../utils/api';
 import { API_ENDPOINTS } from '../config/constants';
 
 const Dashboard = () => {
+  // Get user data to check role
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'super-admin';
+  
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState({
     totalReports: 0,
@@ -38,6 +59,14 @@ const Dashboard = () => {
     criticalDamages: 0,
     recentReports: []
   });
+  
+  // Super admin specific state
+  const [tenants, setTenants] = useState([]);
+  const [tenantsLoading, setTenantsLoading] = useState(false);
+  const [tenantsError, setTenantsError] = useState(null);
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [adminUsersLoading, setAdminUsersLoading] = useState(false);
+  const [selectedTab, setSelectedTab] = useState(0);
   
   const [aiReports, setAiReports] = useState([]);
   const [aiReportsLoading, setAiReportsLoading] = useState(false);
@@ -71,6 +100,34 @@ const Dashboard = () => {
       
       console.log('Fetching dashboard data...');
       
+      // Different API calls based on user role
+      if (user?.role === 'super-admin') {
+        // Fetch tenants data for super admin
+        setTenantsLoading(true);
+        try {
+          const tenantsData = await api.get(`${API_ENDPOINTS.TENANTS}`);
+          setTenants(tenantsData);
+          console.log('Tenants data fetched:', tenantsData.length || 0, 'tenants');
+        } catch (error) {
+          console.error('Error fetching tenants:', error);
+          setTenantsError(error.message || 'Failed to load tenants');
+        } finally {
+          setTenantsLoading(false);
+        }
+        
+        // Fetch admin users across all tenants
+        setAdminUsersLoading(true);
+        try {
+          const adminsData = await api.get(`${API_ENDPOINTS.ADMIN}/all`);
+          setAdminUsers(adminsData);
+        } catch (error) {
+          console.error('Error fetching admins:', error);
+        } finally {
+          setAdminUsersLoading(false);
+        }
+      }
+      
+      // Fetch reports data (for both admin and super-admin)
       const reportsData = await api.get(`${API_ENDPOINTS.DAMAGE_REPORTS}/reports`);
       console.log('Reports data fetched:', reportsData.length || 0, 'reports');
       
@@ -361,10 +418,16 @@ const Dashboard = () => {
                   mb: 1,
                 }}
               >
-                Welcome back, Admin! 👋
+                {user?.role === 'super-admin' ? 
+                  'Welcome, Super Admin! 👋' : 
+                  'Welcome back, Admin! 👋'
+                }
               </Typography>
               <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
-                Here's what's happening with SafeStreets today
+                {user?.role === 'super-admin' ?
+                  'Manage all tenants and system-wide operations' :
+                  'Here\'s what\'s happening with SafeStreets today'
+                }
               </Typography>
             </Box>
             
@@ -456,20 +519,97 @@ const Dashboard = () => {
 
       {/* Main Content Grid */}
       <Grid container spacing={3}>
-        {/* Recent Reports */}
-        <Grid item xs={12} lg={8}>
-          <RecentReports reports={dashboardData.recentReports} loading={loading} />
-        </Grid>
+        {user?.role === 'super-admin' ? (
+          <>
+            {/* Super Admin Content */}
+            <Grid item xs={12}>
+              <Paper sx={{ p: 3, mb: 3 }}>
+                <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+                  <Tabs value={selectedTab} onChange={(e, newValue) => setSelectedTab(newValue)}>
+                    <Tab label="Tenants Overview" />
+                    <Tab label="System Statistics" />
+                    <Tab label="Recent Reports" />
+                  </Tabs>
+                </Box>
+                
+                {/* Tenants Overview Tab Panel */}
+                {selectedTab === 0 && (
+                  <Box sx={{ py: 2 }}>
+                    <Button 
+                      variant="contained" 
+                      color="primary" 
+                      startIcon={<BusinessIcon />}
+                      onClick={() => window.location.href = '/tenants'}
+                      sx={{ mb: 3 }}
+                    >
+                      Manage Tenants
+                    </Button>
+                    
+                    <List>
+                      {tenants.map(tenant => (
+                        <ListItem 
+                          key={tenant._id} 
+                          sx={{ 
+                            border: '1px solid #e0e0e0', 
+                            borderRadius: 1, 
+                            mb: 1,
+                            backgroundColor: tenant.active ? '#f5f9ff' : '#f5f5f5'
+                          }}
+                        >
+                          <ListItemIcon>
+                            <BusinessIcon color={tenant.active ? 'primary' : 'disabled'} />
+                          </ListItemIcon>
+                          <ListItemText 
+                            primary={tenant.name} 
+                            secondary={`Code: ${tenant.code} | Status: ${tenant.active ? 'Active' : 'Inactive'}`}
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Box>
+                )}
+                
+                {/* System Statistics Tab Panel */}
+                {selectedTab === 1 && (
+                  <Box sx={{ py: 2 }}>
+                    {/* Show the same stats cards but in a different layout */}
+                    <Grid container spacing={3}>
+                      <Grid item xs={12}>
+                        <Typography variant="h6" sx={{ mb: 2 }}>System-wide Statistics</Typography>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <RecentReports reports={dashboardData.recentReports} loading={loading} />
+                      </Grid>
+                    </Grid>
+                  </Box>
+                )}
+                
+                {/* Recent Reports Tab Panel */}
+                {selectedTab === 2 && (
+                  <Box sx={{ py: 2 }}>
+                    <RecentReports reports={dashboardData.recentReports} loading={loading} />
+                    <ActivityFeed activities={recentActivity} />
+                  </Box>
+                )}
+              </Paper>
+            </Grid>
+          </>
+        ) : (
+          <>
+            {/* Regular Admin Content */}
+            <Grid item xs={12} lg={8}>
+              <RecentReports reports={dashboardData.recentReports} loading={loading} />
+            </Grid>
 
-        {/* Activity Feed */}
-        <Grid item xs={12} lg={4}>
-          <ActivityFeed activities={recentActivity} />
-        </Grid>
+            <Grid item xs={12} lg={4}>
+              <ActivityFeed activities={recentActivity} />
+            </Grid>
 
-        {/* Quick Actions */}
-        <Grid item xs={12}>
-          <QuickActions />
-        </Grid>
+            <Grid item xs={12}>
+              <QuickActions />
+            </Grid>
+          </>
+        )}
       </Grid>
 
       {/* AI Reports Dialog */}

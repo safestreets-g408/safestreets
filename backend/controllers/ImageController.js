@@ -47,10 +47,6 @@ const uploadImage = async (req, res) => {
     let newImageId = null;
     
     try {
-        console.log('=== Upload Request Started ===');
-        console.log('Request headers:', req.headers);
-        console.log('Request body keys:', Object.keys(req.body));
-        console.log('Image data length:', req.body.image?.length);
         
         const { name, email, image, contentType } = req.body;
 
@@ -81,15 +77,13 @@ const uploadImage = async (req, res) => {
         }
 
         try {
-            console.log('Converting base64 to buffer...');
             const imageBuffer = Buffer.from(image, 'base64');
-            console.log('Buffer created, size:', imageBuffer.length);
 
-            // Create new image document
-            console.log('Creating new image document...');
             const newImage = new Image({
                 name,
                 email,
+                // Add tenant reference from middleware
+                tenant: req.tenantId,
                 image: {
                     data: imageBuffer,
                     contentType: contentType || 'image/jpeg'
@@ -99,10 +93,7 @@ const uploadImage = async (req, res) => {
 
             const savedImage = await newImage.save();
             newImageId = savedImage._id;
-            console.log('Image saved to database with ID:', newImageId);
 
-            // Call AI server for prediction with enhanced error handling
-            console.log(`Calling AI server at ${AI_SERVER_URL}/predict...`);
             
             const requestConfig = {
                 timeout: AI_REQUEST_TIMEOUT,
@@ -116,7 +107,6 @@ const uploadImage = async (req, res) => {
             };
 
             const requestData = { image: image };
-            console.log('Request config:', JSON.stringify(requestConfig, null, 2));
 
             let aiResponse;
             try {
@@ -132,9 +122,6 @@ const uploadImage = async (req, res) => {
                 }
             }
 
-            console.log('AI server response status:', aiResponse.status);
-            console.log('AI server response headers:', aiResponse.headers);
-            console.log('AI server response data:', aiResponse.data);
 
             // Handle non-200 responses
             if (aiResponse.status !== 200) {
@@ -157,7 +144,6 @@ const uploadImage = async (req, res) => {
                 throw new Error('No prediction received from AI server');
             }
 
-            console.log('Prediction received:', prediction);
             
             // Calculate severity and priority
             const damageType = getDamageType(prediction);
