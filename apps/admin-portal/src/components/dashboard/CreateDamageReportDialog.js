@@ -203,7 +203,12 @@ const CreateDamageReportDialog = ({
           Cancel
         </Button>
         <Button
-          onClick={onSubmit}
+          onClick={(e) => {
+            // Prevent passing the entire event object to avoid circular references
+            e.preventDefault();
+            // Only pass the formData to the onSubmit handler
+            onSubmit(formData);
+          }}
           variant="contained"
           disabled={loading || !isFormValid}
           startIcon={loading ? <CircularProgress size={20} /> : <AssignmentIcon />}

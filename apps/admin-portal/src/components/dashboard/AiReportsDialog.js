@@ -129,7 +129,23 @@ const AiReportsDialog = ({
                         variant="contained"
                         size="small"
                         startIcon={<AssignmentIcon />}
-                        onClick={() => onSelectReport(report)}
+                        onClick={(e) => {
+                          // Prevent passing the entire event object to avoid circular references
+                          e.preventDefault();
+                          // Pass only the data needed from the report
+                          const cleanReport = {
+                            id: report._id || report.id,
+                            imageId: report.imageId,
+                            damageType: report.damageType,
+                            severity: report.severity,
+                            priority: report.priority,
+                            predictionClass: report.predictionClass,
+                            location: report.location,
+                            annotatedImage: report.annotatedImage,
+                            createdAt: report.createdAt
+                          };
+                          onSelectReport(cleanReport);
+                        }}
                         disabled={report.damageReportGenerated}
                       >
                         Generate Report

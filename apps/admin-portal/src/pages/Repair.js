@@ -63,6 +63,8 @@ function Repair() {
               id: worker._id,
               workerId: worker.workerId,
               name: worker.name,
+              email: worker.email,
+              phone: worker.profile?.phone || '',
               specialization: worker.specialization,
               region: worker.region,
               activeAssignments: worker.activeAssignments || 0,
@@ -192,6 +194,166 @@ function Repair() {
     setSnackbarOpen(false);
   };
 
+  const handleAddFieldWorker = async (workerData) => {
+    try {
+      console.log('Adding field worker:', workerData);
+      setError(null);
+      
+      // Prepare the data for the API
+      const workerPayload = {
+        name: workerData.name,
+        workerId: workerData.workerId,
+        email: workerData.email,
+        specialization: workerData.specialization,
+        region: workerData.region,
+        phone: workerData.phone,
+        status: workerData.status
+      };
+      
+      const response = await api.post('/field/add', workerPayload);
+      
+      if (response) {
+        console.log('Field worker added successfully:', response);
+        
+        // Add the new worker to the state with a derived status
+        const newWorker = {
+          id: response._id,
+          workerId: response.workerId,
+          name: response.name,
+          email: response.email,
+          specialization: response.specialization,
+          region: response.region,
+          activeAssignments: 0,
+          profile: response.profile || {},
+          status: workerData.status || 'Available'
+        };
+        
+        setFieldWorkers(prevWorkers => [...prevWorkers, newWorker]);
+        
+        // Show success notification
+        setSnackbarMessage(`Field worker ${workerData.name} added successfully`);
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+        
+        return true;
+      }
+    } catch (err) {
+      console.error('Error adding field worker:', err);
+      setError(`Failed to add field worker: ${err.message || 'Unknown error'}`);
+      
+      // Show error notification
+      setSnackbarMessage(`Failed to add field worker: ${err.message || 'Unknown error'}`);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      
+      return false;
+    }
+  };
+
+  const handleEditFieldWorker = async (workerId, workerData) => {
+    try {
+      console.log('Editing field worker:', workerId, workerData);
+      setError(null);
+      
+      // Prepare the data for the API
+      const workerPayload = {
+        name: workerData.name,
+        specialization: workerData.specialization,
+        region: workerData.region,
+        phone: workerData.phone,
+        status: workerData.status
+      };
+      
+      const response = await api.put(`/field/${workerId}`, workerPayload);
+      
+      if (response) {
+        console.log('Field worker updated successfully:', response);
+        
+        // Update the worker in the state
+        setFieldWorkers(prevWorkers => 
+          prevWorkers.map(worker => 
+            worker.workerId === workerId 
+              ? {
+                  ...worker,
+                  name: workerData.name,
+                  specialization: workerData.specialization,
+                  region: workerData.region,
+                  profile: {
+                    ...(worker.profile || {}),
+                    phone: workerData.phone
+                  },
+                  status: workerData.status
+                }
+              : worker
+          )
+        );
+        
+        // Show success notification
+        setSnackbarMessage(`Field worker ${workerData.name} updated successfully`);
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+        
+        return true;
+      }
+    } catch (err) {
+      console.error('Error updating field worker:', err);
+      setError(`Failed to update field worker: ${err.message || 'Unknown error'}`);
+      
+      // Show error notification
+      setSnackbarMessage(`Failed to update field worker: ${err.message || 'Unknown error'}`);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      
+      return false;
+    }
+  };
+  
+  const handleDeleteFieldWorker = async (workerId) => {
+    try {
+      console.log('Deleting field worker:', workerId);
+      setError(null);
+      
+      const worker = fieldWorkers.find(w => w.workerId === workerId);
+      if (!worker) {
+        throw new Error(`Worker with ID ${workerId} not found`);
+      }
+      
+      // Since there's no delete endpoint, we'll just mark the worker as inactive
+      // by updating their status. In a real app, you would have a proper delete endpoint
+      const workerPayload = {
+        status: 'Inactive'
+      };
+      
+      const response = await api.put(`/field/${workerId}`, workerPayload);
+      
+      if (response) {
+        console.log('Field worker deleted successfully:', response);
+        
+        // Remove the worker from the state
+        setFieldWorkers(prevWorkers => 
+          prevWorkers.filter(worker => worker.workerId !== workerId)
+        );
+        
+        // Show success notification
+        setSnackbarMessage(`Field worker ${worker.name} deleted successfully`);
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+        
+        return true;
+      }
+    } catch (err) {
+      console.error('Error deleting field worker:', err);
+      setError(`Failed to delete field worker: ${err.message || 'Unknown error'}`);
+      
+      // Show error notification
+      setSnackbarMessage(`Failed to delete field worker: ${err.message || 'Unknown error'}`);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      
+      return false;
+    }
+  };
+
   return (
     <>
       
@@ -268,6 +430,9 @@ function Repair() {
           ) : (
             <FieldWorker 
               fieldWorkers={fieldWorkers}
+              onAddWorker={handleAddFieldWorker}
+              onEditWorker={handleEditFieldWorker}
+              onDeleteWorker={handleDeleteFieldWorker}
             />
           )}
         </>

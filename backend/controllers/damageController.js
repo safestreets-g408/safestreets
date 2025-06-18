@@ -317,14 +317,18 @@ const createAndAssignFromAiReport = async (req, res) => {
     // Generate a report ID
     const reportId = 'DR-' + Date.now();
 
-    // Fetch AI report to get the annotated image
-    const aiReport = await AiReport.findById(aiReportId).populate('imageId');
+    let aiReport = null;
     
-    if (!aiReport) {
-      return res.status(404).json({ 
-        message: 'AI Report not found',
-        success: false 
-      });
+    // Only fetch AI report if aiReportId is provided
+    if (aiReportId) {
+      aiReport = await AiReport.findById(aiReportId).populate('imageId');
+      
+      if (!aiReport) {
+        return res.status(404).json({ 
+          message: 'AI Report not found',
+          success: false 
+        });
+      }
     }
 
     // Create the report
@@ -342,7 +346,7 @@ const createAndAssignFromAiReport = async (req, res) => {
       reporter,
       status: 'Pending',
       assignedTo: null,
-      aiReportId
+      ...(aiReportId && { aiReportId }) // Only add aiReportId if it exists
     });
 
     if (aiReport.annotatedImageBase64) {
@@ -750,6 +754,226 @@ const deleteReport = async (req, res) => {
   }
 };
 
+// Create a damage report directly (not from AI report)
+const createDamageReport = async (req, res) => {
+  try {
+    const { 
+      region, 
+      location, 
+      description, 
+      action, 
+      damageType, 
+      severity, 
+      priority, 
+      reporter,
+      assignedWorker // This might be passed from frontend
+    } = req.body;
+
+    // Add logging to trace request payload
+    console.log('Payload received:', req.body);
+
+    // Validate required fields
+    const requiredFields = ['region', 'location', 'damageType', 'severity', 'priority', 'reporter'];
+    const missingFields = requiredFields.filter(field => !req.body[field]);
+    
+    if (missingFields.length > 0) {
+      return res.status(400).json({ 
+        message: 'Missing required fields', 
+        fields: missingFields,
+        success: false 
+      });
+    }
+
+    // Generate a report ID
+    const reportId = 'DR-' + Date.now();
+
+    // Create the report
+    const newReport = new DamageReport({
+      reportId,
+      // Add tenant reference
+      tenant: req.tenantId,
+      region,
+      location,
+      damageType,
+      severity,
+      priority,
+      action: action || 'Pending Review',
+      description: description || '',
+      reporter,
+      status: 'Pending',
+      assignedTo: null, // Will be assigned below if assignedWorker is provided
+    });
+
+    await newReport.save();
+
+    // If assignedWorker is provided, assign the report
+    if (assignedWorker) {
+      // Check if field worker exists and belongs to the same tenant
+      const tenantFilter = req.tenantId ? { tenant: req.tenantId } : {};
+      const fieldWorker = await FieldWorker.findOne({
+        _id: assignedWorker,
+        ...tenantFilter
+      });
+
+      if (fieldWorker) {
+        // Assign the report to this worker
+        newReport.assignedTo = fieldWorker._id;
+        newReport.status = 'Assigned';
+        await newReport.save();
+
+        // Increment active assignments count
+        fieldWorker.activeAssignments = (fieldWorker.activeAssignments || 0) + 1;
+        await fieldWorker.save();
+      }
+    }
+
+    res.status(201).json({
+      message: 'Damage report created successfully',
+      success: true,
+      report: {
+        _id: newReport._id,
+        reportId: newReport.reportId,
+        status: newReport.status,
+        assignedTo: newReport.assignedTo,
+        createdAt: newReport.createdAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creating damage report:', error);
+    res.status(500).json({ 
+      message: 'Failed to create damage report', 
+      error: error.message,
+      success: false 
+    });
+  }
+};
+
+// Search across all reports and related data
+const searchAllReportsAndData = async (req, res) => {
+  try {
+    const { q: searchQuery, quick } = req.query;
+    const isQuickSearch = quick === 'true';
+
+    if (!searchQuery || searchQuery.trim() === '') {
+      return res.status(400).json({ message: 'Search query is required' });
+    }
+
+    // Apply tenant filter from middleware if available
+    const tenantFilter = req.query.tenant ? { tenant: req.query.tenant } : {};
+    
+    // Create regex for case-insensitive search
+    const searchRegex = new RegExp(searchQuery, 'i');
+
+    // Search in DamageReports
+    const reports = await DamageReport.find({
+      ...tenantFilter,
+      $or: [
+        { reportId: searchRegex },
+        { damageType: searchRegex },
+        { location: searchRegex },
+        { region: searchRegex },
+        { description: searchRegex },
+        { status: searchRegex },
+        { action: searchRegex },
+        { priority: searchRegex },
+        { severity: searchRegex },
+      ],
+    })
+      .select('-beforeImage.data -afterImage.data')
+      .populate('assignedTo', 'name workerId specialization')
+      .sort({ createdAt: -1 })
+      .limit(isQuickSearch ? 5 : 20);
+
+    // Search in FieldWorkers (if they exist in the model)
+    let fieldWorkers = [];
+    try {
+      fieldWorkers = await FieldWorker.find({
+        ...tenantFilter,
+        $or: [
+          { name: searchRegex },
+          { workerId: searchRegex },
+          { specialization: searchRegex },
+          { email: searchRegex },
+          { phone: searchRegex },
+        ],
+      })
+        .select('-password')
+        .limit(isQuickSearch ? 3 : 15);
+    } catch (err) {
+      console.warn('Error searching field workers:', err);
+    }
+
+    // Prepare mock analytics data
+    // In a real implementation, you might search an analytics collection
+    const analyticsTerms = [
+      'report', 'analysis', 'damage', 'repair', 'pothole', 'crack', 
+      'road', 'street', 'bridge', 'infrastructure', 'maintenance'
+    ];
+    
+    let analytics = [];
+    if (analyticsTerms.some(term => term.includes(searchQuery.toLowerCase()) || 
+        searchQuery.toLowerCase().includes(term))) {
+      analytics = [
+        {
+          id: 'analytics-1',
+          title: 'Damage Trends Analysis',
+          description: 'Analysis of damage trends over time',
+          type: 'Trends',
+          date: new Date()
+        },
+        {
+          id: 'analytics-2',
+          title: 'Regional Damage Distribution',
+          description: 'Distribution of damage reports by region',
+          type: 'Report',
+          date: new Date()
+        },
+        {
+          id: 'analytics-3',
+          title: 'Repair Performance Metrics',
+          description: 'Key performance indicators for repair teams',
+          type: 'Performance',
+          date: new Date()
+        },
+      ].filter(item => 
+        item.title.match(searchRegex) || 
+        item.description.match(searchRegex) ||
+        item.type.match(searchRegex)
+      );
+    }
+
+    // Prepare mock repairs data
+    // In a real implementation, you would search an actual repairs collection
+    const repairs = reports
+      .filter(report => report.status === 'Assigned' || report.status === 'In Progress')
+      .map(report => ({
+        _id: report._id,
+        repairId: `R-${report.reportId.substring(3)}`,
+        description: `Repair for ${report.damageType} at ${report.location}`,
+        status: report.status,
+        location: report.location,
+        assignedTo: report.assignedTo,
+        startDate: report.updatedAt,
+        estimatedCompletion: new Date(new Date(report.updatedAt).getTime() + 7 * 24 * 60 * 60 * 1000), // 1 week later
+      }));
+
+    res.status(200).json({
+      reports,
+      fieldWorkers,
+      analytics,
+      repairs,
+      query: searchQuery,
+    });
+  } catch (err) {
+    console.error('Error performing search:', err);
+    res.status(500).json({ 
+      message: 'Failed to perform search', 
+      error: err.message 
+    });
+  }
+};
+
 module.exports = { 
   uploadDamageReport, 
   getDamageHistory, 
@@ -764,5 +988,7 @@ module.exports = {
   upload,
   getGeneratedFromAiReports,
   updateReport,
-  deleteReport
+  deleteReport,
+  createDamageReport,
+  searchAllReportsAndData
 };

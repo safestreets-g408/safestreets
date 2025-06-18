@@ -14,6 +14,7 @@ import {
   useTheme,
   CardContent
 } from '@mui/material';
+import { formatLocation } from '../../utils/formatters';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import ReportIcon from '@mui/icons-material/Report';
 import BuildIcon from '@mui/icons-material/Build';
@@ -101,7 +102,7 @@ const ActivityFeed = ({ activities = [] }) => {
                         {activity.time}
                       </Typography>
                       <Chip
-                        label={activity.location}
+                        label={typeof activity.location === 'object' ? formatLocation(activity.location) : activity.location}
                         size="small"
                         sx={{
                           height: 16,

@@ -2,7 +2,16 @@ const FieldWorker = require('../models/FieldWorker');
 
 const addFieldWorker = async (req, res) => {
     try {
-        const { name, workerId, specialization, region, email, password } = req.body;
+        const { 
+            name, 
+            workerId, 
+            specialization, 
+            region, 
+            email, 
+            password,
+            phone,
+            status
+        } = req.body;
 
         // Check for duplicate email/workerId within the same tenant
         const tenantFilter = req.tenantId ? { tenant: req.tenantId } : {};
@@ -18,6 +27,14 @@ const addFieldWorker = async (req, res) => {
             });
         }
 
+        // Create profile object with phone
+        const profile = {
+            phone: phone || '',
+            isActive: true,
+            lastActive: new Date(),
+            totalReportsHandled: 0
+        };
+
         const fieldWorker = new FieldWorker({
             name,
             workerId,
@@ -25,6 +42,7 @@ const addFieldWorker = async (req, res) => {
             region,
             email,
             password,
+            profile,
             // Add tenant reference from middleware
             tenant: req.tenantId
         });
@@ -42,7 +60,8 @@ const addFieldWorker = async (req, res) => {
             tenant: fieldWorker.tenant,
             activeAssignments: fieldWorker.activeAssignments,
             profile: fieldWorker.profile || {},
-            createdAt: fieldWorker.createdAt
+            createdAt: fieldWorker.createdAt,
+            status: status || 'Available'  // Status for UI (not stored in schema)
         };
 
         res.status(201).json(fieldWorkerData);
@@ -101,11 +120,32 @@ const getFieldWorkerById = async (req, res) => {
 const updateFieldWorker = async (req, res) => {
     try {
         const { workerId } = req.params;
-        const updates = req.body;
+        const updates = { ...req.body };
+        
+        // Handle profile fields properly - extract from updates and nest them
+        const profileUpdates = {};
+        
+        if (updates.phone) {
+            profileUpdates.phone = updates.phone;
+            delete updates.phone;
+        }
+        
+        // If we have any profile updates, merge them into the profile object
+        if (Object.keys(profileUpdates).length > 0) {
+            updates.$set = {};
+            for (const [key, value] of Object.entries(profileUpdates)) {
+                updates.$set[`profile.${key}`] = value;
+            }
+        }
         
         // Don't allow changing the tenant
         if (updates.tenant) {
             delete updates.tenant;
+        }
+        
+        // Remove status as it's not in the schema (it's a UI field)
+        if (updates.status) {
+            delete updates.status;
         }
         
         // Apply tenant filter - only update field workers in the current tenant
@@ -129,6 +169,11 @@ const updateFieldWorker = async (req, res) => {
 
         if (!fieldWorker) {
             return res.status(404).json({ message: 'Field worker not found' });
+        }
+
+        // Add status for UI consistency if it was in the original request
+        if (req.body.status) {
+            fieldWorker._doc.status = req.body.status;
         }
 
         res.status(200).json(fieldWorker);

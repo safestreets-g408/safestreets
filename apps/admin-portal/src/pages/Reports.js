@@ -4,7 +4,8 @@ import {
   Button, FormControl, InputLabel, Select, Chip, Stack,
   Card, CardContent, IconButton,
   Pagination, Menu, ListItemIcon, ListItemText, CircularProgress,
-  Dialog, DialogTitle, DialogContent, DialogActions
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Alert, Snackbar
 } from '@mui/material';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
@@ -85,6 +86,11 @@ function Reports() {
   });
   const [createReportLoading, setCreateReportLoading] = useState(false);
   const [createReportError, setCreateReportError] = useState(null);
+
+  // Snackbar state
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success'); // success, error, warning, info
 
   const exportMenuOpen = Boolean(anchorEl);
 
@@ -236,22 +242,40 @@ function Reports() {
     }));
   };
 
-  const handleCreateReport = async (formData) => {
+  const handleCreateReport = async (data) => {
     try {
       setCreateReportLoading(true);
       setCreateReportError(null);
+      
+      // If passed an event object accidentally, use our formData from state
+      // Otherwise use the data parameter directly (which should be the formData)
+      const dataToUse = data && data.preventDefault ? reportFormData : data;
+      
+      // Validate that we have correct data before proceeding
+      if (!dataToUse || typeof dataToUse !== 'object') {
+        throw new Error('Invalid report data format');
+      }
 
       const reportData = {
-        ...formData,
-        assignedWorker: formData.assignToWorker ? selectedFieldWorker : null,
+        ...dataToUse,
+        assignedWorker: dataToUse.assignToWorker ? selectedFieldWorker : null,
         status: 'Pending',
+        reporter: 'Admin', // Add reporter field which is required by the backend
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
 
-      console.log('Creating damage report with data:', reportData);
+      // Remove any event objects or circular references before sending to API
+      let dataToSend = reportData;
+      if (reportData.target || reportData.currentTarget) {
+        console.warn('Removing event properties from report data');
+        const { target, currentTarget, ...cleanData } = reportData;
+        dataToSend = cleanData;
+      }
 
-      const response = await api.post('/damage/reports', reportData);
+      console.log('Creating damage report with data:', dataToSend);
+
+      const response = await api.post('/damage/reports', dataToSend);
       
       if (selectedAiReport && selectedAiReport._id) {
         try {
@@ -265,19 +289,31 @@ function Reports() {
         }
       }
 
-      // Refresh reports list
-      const updatedReports = await api.get('/damage/reports');
-      setReports(updatedReports);
+      // Check response for success flag
+      if (response && response.success) {
+        // Refresh reports list
+        const updatedReports = await api.get('/damage/reports');
+        setReports(updatedReports);
 
-      handleDialogClose();
-      alert('Damage report created successfully!');
-      
+        handleDialogClose();
+        setSnackbarOpen(true);
+        setSnackbarMessage('Damage report created successfully!');
+        setSnackbarSeverity('success');
+      } else {
+        throw new Error(response?.message || 'Failed to create report');
+      }
     } catch (error) {
       console.error('Error creating damage report:', error);
       setCreateReportError(error.message || 'Failed to create damage report');
     } finally {
       setCreateReportLoading(false);
     }
+  };
+
+  // Snackbar handler
+  const handleSnackbarClose = (event, reason) => {
+    if (reason === 'clickaway') return;
+    setSnackbarOpen(false);
   };
 
   // Utility functions
@@ -1474,6 +1510,23 @@ function Reports() {
           error={createReportError}
         />
       </Box>
+      
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={() => setSnackbarOpen(false)} 
+          severity={snackbarSeverity} 
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </>
   );
 }

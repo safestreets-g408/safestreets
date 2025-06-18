@@ -379,7 +379,9 @@ const Dashboard = () => {
       description: `Predicted damage type: ${report.damageType}, Severity: ${report.severity}`,
       time: new Date(report.createdAt).toLocaleTimeString(),
       severity: report.severity,
-      location: report.location || 'Unknown'
+      location: typeof report.location === 'object' 
+        ? formatLocation(report.location) 
+        : (report.location || 'Unknown')
     }));
 
     const damageActivity = dashboardData.recentReports.map(report => ({
@@ -389,7 +391,9 @@ const Dashboard = () => {
       description: `Reported damage type: ${report.severity}, Status: ${report.status}`,
       time: report.timestamp,
       severity: report.severity,
-      location: report.location
+      location: typeof report.location === 'object'
+        ? formatLocation(report.location) 
+        : (report.location || 'Unknown')
     }));
 
     const combinedActivity = [...aiActivity, ...damageActivity];

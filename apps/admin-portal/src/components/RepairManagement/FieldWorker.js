@@ -3,22 +3,29 @@ import {
   Box, Typography, Grid, Card, CardContent, CardActions,
   Button, Chip, Divider, IconButton, Tooltip, Avatar,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Paper
+  TextField, Paper, Alert, Snackbar
 } from '@mui/material';
 import {
   Assignment as AssignmentIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   Refresh as RefreshIcon,
-  Person as PersonIcon
+  Person as PersonIcon,
+  Email as EmailIcon,
+  Phone as PhoneIcon
 } from '@mui/icons-material';
 
 function FieldWorker({ fieldWorkers = [], onAddWorker = () => {}, onEditWorker = () => {}, onDeleteWorker = () => {} }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [workerData, setWorkerData] = useState({
     name: '',
+    workerId: '',
+    email: '',
+    phone: '',
     specialization: '',
     region: '',
     status: 'Available'
@@ -26,6 +33,9 @@ function FieldWorker({ fieldWorkers = [], onAddWorker = () => {}, onEditWorker =
 
   const resetWorkerData = () => ({
     name: '',
+    workerId: '',
+    email: '',
+    phone: '',
     specialization: '',
     region: '',
     status: 'Available'
@@ -34,10 +44,14 @@ function FieldWorker({ fieldWorkers = [], onAddWorker = () => {}, onEditWorker =
   const handleDialogOpen = (mode, worker = null) => {
     setEditMode(mode === 'edit');
     setSelectedWorker(worker);
+    setErrors({});
 
     if (mode === 'edit' && worker) {
       setWorkerData({
         name: worker.name || '',
+        workerId: worker.workerId || '',
+        email: worker.email || '',
+        phone: worker.profile?.phone || '',
         specialization: worker.specialization || '',
         region: worker.region || '',
         status: worker.status || 'Available'
@@ -53,29 +67,100 @@ function FieldWorker({ fieldWorkers = [], onAddWorker = () => {}, onEditWorker =
     setDialogOpen(false);
     setSelectedWorker(null);
     setWorkerData(resetWorkerData());
+    setErrors({});
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    
+    // Clear error for this field when user types
+    if (errors[name]) {
+      setErrors(prev => ({...prev, [name]: ''}));
+    }
+
     setWorkerData((prev) => ({
       ...prev,
       [name]: value
     }));
   };
 
-  const handleSubmit = () => {
-    if (!workerData.name || !workerData.specialization || !workerData.region) return;
-    if (editMode && selectedWorker) {
-      onEditWorker(selectedWorker.id, workerData);
-    } else {
-      onAddWorker(workerData);
+  const validateForm = () => {
+    const newErrors = {};
+    
+    // Required fields validation
+    if (!workerData.name.trim()) newErrors.name = 'Name is required';
+    if (!workerData.specialization.trim()) newErrors.specialization = 'Specialization is required';
+    if (!workerData.region.trim()) newErrors.region = 'Region is required';
+    
+    // Only validate workerId and email for new workers
+    if (!editMode) {
+      if (!workerData.workerId.trim()) newErrors.workerId = 'Worker ID is required';
+      if (!workerData.email.trim()) {
+        newErrors.email = 'Email is required';
+      } else if (!/\S+@\S+\.\S+/.test(workerData.email)) {
+        newErrors.email = 'Email is invalid';
+      }
     }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = () => {
+    if (!validateForm()) return;
+    
+    if (editMode && selectedWorker) {
+      // Use the correct field for the worker ID - could be id or workerId
+      const workerId = selectedWorker.workerId || selectedWorker.id;
+      if (!workerId) {
+        console.error('Cannot edit worker: Missing worker ID', selectedWorker);
+        setErrors({ general: 'Missing worker ID' });
+        return;
+      }
+      
+      console.log('Editing worker with ID:', workerId, workerData);
+      onEditWorker(workerId, workerData);
+      
+      setSnackbar({ 
+        open: true, 
+        message: `Field worker ${workerData.name} was successfully updated`, 
+        severity: 'success' 
+      });
+    } else {
+      // For new workers, make sure we have a workerId
+      if (!workerData.workerId) {
+        setErrors({ workerId: 'Worker ID is required' });
+        return;
+      }
+      
+      console.log('Adding new worker:', workerData);
+      onAddWorker(workerData);
+      
+      setSnackbar({ 
+        open: true, 
+        message: `Field worker ${workerData.name} was successfully added`, 
+        severity: 'success' 
+      });
+    }
+    
     handleDialogClose();
   };
 
   const handleDeleteWorker = (workerId) => {
+    if (!workerId) {
+      console.error('Cannot delete worker: Missing worker ID');
+      setSnackbar({
+        open: true,
+        message: 'Cannot delete worker: Missing worker ID',
+        severity: 'error'
+      });
+      return;
+    }
+    
     if (window.confirm('Are you sure you want to delete this worker?')) {
+      console.log('Deleting worker with ID:', workerId);
       onDeleteWorker(workerId);
+      setSnackbar({ open: true, message: 'Worker deleted successfully', severity: 'info' });
     }
   };
 
@@ -152,11 +237,11 @@ function FieldWorker({ fieldWorkers = [], onAddWorker = () => {}, onEditWorker =
                     <Box>
                       <Typography variant="h6">{worker.name || 'Unnamed'}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        ID: {worker.id}
+                        ID: {worker.workerId}
                       </Typography>
                       <Chip
                         size="small"
-                        label={worker.status}
+                        label={worker.status || 'Available'}
                         color={worker.status === 'Available' ? 'success' : worker.status === 'Busy' ? 'warning' : 'default'}
                         sx={{ mt: 0.5 }}
                       />
@@ -164,6 +249,16 @@ function FieldWorker({ fieldWorkers = [], onAddWorker = () => {}, onEditWorker =
                   </Box>
 
                   <Divider sx={{ my: 1 }} />
+
+                  <Typography variant="body2" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+                    <EmailIcon fontSize="small" sx={{ mr: 1 }} />
+                    {worker.email || 'No email'}
+                  </Typography>
+
+                  <Typography variant="body2" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+                    <PhoneIcon fontSize="small" sx={{ mr: 1 }} />
+                    {worker.profile?.phone || 'No phone'}
+                  </Typography>
 
                   <Typography variant="body2" sx={{ mb: 1 }}>
                     <strong>Specialization:</strong> {worker.specialization || '-'}
@@ -190,12 +285,11 @@ function FieldWorker({ fieldWorkers = [], onAddWorker = () => {}, onEditWorker =
                       <IconButton size="small" onClick={() => handleDialogOpen('edit', worker)}>
                         <EditIcon fontSize="small" />
                       </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Delete">
+                    </Tooltip>                      <Tooltip title="Delete">
                       <IconButton
                         size="small"
                         color="error"
-                        onClick={() => handleDeleteWorker(worker.id)}
+                        onClick={() => handleDeleteWorker(worker.workerId || worker.id)}
                       >
                         <DeleteIcon fontSize="small" />
                       </IconButton>
@@ -220,7 +314,45 @@ function FieldWorker({ fieldWorkers = [], onAddWorker = () => {}, onEditWorker =
               value={workerData.name}
               onChange={handleInputChange}
               required
+              error={!!errors.name}
+              helperText={errors.name}
               autoFocus
+            />
+
+            {!editMode && (
+              <TextField
+                label="Worker ID"
+                name="workerId"
+                fullWidth
+                value={workerData.workerId}
+                onChange={handleInputChange}
+                placeholder="Unique identifier (e.g., FW001)"
+                required
+                error={!!errors.workerId}
+                helperText={errors.workerId}
+              />
+            )}
+
+            <TextField
+              label="Email"
+              name="email"
+              type="email"
+              fullWidth
+              value={workerData.email}
+              onChange={handleInputChange}
+              disabled={editMode} // Can't change email in edit mode
+              required={!editMode}
+              error={!!errors.email}
+              helperText={errors.email || (editMode ? 'Email cannot be changed' : '')}
+            />
+
+            <TextField
+              label="Phone Number"
+              name="phone"
+              fullWidth
+              value={workerData.phone}
+              onChange={handleInputChange}
+              placeholder="Contact phone number"
             />
 
             <TextField
@@ -231,6 +363,8 @@ function FieldWorker({ fieldWorkers = [], onAddWorker = () => {}, onEditWorker =
               onChange={handleInputChange}
               placeholder="e.g., Electrical, Plumbing, Structural"
               required
+              error={!!errors.specialization}
+              helperText={errors.specialization}
             />
 
             <TextField
@@ -241,6 +375,8 @@ function FieldWorker({ fieldWorkers = [], onAddWorker = () => {}, onEditWorker =
               onChange={handleInputChange}
               placeholder="e.g., North, South, East, West, Central"
               required
+              error={!!errors.region}
+              helperText={errors.region}
             />
 
             <TextField
@@ -265,12 +401,27 @@ function FieldWorker({ fieldWorkers = [], onAddWorker = () => {}, onEditWorker =
           <Button
             variant="contained"
             onClick={handleSubmit}
-            disabled={!workerData.name || !workerData.specialization || !workerData.region}
           >
             {editMode ? 'Save Changes' : 'Add Worker'}
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Snackbar notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+          severity={snackbar.severity} 
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Paper>
   );
 }
