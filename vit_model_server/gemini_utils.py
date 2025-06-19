@@ -2,7 +2,7 @@ import google.generativeai as genai
 import os
 
 # Configure the API key from environment variable or fallback to a default for development
-API_KEY = os.environ.get('GOOGLE_API_KEY', "AIzaSyDc8TSD_GZFjMB1XkW310CoBFMT3qQFyss")
+API_KEY = os.environ.get('GOOGLE_API_KEY')
 
 # Configure the API key
 genai.configure(api_key=API_KEY)
