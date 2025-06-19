@@ -117,6 +117,7 @@ const CreateDamageReportDialog = ({
       <DialogContent sx={{ py: 3 }}>
         {selectedAiReport?.annotatedImageBase64 && (
           <Box sx={{ mb: 3, textAlign: 'center' }}>
+            <Typography variant="subtitle2" gutterBottom>AI Detected Damage Image</Typography>
             <img
               src={`data:image/jpeg;base64,${selectedAiReport.annotatedImageBase64}`}
               alt="Damage"
@@ -127,6 +128,9 @@ const CreateDamageReportDialog = ({
                 borderRadius: '4px',
               }}
             />
+            <Typography variant="caption" color="text.secondary">
+              This image will be saved as the "before" image in your damage report
+            </Typography>
           </Box>
         )}
         
@@ -286,19 +290,26 @@ const CreateDamageReportDialog = ({
           color="inherit"
         >
           Cancel
-        </Button>
-        <Button
-          onClick={(e) => {
-            // Prevent passing the entire event object to avoid circular references
-            e.preventDefault();
-            // Only pass the formData to the onSubmit handler
-            onSubmit(formData);
-          }}
-          variant="contained"
-          disabled={loading || !isFormValid}
-          startIcon={loading ? <CircularProgress size={20} /> : <AssignmentIcon />}
-        >
-          {loading ? 'Creating...' : 'Create Report'}
+        </Button>          <Button
+            onClick={(e) => {
+              // Prevent passing the entire event object to avoid circular references
+              e.preventDefault();
+              
+              console.log('Submitting form data:', {
+                ...formData,
+                aiReportId: formData.aiReportId,
+                hasAiReport: !!selectedAiReport,
+                aiReportHasImage: !!selectedAiReport?.annotatedImageBase64
+              });
+              
+              // Only pass the formData to the onSubmit handler
+              onSubmit(formData);
+            }}
+            variant="contained"
+            disabled={loading || !isFormValid}
+            startIcon={loading ? <CircularProgress size={20} /> : <AssignmentIcon />}
+          >
+            {loading ? 'Creating...' : 'Create Report'}
         </Button>
       </DialogActions>
     </Dialog>

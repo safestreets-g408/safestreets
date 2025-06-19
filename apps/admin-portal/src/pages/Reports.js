@@ -186,7 +186,17 @@ function Reports() {
       alert('A damage report has already been generated from this AI report. Each AI report can only generate one damage report.');
       return;
     }
-    console.log('Selected AI report:', report);
+    
+    // Log detailed information about the AI report
+    console.log('Selected AI report:', {
+      id: report._id || report.id,
+      damageType: report.damageType,
+      hasAnnotatedImage: !!report.annotatedImageBase64,
+      imageLength: report.annotatedImageBase64?.length || 0,
+      imageId: report.imageId,
+      fullReport: report
+    });
+    
     setSelectedAiReport(report);
     setReportFormData({
       region: '',
@@ -275,30 +285,61 @@ function Reports() {
 
       console.log('Creating damage report with data:', dataToSend);
 
-      const response = await api.post('/damage/reports', dataToSend);
+      let response;
       
-      if (selectedAiReport && selectedAiReport._id) {
+      // Use createFromAiReport endpoint if we have a selected AI report
+      // This will properly handle the image transfer from AI report to damage report
+      if (selectedAiReport && (selectedAiReport._id || selectedAiReport.id)) {
+        const aiReportId = selectedAiReport._id || selectedAiReport.id;
+        console.log('Creating damage report from AI report:', selectedAiReport);
+        console.log('AI report ID:', aiReportId);
+        
+        // Create the payload with all required fields including the AI report ID
+        const aiPayload = {
+          ...dataToSend,
+          aiReportId: aiReportId
+        };
+        
+        // Make sure the aiReportId is properly formatted
+        if (typeof aiReportId === 'object' && aiReportId !== null) {
+          aiPayload.aiReportId = aiReportId.toString();
+        }
+        
+        console.log('Payload for create-from-ai:', aiPayload);
+        
+        // Use the correct endpoint path as defined in damageRoutes.js
+        response = await api.post(`${API_ENDPOINTS.DAMAGE_REPORTS}/reports/create-from-ai`, aiPayload);
+        
+        console.log('Response from create-from-ai:', response);
+        
+        // Update the AI report to mark it as used
         try {
+          const reportId = response?._id || response?.id || response?.report?.id;
           await api.put(`${API_ENDPOINTS.IMAGES}/reports/${selectedAiReport._id}`, {
             damageReportGenerated: true,
-            damageReportId: response._id || response.id
+            damageReportId: reportId
           });
-          console.log('AI report updated with damage report reference');
+          console.log('AI report updated with damage report reference:', reportId);
         } catch (updateError) {
           console.warn('Failed to update AI report reference:', updateError);
         }
+      } else {
+        // Standard creation without AI report
+        response = await api.post(`${API_ENDPOINTS.DAMAGE_REPORTS}/reports`, dataToSend);
       }
 
       // Check response for success flag
       if (response && response.success) {
         // Refresh reports list
-        const updatedReports = await api.get('/damage/reports');
+        const updatedReports = await api.get(`${API_ENDPOINTS.DAMAGE_REPORTS}/reports`);
         setReports(updatedReports);
 
         handleDialogClose();
         setSnackbarOpen(true);
-        setSnackbarMessage('Damage report created successfully!');
+        setSnackbarMessage(selectedAiReport ? 'Damage report with AI image created successfully!' : 'Damage report created successfully!');
         setSnackbarSeverity('success');
+        
+        console.log('Damage report created:', response.report || response);
       } else {
         throw new Error(response?.message || 'Failed to create report');
       }

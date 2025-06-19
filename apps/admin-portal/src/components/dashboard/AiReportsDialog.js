@@ -132,8 +132,12 @@ const AiReportsDialog = ({
                         onClick={(e) => {
                           // Prevent passing the entire event object to avoid circular references
                           e.preventDefault();
-                          // Pass only the data needed from the report
+                          
+                          console.log('Original AI report:', report);
+                          
+                          // Pass only the data needed from the report, but ensure annotatedImageBase64 is included
                           const cleanReport = {
+                            _id: report._id || report.id,
                             id: report._id || report.id,
                             imageId: report.imageId,
                             damageType: report.damageType,
@@ -141,9 +145,16 @@ const AiReportsDialog = ({
                             priority: report.priority,
                             predictionClass: report.predictionClass,
                             location: report.location,
-                            annotatedImage: report.annotatedImage,
+                            annotatedImageBase64: report.annotatedImageBase64,
                             createdAt: report.createdAt
                           };
+                          
+                          console.log('Clean report before passing to parent:', {
+                            ...cleanReport,
+                            hasAnnotatedImage: !!cleanReport.annotatedImageBase64,
+                            imageLength: cleanReport.annotatedImageBase64?.length || 0
+                          });
+                          
                           onSelectReport(cleanReport);
                         }}
                         disabled={report.damageReportGenerated}

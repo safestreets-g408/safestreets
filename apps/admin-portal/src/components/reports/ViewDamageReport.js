@@ -24,27 +24,52 @@ const ViewDamageReport = ({ report }) => {
 
   useEffect(() => {
     const loadImage = () => {
-      if (report && report.reportId) {
+      // Check for both reportId and _id to ensure we can always find the report identifier
+      const id = report?.reportId || report?._id;
+      
+      if (report && id) {
         setLoading(true);
-        console.log('Loading image for report:', report.reportId);
+        console.log('Loading image for report:', id);
         
         // Using direct URL with authentication token
-        const directImageUrl = getAuthenticatedImageUrl(report.reportId, 'before');
+        const directImageUrl = getAuthenticatedImageUrl(id, 'before');
+        console.log('Image URL:', directImageUrl);
         
         // Create an image element to test loading
         const img = new Image();
         img.onload = () => {
-          console.log('Image loaded successfully');
+          console.log('Image loaded successfully for report:', id);
           setImageUrl(directImageUrl);
           setLoading(false);
         };
         img.onerror = (e) => {
-          console.error('Error loading image:', e);
-          setImageUrl(null);
-          setLoading(false);
+          console.error('Error loading image for report:', id, e);
+          // Try the other ID format if the first one fails
+          if (report.reportId && report._id && report.reportId !== report._id) {
+            const altId = id === report.reportId ? report._id : report.reportId;
+            const altImageUrl = getAuthenticatedImageUrl(altId, 'before');
+            console.log('Trying alternative image URL:', altImageUrl);
+            
+            const altImg = new Image();
+            altImg.onload = () => {
+              console.log('Alternative image loaded successfully');
+              setImageUrl(altImageUrl);
+              setLoading(false);
+            };
+            altImg.onerror = () => {
+              console.error('Both image URLs failed to load');
+              setImageUrl(null);
+              setLoading(false);
+            };
+            altImg.src = altImageUrl;
+          } else {
+            setImageUrl(null);
+            setLoading(false);
+          }
         };
         img.src = directImageUrl;
       } else {
+        console.log('No report ID available, skipping image load');
         setLoading(false);
       }
     };
@@ -168,7 +193,7 @@ const ViewDamageReport = ({ report }) => {
         </Grid>
 
         {/* Image */}
-        {report.beforeImage && (
+        {report && report.reportId && (
           <Grid item xs={12}>
             <Paper sx={{ p: 2 }}>
               <Typography variant="subtitle2" gutterBottom>Damage Image</Typography>

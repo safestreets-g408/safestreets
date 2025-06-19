@@ -248,14 +248,25 @@ const createFromAiReport = async (req, res) => {
     const reportId = 'DR-' + Date.now();
 
     // Fetch AI report to get the annotated image
+    console.log('Finding AI Report with ID:', aiReportId);
+    
     const aiReport = await AiReport.findById(aiReportId).populate('imageId');
     
     if (!aiReport) {
+      console.error('AI Report not found with ID:', aiReportId);
       return res.status(404).json({ 
         message: 'AI Report not found',
         success: false 
       });
     }
+    
+    console.log('Found AI Report:', {
+      id: aiReport._id,
+      predictionClass: aiReport.predictionClass,
+      damageType: aiReport.damageType,
+      imageExists: !!aiReport.annotatedImageBase64,
+      imageLength: aiReport.annotatedImageBase64 ? aiReport.annotatedImageBase64.length : 0
+    });
     
     // Generate a summary using AI if description is missing
     let finalDescription = description;
@@ -293,16 +304,37 @@ const createFromAiReport = async (req, res) => {
       aiReportId: aiReportId
     });
 
-    if (aiReport.annotatedImageBase64) {
-      // Convert base64 to buffer
-      const buffer = Buffer.from(aiReport.annotatedImageBase64, 'base64');
-      
-      newReport.beforeImage = {
-        data: buffer,
-        contentType: 'image/jpeg' // Adjust if your annotated images have a different format
-      };
+    try {
+      if (aiReport.annotatedImageBase64) {
+        console.log('Found annotated image, converting to buffer...');
+        
+        // Convert base64 to buffer
+        const buffer = Buffer.from(aiReport.annotatedImageBase64, 'base64');
+        console.log('Buffer created with length:', buffer.length);
+        
+        newReport.beforeImage = {
+          data: buffer,
+          contentType: 'image/jpeg' // Adjust if your annotated images have a different format
+        };
+        
+        console.log('beforeImage set on the damage report');
+      } else {
+        console.warn('No annotatedImageBase64 found in the AI report');
+        
+        // Check if the AI report has an imageId with data
+        if (aiReport.imageId && aiReport.imageId.data) {
+          console.log('Found imageId with data, using this as beforeImage');
+          newReport.beforeImage = {
+            data: aiReport.imageId.data,
+            contentType: aiReport.imageId.contentType || 'image/jpeg'
+          };
+        }
+      }
+    } catch (imageError) {
+      console.error('Error processing image:', imageError);
     }
 
+    console.log('Saving damage report with aiReportId:', aiReportId);
     await newReport.save();
     
     res.status(201).json({ 
