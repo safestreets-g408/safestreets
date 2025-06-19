@@ -11,76 +11,148 @@ import {
   Alert,
   StatusBar
 } from 'react-native';
-import { Card, Title, Paragraph, Chip, ActivityIndicator, Button, Surface, Divider } from 'react-native-paper';
+import { Card, Title, Paragraph, Chip, ActivityIndicator, Button, Surface, Divider, Searchbar, Menu } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
+import { getUserReports, getFilteredUserReports } from '../utils/reportAPI';
 
 const ReportsScreen = ({ navigation }) => {
+  const { fieldWorker } = useAuth();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalReports, setTotalReports] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [filterVisible, setFilterVisible] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('');
 
-  // Mock data for UI demonstration
-  const mockReports = [
-    {
-      id: 1,
-      status: 'pending',
-      imageUrl: 'https://via.placeholder.com/300',
-      description: 'Pothole on Main Street that needs immediate attention',
-      createdAt: new Date().toISOString(),
-      latitude: 37.7749,
-      longitude: -122.4194
-    },
-    {
-      id: 2,
-      status: 'in_progress',
-      imageUrl: 'https://via.placeholder.com/300',
-      description: 'Broken streetlight at the corner of Oak and Pine',
-      createdAt: new Date(Date.now() - 86400000).toISOString(),
-      latitude: 37.7750,
-      longitude: -122.4180
-    },
-    {
-      id: 3,
-      status: 'resolved',
-      imageUrl: 'https://via.placeholder.com/300',
-      description: 'Graffiti on public building wall',
-      createdAt: new Date(Date.now() - 172800000).toISOString(),
-      latitude: 37.7752,
-      longitude: -122.4175
-    }
-  ];
-
-  // Fetch reports (mock implementation)
-  const fetchReports = async () => {
+  // Fetch reports from API
+  const fetchReports = async (pageNum = 1, refresh = false) => {
     try {
-      // Simulate API call delay
-      setTimeout(() => {
-        setReports(mockReports);
-        setLoading(false);
-        setRefreshing(false);
-      }, 1000);
+      // Reset state if this is a refresh
+      if (refresh) {
+        setPage(1);
+        pageNum = 1;
+      }
+      
+      // Show loading indicators
+      if (refresh) setRefreshing(true);
+      else if (pageNum === 1) setLoading(true);
+      else setLoadingMore(true);
+
+      // Build filters object
+      const filters = {
+        page: pageNum,
+        limit: 10,
+        sortBy,
+        sortOrder
+      };
+
+      // Add search query if present
+      if (searchQuery.trim()) {
+        filters.search = searchQuery.trim();
+      }
+
+      // Add status filter if selected
+      if (statusFilter) {
+        filters.status = statusFilter;
+      }
+
+      // Fetch reports with filters
+      const response = await getFilteredUserReports(filters);
+
+      const newReports = response.reports || [];
+      const pagination = response.pagination || {};
+
+      // Update state with fetched data
+      if (refresh || pageNum === 1) {
+        setReports(newReports);
+      } else {
+        setReports(prev => [...prev, ...newReports]);
+      }
+
+      // Update pagination info
+      setHasMore(pagination.hasMore || false);
+      setTotalReports(pagination.total || 0);
+      setPage(pageNum);
     } catch (error) {
       console.error('Error fetching reports:', error);
-      Alert.alert('Error', 'Network error while fetching reports');
+      Alert.alert('Error', 'Network error while fetching reports. Please try again.');
+    } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
   };
 
   // Pull to refresh functionality
   const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchReports();
-  }, []);
+    fetchReports(1, true);
+  }, [sortBy, sortOrder, searchQuery, statusFilter]);
 
-  // Fetch reports when screen comes into focus
+  // Load more reports when reaching the end of the list
+  const handleLoadMore = () => {
+    if (!loading && !loadingMore && hasMore) {
+      fetchReports(page + 1);
+    }
+  };
+
+  // Handle search query changes
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+  };
+
+  // Apply search after typing stops
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (page === 1) {
+        fetchReports(1, true);
+      } else {
+        setPage(1);
+        fetchReports(1);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, sortBy, sortOrder, statusFilter]);
+
+  // Fetch reports when screen comes into focus or fieldWorker changes
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
-      fetchReports();
-    }, [])
+      if (fieldWorker) {
+        fetchReports(1, true);
+      }
+      
+      // Clean up function
+      return () => {
+        // Any cleanup needed
+      };
+    }, [fieldWorker])
   );
+
+  // Change sorting order
+  const handleSortChange = (newSortBy) => {
+    if (sortBy === newSortBy) {
+      // Toggle sort order if clicking the same field
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Default to descending when changing sort field
+      setSortBy(newSortBy);
+      setSortOrder('desc');
+    }
+  };
+
+  // Handle status filter
+  const handleStatusFilter = (status) => {
+    setStatusFilter(status);
+    setFilterVisible(false);
+  };
 
   // Format the date for better readability
   const formatDate = (dateString) => {
@@ -128,10 +200,37 @@ const ReportsScreen = ({ navigation }) => {
 
   // Handle report selection
   const handleReportPress = (report) => {
-    navigation.navigate('ViewReport', { reportId: report.id });
+    navigation.navigate('ViewReport', { reportId: report._id || report.id });
   };
 
-  if (loading) {
+  // Render loading footer when loading more items
+  const renderFooter = () => {
+    if (!loadingMore) return null;
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color="#003366" />
+        <Text style={styles.footerText}>Loading more reports...</Text>
+      </View>
+    );
+  };
+
+  // Get appropriate image URL
+  const getImageUrl = (report) => {
+    if (!report) return 'https://via.placeholder.com/300';
+    
+    // Return direct URL if available
+    if (report.imageUrl) return report.imageUrl;
+    
+    // For API-based reports
+    if (report.images && report.images.length > 0) {
+      return `${API_BASE_URL}/damage/report/${report._id}/image/thumbnail`;
+    }
+    
+    return 'https://via.placeholder.com/300';
+  };
+
+  // Loading state
+  if (loading && !refreshing) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#003366" />
@@ -140,26 +239,65 @@ const ReportsScreen = ({ navigation }) => {
     );
   }
 
-  if (reports.length === 0) {
+  // Empty state with search and filters
+  if (!loading && reports.length === 0) {
     return (
-      <View style={styles.centerContainer}>
-        <Surface style={styles.emptySurface} elevation={2}>
-          <Ionicons name="document-text-outline" size={70} color="#78909C" />
-          <Text style={styles.emptyText}>No Reports Submitted</Text>
-          <Text style={styles.emptySubText}>
-            Help improve your community by submitting reports about road issues in your area
-          </Text>
-          <Button 
-            mode="contained"
-            icon="camera"
-            style={styles.emptyButton}
-            onPress={() => navigation.navigate('Camera')}
-            buttonColor="#003366"
+      <View style={styles.container}>
+        <StatusBar backgroundColor="#003366" barStyle="light-content" />
+        
+        {/* Search and filter bar */}
+        <View style={styles.searchContainer}>
+          <Searchbar
+            placeholder="Search reports"
+            onChangeText={handleSearch}
+            value={searchQuery}
+            style={styles.searchBar}
+          />
+          <Menu
+            visible={filterVisible}
+            onDismiss={() => setFilterVisible(false)}
+            anchor={
+              <TouchableOpacity 
+                style={styles.filterButton} 
+                onPress={() => setFilterVisible(true)}
+              >
+                <Ionicons name="filter" size={24} color="#003366" />
+                {statusFilter ? <View style={styles.filterIndicator} /> : null}
+              </TouchableOpacity>
+            }
           >
-            Submit New Report
-          </Button>
-        </Surface>
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <Menu.Item onPress={() => handleStatusFilter('')} title="All" />
+            <Menu.Item onPress={() => handleStatusFilter('pending')} title="Pending" />
+            <Menu.Item onPress={() => handleStatusFilter('in_progress')} title="In Progress" />
+            <Menu.Item onPress={() => handleStatusFilter('completed')} title="Completed" />
+            <Menu.Item onPress={() => handleStatusFilter('cancelled')} title="Cancelled" />
+          </Menu>
+        </View>
+
+        <View style={styles.centerContainer}>
+          <Surface style={styles.emptySurface} elevation={2}>
+            <Ionicons name="document-text-outline" size={70} color="#78909C" />
+            <Text style={styles.emptyText}>
+              {searchQuery || statusFilter 
+                ? "No reports match your filters" 
+                : "No Reports Submitted"}
+            </Text>
+            <Text style={styles.emptySubText}>
+              {searchQuery || statusFilter
+                ? "Try changing your search criteria or filters"
+                : "Help improve your community by submitting reports about road issues in your area"}
+            </Text>
+            <Button 
+              mode="contained"
+              icon="camera"
+              style={styles.emptyButton}
+              onPress={() => navigation.navigate('Camera')}
+              buttonColor="#003366"
+            >
+              Submit New Report
+            </Button>
+          </Surface>
+        </View>
       </View>
     );
   }
@@ -168,9 +306,107 @@ const ReportsScreen = ({ navigation }) => {
     <View style={styles.container}>
       <StatusBar backgroundColor="#003366" barStyle="light-content" />
       
+      {/* Search and filter bar */}
+      <View style={styles.searchContainer}>
+        <Searchbar
+          placeholder="Search reports"
+          onChangeText={handleSearch}
+          value={searchQuery}
+          style={styles.searchBar}
+        />
+        <Menu
+          visible={filterVisible}
+          onDismiss={() => setFilterVisible(false)}
+          anchor={
+            <TouchableOpacity 
+              style={styles.filterButton} 
+              onPress={() => setFilterVisible(true)}
+            >
+              <Ionicons name="filter" size={24} color="#003366" />
+              {statusFilter ? <View style={styles.filterIndicator} /> : null}
+            </TouchableOpacity>
+          }
+        >
+          <Menu.Item onPress={() => handleStatusFilter('')} title="All" />
+          <Menu.Item onPress={() => handleStatusFilter('pending')} title="Pending" />
+          <Menu.Item onPress={() => handleStatusFilter('in_progress')} title="In Progress" />
+          <Menu.Item onPress={() => handleStatusFilter('completed')} title="Completed" />
+          <Menu.Item onPress={() => handleStatusFilter('cancelled')} title="Cancelled" />
+        </Menu>
+      </View>
+      
+      {/* Sort options */}
+      <View style={styles.sortContainer}>
+        <Text style={styles.sortLabel}>Sort by:</Text>
+        <TouchableOpacity 
+          style={[
+            styles.sortOption, 
+            sortBy === 'createdAt' && styles.sortOptionActive
+          ]}
+          onPress={() => handleSortChange('createdAt')}
+        >
+          <Text style={[
+            styles.sortText, 
+            sortBy === 'createdAt' && styles.sortTextActive
+          ]}>Date</Text>
+          {sortBy === 'createdAt' && (
+            <Ionicons 
+              name={sortOrder === 'asc' ? 'arrow-up' : 'arrow-down'} 
+              size={14} 
+              color={sortBy === 'createdAt' ? '#003366' : '#78909C'} 
+            />
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[
+            styles.sortOption, 
+            sortBy === 'priority' && styles.sortOptionActive
+          ]}
+          onPress={() => handleSortChange('priority')}
+        >
+          <Text style={[
+            styles.sortText, 
+            sortBy === 'priority' && styles.sortTextActive
+          ]}>Priority</Text>
+          {sortBy === 'priority' && (
+            <Ionicons 
+              name={sortOrder === 'asc' ? 'arrow-up' : 'arrow-down'} 
+              size={14} 
+              color={sortBy === 'priority' ? '#003366' : '#78909C'} 
+            />
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[
+            styles.sortOption, 
+            sortBy === 'repairStatus' && styles.sortOptionActive
+          ]}
+          onPress={() => handleSortChange('repairStatus')}
+        >
+          <Text style={[
+            styles.sortText, 
+            sortBy === 'repairStatus' && styles.sortTextActive
+          ]}>Status</Text>
+          {sortBy === 'repairStatus' && (
+            <Ionicons 
+              name={sortOrder === 'asc' ? 'arrow-up' : 'arrow-down'} 
+              size={14} 
+              color={sortBy === 'repairStatus' ? '#003366' : '#78909C'} 
+            />
+          )}
+        </TouchableOpacity>
+      </View>
+      
+      {/* Results count */}
+      <View style={styles.resultsContainer}>
+        <Text style={styles.resultsText}>
+          {totalReports} report{totalReports !== 1 ? 's' : ''} found
+        </Text>
+      </View>
+      
       <FlatList
         data={reports}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => (item._id || item.id).toString()}
         refreshControl={
           <RefreshControl 
             refreshing={refreshing} 
@@ -179,6 +415,9 @@ const ReportsScreen = ({ navigation }) => {
             tintColor="#003366"
           />
         }
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={renderFooter}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
           <TouchableOpacity 
@@ -190,20 +429,22 @@ const ReportsScreen = ({ navigation }) => {
                 <View style={styles.cardHeader}>
                   <View style={styles.idContainer}>
                     <Text style={styles.idLabel}>REPORT</Text>
-                    <Text style={styles.idNumber}>#{item.id}</Text>
+                    <Text style={styles.idNumber}>
+                      #{item.reportId || item._id || item.id}
+                    </Text>
                   </View>
                   <View style={[
                     styles.statusIndicator, 
-                    { backgroundColor: getStatusColor(item.status) }
+                    { backgroundColor: getStatusColor(item.repairStatus || item.status) }
                   ]}>
                     <Ionicons 
-                      name={getStatusIcon(item.status)} 
+                      name={getStatusIcon(item.repairStatus || item.status)} 
                       size={14} 
                       color="white" 
                       style={{marginRight: 4}}
                     />
                     <Text style={styles.statusText}>
-                      {item.status.replace('_', ' ').toUpperCase()}
+                      {(item.repairStatus || item.status).replace('_', ' ').toUpperCase()}
                     </Text>
                   </View>
                 </View>
@@ -212,10 +453,19 @@ const ReportsScreen = ({ navigation }) => {
                 
                 <View style={styles.cardContent}>
                   <Image 
-                    source={{ uri: item.imageUrl }} 
+                    source={{ uri: getImageUrl(item) }} 
                     style={styles.thumbnail} 
+                    defaultSource={require('../assets/icon.png')}
                   />
                   <View style={styles.details}>
+                    <View style={styles.tagContainer}>
+                      <Chip 
+                        style={styles.tagChip}
+                        textStyle={styles.tagChipText}
+                      >
+                        {item.damageType || 'Unknown'}
+                      </Chip>
+                    </View>
                     <Paragraph numberOfLines={2} style={styles.description}>
                       {item.description || 'No description provided'}
                     </Paragraph>
@@ -227,7 +477,7 @@ const ReportsScreen = ({ navigation }) => {
                       <View style={styles.metaItem}>
                         <Ionicons name="location-outline" size={14} color="#7f8c8d" />
                         <Text style={styles.metaText}>
-                          {item.latitude.toFixed(4)}, {item.longitude.toFixed(4)}
+                          {item.location || 'Unknown location'}
                         </Text>
                       </View>
                     </View>

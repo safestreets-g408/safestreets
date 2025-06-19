@@ -8,6 +8,8 @@ const imageRoutes = require('./routes/ImageRoutes');
 const fieldWorkerRoutes = require('./routes/fieldRoutes');
 const fieldWorkerAuthRoutes = require('./routes/fieldWorkerAuthRoutes');
 const fieldWorkerDamageRoutes = require('./routes/fieldWorkerDamageRoutes');
+const fieldWorkerNotificationRoutes = require('./routes/fieldWorkerNotificationRoutes');
+const weatherRoutes = require('./routes/weatherRoutes');
 const damageRoutes = require('./routes/damageRoutes');
 const tenantRoutes = require('./routes/tenantRoutes');
 const path = require('path');
@@ -17,7 +19,7 @@ connectDB()
 
 const app = express();
 app.use(cors());
-// Increase payload size limits for image uploads and large data
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -25,6 +27,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/field', fieldWorkerRoutes);
 app.use('/api/fieldworker/auth', fieldWorkerAuthRoutes);
 app.use('/api/fieldworker/damage', fieldWorkerDamageRoutes);
+app.use('/api/fieldworker', fieldWorkerNotificationRoutes);
+app.use('/api/fieldworker', weatherRoutes);
 
 app.use('/api/admin/auth', adminRoutes);
 app.use('/api/admin/profile', adminProfileRoutes);

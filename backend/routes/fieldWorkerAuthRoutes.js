@@ -4,7 +4,8 @@ const {
   registerFieldWorker,
   loginFieldWorker,
   getFieldWorkerProfile,
-  updateFieldWorkerProfile
+  updateFieldWorkerProfile,
+  refreshToken
 } = require('../controllers/fieldWorkerAuthController');
 const { protectFieldWorker } = require('../middleware/fieldWorkerAuthMiddleware');
 
@@ -15,5 +16,6 @@ router.post('/login', loginFieldWorker);
 // Protected routes
 router.get('/profile', protectFieldWorker, getFieldWorkerProfile);
 router.put('/profile', protectFieldWorker, updateFieldWorkerProfile);
+router.post('/refresh-token', protectFieldWorker, refreshToken);
 
 module.exports = router;

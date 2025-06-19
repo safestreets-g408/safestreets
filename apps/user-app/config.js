@@ -1,5 +1,17 @@
 // API configuration
-export const API_BASE_URL = 'http://192.168.13.215:5030/api'; // Update this IP to match your server
+// Choose the appropriate URL based on your environment:
+
+// For iOS simulator - use localhost 
+// export const API_BASE_URL = 'http://localhost:5030/api';
+
+// For iOS simulator with explicit loopback
+export const API_BASE_URL = 'http://192.168.238.1:5030/api';
+
+// For Android emulator - use 10.0.2.2 (special Android emulator IP that maps to host's localhost)
+// export const API_BASE_URL = 'http://10.0.2.2:5030/api';
+
+// For physical devices - use your computer's local network IP
+// export const API_BASE_URL = 'http://192.168.X.X:5030/api'; // Replace X.X with your actual IP
 
 // App configuration
 export const APP_VERSION = '1.0.0';

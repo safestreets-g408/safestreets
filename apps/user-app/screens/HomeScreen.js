@@ -21,7 +21,18 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { Platform } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { getDashboardStats, updateRepairStatus } from '../utils/auth';
+import { updateRepairStatus } from '../utils/auth';
+import { 
+  getDashboardData, 
+  getFilteredReports, 
+  getTaskAnalytics, 
+  getWeeklyReportStats,
+  getReportStatusSummary,
+  getNearbyReports,
+  getWeatherInfo,
+  getNotifications,
+  markNotificationAsRead
+} from '../utils/dashboardAPI';
 
 
 const HomeScreen = ({ navigation }) => {
@@ -38,9 +49,15 @@ const HomeScreen = ({ navigation }) => {
     pendingIssues: 0,
     completionRate: 0
   });
+  const [weatherData, setWeatherData] = useState(null);
   const [location, setLocation] = useState(null);
   const [locationName, setLocationName] = useState('Loading...');
   const [errorMsg, setErrorMsg] = useState(null);
+  const [taskAnalytics, setTaskAnalytics] = useState(null);
+  const [weeklyStats, setWeeklyStats] = useState([]);
+  const [statusSummary, setStatusSummary] = useState(null);
+  const [nearbyReports, setNearbyReports] = useState([]);
+  const [loadingMore, setLoadingMore] = useState(false);
   const animationRef = useRef(null);
 
   useEffect(() => {
@@ -78,20 +95,54 @@ const HomeScreen = ({ navigation }) => {
         const { city, region } = geocode[0];
         setLocationName(city || region || fieldWorker?.region || 'Unknown location');
       }
+      
+      // Fetch weather data using coordinates
+      fetchWeatherData(location.coords);
+      
+      // Get nearby reports
+      fetchNearbyReports(location.coords);
     } catch (error) {
       setErrorMsg('Could not fetch location');
       setLocationName(fieldWorker?.region || 'Location unavailable');
     }
   };
 
+  const fetchWeatherData = async (coordinates) => {
+    try {
+      const data = await getWeatherInfo(coordinates);
+      setWeatherData(data);
+    } catch (error) {
+      console.error('Error fetching weather data:', error);
+      // Weather is non-critical, so just log the error
+    }
+  };
+
+  const fetchNearbyReports = async (coordinates) => {
+    try {
+      const data = await getNearbyReports(coordinates, 5); // 5km radius
+      setNearbyReports(data);
+    } catch (error) {
+      console.error('Error fetching nearby reports:', error);
+      // Non-critical, just log the error
+    }
+  };
+
   const loadDashboardData = async () => {
-    if (!fieldWorker) return;
+    if (!fieldWorker) {
+      console.log('No field worker data available, redirecting to login');
+      // Redirect to login if no field worker data
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      });
+      return;
+    }
     
     try {
       setLoading(true);
       
-      // Load dashboard data (includes stats and recent reports)
-      const dashboardData = await getDashboardStats();
+      // Load dashboard data with enhanced stats
+      const dashboardData = await getDashboardData();
       
       setReports(dashboardData.recentReports || []);
       setCityStats(dashboardData.stats || {
@@ -101,13 +152,53 @@ const HomeScreen = ({ navigation }) => {
         completionRate: 0
       });
       
-      // Generate notifications from recent reports
-      const recentNotifications = generateNotifications(dashboardData.recentReports || []);
-      setNotifications(recentNotifications);
+      // Load notifications
+      try {
+        const notificationsData = await getNotifications();
+        setNotifications(notificationsData);
+      } catch (notifError) {
+        console.error('Failed to load notifications:', notifError);
+        // Continue without notifications
+      }
+      
+      // Load task analytics
+      loadTaskAnalytics();
+      
+      // Load weekly stats
+      loadWeeklyStats();
+      
+      // Load status summary
+      loadStatusSummary();
       
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      Alert.alert('Error', 'Failed to load dashboard data. Please try again.');
+      
+      // Check if it's an authentication error
+      if (error.message && (
+          error.message.includes('token') || 
+          error.message.includes('auth') || 
+          error.message.includes('unauthorized') ||
+          error.message.includes('401')
+        )) {
+        Alert.alert(
+          'Session Expired',
+          'Your session has expired. Please log in again.',
+          [
+            { 
+              text: 'OK', 
+              onPress: () => {
+                // Navigate to login
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Login' }],
+                });
+              } 
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to load dashboard data. Please try again.');
+      }
       
       // Set default empty state
       setReports([]);
@@ -120,6 +211,55 @@ const HomeScreen = ({ navigation }) => {
       setNotifications([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTaskAnalytics = async () => {
+    try {
+      const data = await getTaskAnalytics();
+      setTaskAnalytics(data);
+    } catch (error) {
+      console.error('Error loading task analytics:', error);
+      // Non-critical, continue without analytics
+    }
+  };
+
+  const loadWeeklyStats = async () => {
+    try {
+      const data = await getWeeklyReportStats();
+      setWeeklyStats(data);
+    } catch (error) {
+      console.error('Error loading weekly stats:', error);
+      // Non-critical, continue without weekly stats
+    }
+  };
+
+  const loadStatusSummary = async () => {
+    try {
+      const data = await getReportStatusSummary('week');
+      setStatusSummary(data);
+    } catch (error) {
+      console.error('Error loading status summary:', error);
+      // Non-critical, continue without status summary
+    }
+  };
+
+  const handleMarkAsRead = async (notification) => {
+    try {
+      const notificationId = notification.id;
+      await markNotificationAsRead(notificationId);
+      
+      // Update the notifications list
+      setNotifications(
+        notifications.map(n => {
+          if (n.id === notificationId) {
+            return { ...n, read: true };
+          }
+          return n;
+        })
+      );
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
     }
   };
 
@@ -149,49 +289,6 @@ const HomeScreen = ({ navigation }) => {
     };
   };
 
-  const generateNotifications = (reports) => {
-    const notifications = [];
-    
-    // Recent assignments
-    const recentReports = reports
-      .filter(report => report.assignedAt)
-      .sort((a, b) => new Date(b.assignedAt) - new Date(a.assignedAt))
-      .slice(0, 3);
-    
-    recentReports.forEach((report, index) => {
-      notifications.push({
-        id: `assignment_${report._id}`,
-        title: 'New Assignment',
-        message: `You've been assigned to repair ${report.damageType} on ${report.location}`,
-        time: formatTimeAgo(new Date(report.assignedAt)),
-        read: false,
-        type: 'info',
-        icon: 'clipboard-text',
-        reportId: report._id
-      });
-    });
-    
-    // Completed repairs
-    const completedReports = reports
-      .filter(report => report.repairStatus === 'completed')
-      .slice(0, 2);
-    
-    completedReports.forEach((report) => {
-      notifications.push({
-        id: `completed_${report._id}`,
-        title: 'Repair Completed',
-        message: `Great job! Repair on ${report.location} marked as completed`,
-        time: formatTimeAgo(new Date(report.updatedAt)),
-        read: true,
-        type: 'success',
-        icon: 'check-circle',
-        reportId: report._id
-      });
-    });
-    
-    return notifications.slice(0, 4); // Limit to 4 notifications
-  };
-
   const formatTimeAgo = (date) => {
     const now = new Date();
     const diffInMinutes = Math.floor((now - date) / (1000 * 60));
@@ -211,6 +308,7 @@ const HomeScreen = ({ navigation }) => {
     setRefreshing(true);
     try {
       await loadDashboardData();
+      await getCurrentLocation(); // Also refresh location and weather
     } catch (error) {
       console.error('Error refreshing data:', error);
     } finally {
@@ -219,6 +317,10 @@ const HomeScreen = ({ navigation }) => {
   }, [fieldWorker]);
 
   const handleNotificationPress = (notification) => {
+    // Mark notification as read when pressed
+    handleMarkAsRead(notification);
+    
+    // Navigate to the report details
     if (notification.reportId) {
       navigation.navigate('ViewReport', { reportId: notification.reportId });
     }

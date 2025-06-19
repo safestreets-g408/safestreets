@@ -154,9 +154,42 @@ const updateFieldWorkerProfile = async (req, res) => {
   }
 };
 
+// Add token refresh endpoint
+const refreshToken = async (req, res) => {
+  try {
+    // The token is already validated by the middleware
+    // So if we get here, we just need to issue a new token
+    const fieldWorkerId = req.fieldWorker.id;
+    
+    // Get the field worker from database
+    const fieldWorker = await FieldWorker.findById(fieldWorkerId)
+      .select('-password');
+      
+    if (!fieldWorker) {
+      return res.status(404).json({ message: 'Field worker not found' });
+    }
+    
+    // Generate a new token
+    const token = jwt.sign(
+      { fieldWorkerId: fieldWorker._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' } // 7 days
+    );
+    
+    res.json({ 
+      message: 'Token refreshed successfully',
+      token 
+    });
+  } catch (error) {
+    console.error('Error refreshing token:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = { 
   registerFieldWorker, 
   loginFieldWorker, 
   getFieldWorkerProfile,
-  updateFieldWorkerProfile
+  updateFieldWorkerProfile,
+  refreshToken
 };

@@ -177,9 +177,7 @@ const TenantDetails = () => {
             sx={{ ml: 1 }}
           />
         </Box>
-        <Button variant="contained" color="primary" onClick={() => navigate(`/tenants/edit/${tenantId}`)}>
-          Edit Tenant
-        </Button>
+
       </Paper>
       
       <Grid container spacing={3}>

@@ -13,6 +13,7 @@ import {
 import { TextInput, Button, Title, Paragraph } from 'react-native-paper';
 import { loginFieldWorker } from '../utils/auth';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../config';
 
 const LoginScreen = ({ navigation, route }) => {
   const [email, setEmail] = useState('');
@@ -30,11 +31,76 @@ const LoginScreen = ({ navigation, route }) => {
     setIsLoading(true);
     
     try {
+      console.log(`Attempting login with email: ${email}`);
+      console.log('API URL being used:', API_BASE_URL);
+      
       const response = await loginFieldWorker(email, password);
-      login(response.fieldWorker);
-      navigation.replace('MainTabs');
+      console.log('Login response received:', response ? 'Success' : 'No data');
+      
+      if (response && response.fieldWorker && response.token) {
+        console.log('Login successful, redirecting to MainTabs');
+        login(response.fieldWorker);
+        navigation.replace('MainTabs');
+      } else {
+        console.error('Invalid response structure:', response);
+        throw new Error('Invalid response from server');
+      }
     } catch (error) {
-      Alert.alert('Login Failed', error.message || 'Invalid credentials');
+      console.log('Login error details:', error);
+      
+      // Handle specific error types
+      if (error.name === 'AbortError' || error.message?.includes('timeout') || error.message?.includes('network request')) {
+        Alert.alert(
+          'Connection Error', 
+          'Unable to connect to the server. Please check your internet connection or try again later.',
+          [
+            {
+              text: 'OK',
+              onPress: () => console.log('OK Pressed')
+            },
+            {
+              text: 'Debug Info',
+              onPress: () => console.log('Current API URL:', API_BASE_URL)
+            },
+            {
+              text: 'Server Details',
+              onPress: () => Alert.alert('Server Information', `Trying to connect to: ${API_BASE_URL}\n\nIf you're using the iOS simulator, make sure the backend server is running on your local machine. If using a physical device, ensure you're using your computer's local IP address in config.js.`)
+            }
+          ]
+        );
+      } else if (error.message?.includes('Invalid credentials')) {
+        Alert.alert(
+          'Login Failed', 
+          'The email or password you entered is incorrect. Please try again.',
+          [
+            {
+              text: 'OK',
+              onPress: () => console.log('OK Pressed')
+            },
+            {
+              text: 'Debug Info',
+              onPress: () => Alert.alert('Debug Information', 
+                `Email used: ${email}\nPassword length: ${password.length}\nAPI URL: ${API_BASE_URL}`)
+            }
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Login Failed', 
+          error.message || 'An unexpected error occurred',
+          [
+            {
+              text: 'OK',
+              onPress: () => console.log('OK Pressed')
+            },
+            {
+              text: 'Debug Info',
+              onPress: () => Alert.alert('Debug Information', 
+                `Error: ${error.message}\nAPI URL: ${API_BASE_URL}`)
+            }
+          ]
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -109,48 +175,11 @@ const LoginScreen = ({ navigation, route }) => {
             SIGN IN
           </Button>
 
-          {/* Field Worker Credentials Info */}
-          <View style={styles.credentialsInfo}>
-            <Text style={styles.credentialsTitle}>Field Worker Credentials</Text>
-            <Text style={styles.credentialsText}>
-              • Email: firstname.lastname@safestreets.worker
-            </Text>
-            <Text style={styles.credentialsText}>
-              • Password: first3lettersofname + workerID
-            </Text>
-            <Text style={styles.credentialsExample}>
-              Example: john.doe@safestreets.worker, password: johFW001
-            </Text>
-          </View>
-
           <View style={styles.forgotPasswordContainer}>
             <TouchableOpacity onPress={() => Alert.alert('Reset Password', 'A password reset link will be sent to your email address.')}>
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
           </View>
-
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>OR</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <Button 
-            mode="outlined" 
-            onPress={() => Alert.alert('Security Access', 'Government ID verification required for official access.')} 
-            style={styles.govLoginButton}
-            icon="shield-account"
-            textColor="#003366"
-          >
-            OFFICIAL GOVERNMENT LOGIN
-          </Button>
-        </View>
-
-        <View style={styles.signupContainer}>
-          <Text style={styles.signupText}>First time user? </Text>
-          <TouchableOpacity onPress={() => Alert.alert('Account Creation', 'Please contact your local authority to create an official account.')}>
-            <Text style={styles.signupLink}>Create Account</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -199,29 +228,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     height: 56,
   },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E0E6ED',
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    color: '#78909C',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  govLoginButton: {
-    borderColor: '#003366',
-    borderWidth: 1.5,
-    marginTop: 8,
-    height: 48,
-    justifyContent: 'center',
-  },
   loginButton: {
     marginTop: 10,
     borderRadius: 4,
@@ -238,32 +244,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontSize: 14,
     letterSpacing: 0.2,
-  },
-  credentialsInfo: {
-    backgroundColor: '#E3F2FD',
-    padding: 16,
-    borderRadius: 8,
-    marginTop: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: '#003366',
-  },
-  credentialsTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#003366',
-    marginBottom: 8,
-  },
-  credentialsText: {
-    fontSize: 14,
-    color: '#37474F',
-    marginBottom: 4,
-    lineHeight: 20,
-  },
-  credentialsExample: {
-    fontSize: 12,
-    color: '#546E7A',
-    marginTop: 8,
-    fontStyle: 'italic',
   },
   signupContainer: {
     flexDirection: 'row',
