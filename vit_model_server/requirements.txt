@@ -9,3 +9,5 @@ matplotlib==3.7.1
 tqdm==4.65.0
 seaborn==0.12.2
 scikit-learn==1.2.2
+google-generativeai==0.3.0
+python-dotenv==1.0.0

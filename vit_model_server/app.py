@@ -7,6 +7,14 @@ import random
 import time
 from PIL import Image, ImageDraw, ImageFont
 import tempfile
+import traceback
+from dotenv import load_dotenv
+
+# Load environment variables from .env file if present
+load_dotenv()
+
+# Import gemini utils for AI summary generation
+from gemini_utils import generate_road_damage_summary
 
 app = Flask(__name__)
 
@@ -165,6 +173,80 @@ def internal_error(error):
         "error": "Internal server error",
         "success": False
     }), 500
+
+# Endpoint for generating road damage summaries
+@app.route("/generate-summary", methods=["POST", "OPTIONS"])
+def generate_summary():
+    # Handle preflight request
+    if request.method == "OPTIONS":
+        response = jsonify({'message': 'OK'})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add('Access-Control-Allow-Headers', "*")
+        response.headers.add('Access-Control-Allow-Methods', "*")
+        return response
+    
+    print("Summary generation endpoint called")
+    
+    try:
+        # Validate request content type
+        if not request.is_json:
+            print("Request is not JSON")
+            return jsonify({
+                "error": "Request must be JSON",
+                "success": False
+            }), 400
+
+        data = request.get_json()
+        if not data:
+            print("No data in request body")
+            return jsonify({
+                "error": "No data in request body",
+                "success": False
+            }), 400
+            
+        # Extract required parameters
+        location = data.get('location')
+        damage_type = data.get('damageType')
+        severity = data.get('severity')
+        priority = data.get('priority')
+        
+        # Validate required parameters
+        if not all([location, damage_type, severity, priority]):
+            missing = []
+            if not location: missing.append('location')
+            if not damage_type: missing.append('damageType')
+            if not severity: missing.append('severity')
+            if not priority: missing.append('priority')
+            
+            print(f"Missing required parameters: {missing}")
+            return jsonify({
+                "error": f"Missing required parameters: {', '.join(missing)}",
+                "success": False
+            }), 400
+        
+        # Generate the summary
+        print(f"Generating summary for {location}, {damage_type}, {severity}, priority {priority}")
+        summary = generate_road_damage_summary(location, damage_type, severity, priority)
+        
+        # Return the generated summary
+        response = jsonify({
+            "summary": summary,
+            "success": True,
+            "message": "Summary generated successfully"
+        })
+        
+        # Add CORS headers to response
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response
+
+    except Exception as e:
+        print(f"Error in summary generation endpoint: {e}")
+        traceback.print_exc()
+        return jsonify({
+            "error": str(e),
+            "message": "Server error generating summary",
+            "success": False
+        }), 500
 
 if __name__ == "__main__":
     print("Starting AI server on http://127.0.0.1:5000")

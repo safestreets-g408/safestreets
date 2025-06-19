@@ -15,7 +15,8 @@ const {
   deleteReport,
   upload,
   createDamageReport,
-  searchAllReportsAndData // Add new search function
+  searchAllReportsAndData, // Add new search function
+  generateDamageSummary // Add AI summary generation function
 } = require('../controllers/damageController');
 const { protectAdmin, ensureTenantIsolation } = require('../middleware/adminAuthMiddleware');
 const { enforceDamageTenantIsolation } = require('../middleware/tenantIsolationMiddleware');
@@ -28,6 +29,7 @@ router.get('/reports', protectAdmin, ensureTenantIsolation(), enforceDamageTenan
 router.get('/search', protectAdmin, ensureTenantIsolation(), searchAllReportsAndData); // New global search endpoint
 router.post('/reports', protectAdmin, ensureTenantIsolation(), createDamageReport); // Direct report creation endpoint
 router.get('/report/:reportId', protectAdmin, ensureTenantIsolation(), enforceDamageTenantIsolation, getReportById);
+router.post('/generate-summary', generateDamageSummary); // AI summary generation endpoint - no auth for testing
 // Allow image access with token in URL for <img> tag compatibility
 router.get('/report/:reportId/image/:type', getReportImage); // Consider tenant isolation for this endpoint too
 

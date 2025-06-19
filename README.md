@@ -29,20 +29,35 @@ graph TB
 ## ✨ Key Features
 
 - 📷 Advanced road damage detection using AI
-- � Automatic GPS location tagging
+- 🤖 AI-powered road damage report summary generation using Google Gemini
+- 📍 Automatic GPS location tagging
 - 🔐 Secure authentication for administrators and field workers
 - 📊 Comprehensive analytics dashboard
-- � Task assignment and tracking for repair teams
-- � Cross-platform mobile app for field workers
+- 📝 Task assignment and tracking for repair teams
+- 📱 Cross-platform mobile app for field workers
 - 🖥️ Feature-rich admin web portal
 ## 🛠️ Technology Stack
 
 ### Core Technologies
 - **Frontend**: React.js, React Native, Material-UI, Expo
 - **Backend**: Node.js, Express.js, MongoDB
-- **AI/ML**: PyTorch, Vision Transformer (ViT), Flask
+- **AI/ML**: PyTorch, Vision Transformer (ViT), Flask, Google Gemini
 - **Authentication**: JWT, bcryptjs
 - **DevOps**: Git, npm/yarn, Nodemon, dotenv
+
+## 🤖 AI Features
+
+### Vision Transformer (ViT) for Image Classification
+The system uses a Vision Transformer model to detect and classify road damage from uploaded images.
+
+### Google Gemini Integration
+SafeStreets integrates Google's Gemini 1.5 Flash model to automatically generate professional damage report summaries based on:
+- Location
+- Damage type
+- Severity level
+- Priority rating
+
+This feature helps standardize report descriptions and saves time for field workers and administrators by providing consistent, well-formatted summaries.
 
 ## 🚀 Quick Start Guide
 

@@ -12,6 +12,7 @@ const fieldWorkerNotificationRoutes = require('./routes/fieldWorkerNotificationR
 const weatherRoutes = require('./routes/weatherRoutes');
 const damageRoutes = require('./routes/damageRoutes');
 const tenantRoutes = require('./routes/tenantRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 const path = require('path');
 
 dotenv.config();
@@ -35,7 +36,8 @@ app.use('/api/admin/profile', adminProfileRoutes);
 app.use('/api/admin/tenants', tenantRoutes);
 app.use('/api/admin', require('./routes/tenantAdminRoutes'));
 app.use('/api/images', imageRoutes);
-app.use('/api/damage', damageRoutes)
+app.use('/api/damage', damageRoutes);
+app.use('/api/ai', aiRoutes); 
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

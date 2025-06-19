@@ -14,6 +14,7 @@ export const API_ENDPOINTS = {
   FIELD_WORKERS: '/field/workers',
   IMAGES: '/images',
   TENANTS: '/admin/tenants',
+  AI: '/ai',
 };
 
 // Auth

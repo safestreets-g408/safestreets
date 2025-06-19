@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Dialog, 
   DialogTitle, 
@@ -20,6 +20,8 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import { aiServices } from '../../utils/aiServices';
 
 const CreateDamageReportDialog = ({ 
   open, 
@@ -34,6 +36,9 @@ const CreateDamageReportDialog = ({
   loading,
   error
 }) => {
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState(null);
+
   // Helper function to check if a field is empty
   const isFieldEmpty = (fieldName) => {
     return formData[fieldName] === '';
@@ -44,6 +49,52 @@ const CreateDamageReportDialog = ({
   
   // Check if form is valid
   const isFormValid = !requiredFields.some(isFieldEmpty);
+  
+  // Generate AI summary for description
+  const handleGenerateAiSummary = async () => {
+    // Required fields for AI summary
+    const requiredAiFields = ['location', 'damageType', 'severity', 'priority'];
+    
+    // Check if required fields are filled
+    const missingFields = requiredAiFields.filter(isFieldEmpty);
+    if (missingFields.length > 0) {
+      setAiError(`Please fill in ${missingFields.join(', ')} before generating a summary`);
+      return;
+    }
+    
+    setAiLoading(true);
+    setAiError(null);
+    
+    try {
+      // Add a little delay to show the "Generating..." message
+      const summaryResponse = await aiServices.generateDamageSummary({
+        location: formData.location,
+        damageType: formData.damageType,
+        severity: formData.severity,
+        priority: formData.priority
+      });
+      
+      console.log('Summary response received:', summaryResponse);
+      
+      if (!summaryResponse || !summaryResponse.summary) {
+        throw new Error('No summary generated. Please try again.');
+      }
+      
+      // Update the form data with the generated summary
+      onFormChange({
+        target: {
+          name: 'description',
+          value: summaryResponse.summary
+        }
+      });
+      
+    } catch (error) {
+      setAiError(error.message || 'Failed to generate AI summary. Please try again or enter description manually.');
+      console.error('Error generating summary:', error);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   return (
     <Dialog 
@@ -183,15 +234,49 @@ const CreateDamageReportDialog = ({
           </Grid>
           
           <Grid item xs={12}>
-            <TextField
-              label="Description"
-              name="description"
-              value={formData.description}
-              onChange={onFormChange}
-              fullWidth
-              multiline
-              rows={3}
-            />
+            <Typography variant="subtitle2" gutterBottom>
+              Description
+              {aiLoading && <CircularProgress size={16} sx={{ ml: 1 }} />}
+            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {aiLoading ? (
+                <TextField
+                  value="Generating professional description..."
+                  disabled
+                  fullWidth
+                  multiline
+                  rows={3}
+                />
+              ) : (
+                <TextField
+                  name="description"
+                  value={formData.description}
+                  onChange={onFormChange}
+                  fullWidth
+                  multiline
+                  rows={3}
+                  placeholder="Enter damage description or use the Enhance button to generate one"
+                />
+              )}
+              
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                <Button
+                  onClick={handleGenerateAiSummary}
+                  disabled={aiLoading || loading || !isFormValid}
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<AutoAwesomeIcon />}
+                  size="small"
+                >
+                  Enhance with AI
+                </Button>
+              </Box>
+              {aiError && (
+                <Alert severity="error" sx={{ mt: 1 }}>
+                  {aiError}
+                </Alert>
+              )}
+            </Box>
           </Grid>
         </Grid>
       </DialogContent>

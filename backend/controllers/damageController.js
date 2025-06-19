@@ -4,6 +4,7 @@ const AiReport = require('../models/AiReport');
 const FieldWorker = require('../models/FieldWorker');
 const upload = require('../middleware/multerConfig');
 const path = require('path');
+const { generateDamageSummary } = require('../utils/aiUtils');
 
 
 // Helper function to validate MongoDB ObjectId
@@ -31,6 +32,25 @@ const uploadDamageReport = async (req, res) => {
         fields: missingFields 
       });
     }
+    
+    // Generate a summary using AI if description is missing
+    let finalDescription = description;
+    if (!description || description.trim() === '') {
+      try {
+        console.log('Generating AI summary for damage report');
+        finalDescription = await generateDamageSummary({
+          location,
+          damageType,
+          severity,
+          priority
+        });
+        console.log('AI summary generated successfully');
+      } catch (summaryError) {
+        console.error('Error generating AI summary:', summaryError);
+        // Use a simple default if AI generation fails
+        finalDescription = `Road damage at ${location}: ${damageType} with ${severity} severity. Priority level: ${priority}.`;
+      }
+    }
 
     const reportId = 'DR-' + Date.now();
     const newReport = new DamageReport({
@@ -47,7 +67,7 @@ const uploadDamageReport = async (req, res) => {
       action: action || 'Pending Review',
       region,
       location,
-      description: description || '',
+      description: finalDescription,
       reporter,
       status: 'Pending'
     });
@@ -236,6 +256,25 @@ const createFromAiReport = async (req, res) => {
         success: false 
       });
     }
+    
+    // Generate a summary using AI if description is missing
+    let finalDescription = description;
+    if (!description || description.trim() === '') {
+      try {
+        console.log('Generating AI summary for damage report');
+        finalDescription = await generateDamageSummary({
+          location,
+          damageType,
+          severity,
+          priority
+        });
+        console.log('AI summary generated successfully');
+      } catch (summaryError) {
+        console.error('Error generating AI summary:', summaryError);
+        // Use a simple default if AI generation fails
+        finalDescription = `Road damage at ${location}: ${damageType} with ${severity} severity. Priority level: ${priority}.`;
+      }
+    }
 
     const newReport = new DamageReport({
       reportId,
@@ -247,7 +286,7 @@ const createFromAiReport = async (req, res) => {
       severity,
       priority,
       action: action || 'Pending Review',
-      description: description || '',
+      description: finalDescription,
       reporter,
       status: 'Pending',
       assignedTo: null,
@@ -974,6 +1013,69 @@ const searchAllReportsAndData = async (req, res) => {
   }
 };
 
+// Get all active field workers to assign
+const getActiveFieldWorkers = async (req, res) => {
+  try {
+    // Apply tenant filter from middleware
+    const tenantFilter = req.tenantId ? { tenant: req.tenantId } : {};
+    
+    // Find all active field workers for the tenant
+    const workers = await FieldWorker.find({ 
+      ...tenantFilter,
+      status: 'Active' // Only active workers
+    })
+      .select('name workerId specialization')
+      .sort({ name: 1 });
+      
+    res.status(200).json(workers);
+  } catch (err) {
+    console.error('Error fetching active field workers:', err);
+    res.status(500).json({ 
+      message: 'Failed to fetch active field workers', 
+      error: err.message 
+    });
+  }
+};
+
+// Generate a damage summary using AI
+const handleGenerateDamageSummary = async (req, res) => {
+  try {
+    const { location, damageType, severity, priority } = req.body;
+    
+    // Validate required fields
+    const requiredFields = ['location', 'damageType', 'severity', 'priority'];
+    const missingFields = requiredFields.filter(field => !req.body[field]);
+    
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        message: 'Missing required fields',
+        fields: missingFields,
+        success: false
+      });
+    }
+    
+    // Call the AI utility to generate summary
+    const summary = await generateDamageSummary({
+      location,
+      damageType,
+      severity,
+      priority
+    });
+    
+    res.status(200).json({
+      summary,
+      success: true
+    });
+  } catch (err) {
+    console.error('Error generating damage summary:', err);
+    res.status(500).json({
+      message: 'Failed to generate damage summary',
+      error: err.message,
+      success: false
+    });
+  }
+};
+
 module.exports = { 
   uploadDamageReport, 
   getDamageHistory, 
@@ -990,5 +1092,7 @@ module.exports = {
   updateReport,
   deleteReport,
   createDamageReport,
-  searchAllReportsAndData
+  searchAllReportsAndData,
+  getActiveFieldWorkers,
+  generateDamageSummary: handleGenerateDamageSummary
 };
