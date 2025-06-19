@@ -130,7 +130,9 @@ function PendingAssignments({ pendingRepairs = [], fieldWorkers = [], onAssignRe
                     <strong>Description:</strong>
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    {repair.description}
+                    {repair.description && repair.description.length > 100 
+                      ? `${repair.description.substring(0, 100)}...` 
+                      : repair.description}
                   </Typography>
                 </CardContent>
                 <CardActions>

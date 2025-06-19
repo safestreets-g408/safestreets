@@ -927,7 +927,14 @@ const searchAllReportsAndData = async (req, res) => {
     const isQuickSearch = quick === 'true';
 
     if (!searchQuery || searchQuery.trim() === '') {
-      return res.status(400).json({ message: 'Search query is required' });
+      return res.status(400).json({ 
+        message: 'Search query is required',
+        reports: [],
+        fieldWorkers: [],
+        analytics: [],
+        repairs: [],
+        query: '' 
+      });
     }
 
     // Apply tenant filter from middleware if available
@@ -1040,7 +1047,12 @@ const searchAllReportsAndData = async (req, res) => {
     console.error('Error performing search:', err);
     res.status(500).json({ 
       message: 'Failed to perform search', 
-      error: err.message 
+      error: err.message,
+      reports: [],
+      fieldWorkers: [],
+      analytics: [],
+      repairs: [],
+      query: searchQuery || '' 
     });
   }
 };

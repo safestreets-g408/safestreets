@@ -73,16 +73,26 @@ const Header = ({ onDrawerToggle }) => {
           
           const response = await api.get(`${API_ENDPOINTS.DAMAGE_REPORTS}/search?q=${encodeURIComponent(searchValue)}&quick=true`);
           
-          setQuickSearchResults({
-            reports: response.reports?.slice(0, 3) || [],
-            fieldWorkers: response.fieldWorkers?.slice(0, 2) || [],
-            analytics: response.analytics?.slice(0, 2) || [],
-            repairs: response.repairs?.slice(0, 2) || [],
-          });
-          
-          setShowSearchResults(true);
+          // Ensure we have valid response data
+          if (response) {
+            setQuickSearchResults({
+              reports: Array.isArray(response.reports) ? response.reports.slice(0, 3) : [],
+              fieldWorkers: Array.isArray(response.fieldWorkers) ? response.fieldWorkers.slice(0, 2) : [],
+              analytics: Array.isArray(response.analytics) ? response.analytics.slice(0, 2) : [],
+              repairs: Array.isArray(response.repairs) ? response.repairs.slice(0, 2) : [],
+            });
+            
+            setShowSearchResults(true);
+          }
         } catch (error) {
           console.error('Quick search error:', error);
+          // Clear results on error
+          setQuickSearchResults({
+            reports: [],
+            fieldWorkers: [],
+            analytics: [],
+            repairs: []
+          });
         }
       } else {
         setShowSearchResults(false);
@@ -444,7 +454,9 @@ const Header = ({ onDrawerToggle }) => {
                           <ListItemButton 
                             key={worker._id}
                             onClick={() => {
-                              navigate(`/field-workers/${worker._id}`);
+                              // Navigate to search-results with filter for fieldworkers instead
+                              // as there's no dedicated field-worker detail page
+                              navigate(`/search-results?type=fieldWorker&id=${worker._id}`);
                               setShowSearchResults(false);
                             }}
                             sx={{ borderRadius: 1, py: 0.5 }}
@@ -472,7 +484,10 @@ const Header = ({ onDrawerToggle }) => {
                           <ListItemButton 
                             key={repair._id}
                             onClick={() => {
-                              navigate(`/repairs/${repair.repairId || repair._id}`);
+                              // First check if we have a repairId or reportId to navigate with
+                              const id = repair.repairId || repair._id;
+                              // Navigate to repairs page
+                              navigate(`/repairs?id=${id}`);
                               setShowSearchResults(false);
                             }}
                             sx={{ borderRadius: 1, py: 0.5 }}

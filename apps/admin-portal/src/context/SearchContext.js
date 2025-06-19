@@ -36,17 +36,25 @@ export const SearchProvider = ({ children }) => {
     try {
       const response = await api.get(`${API_ENDPOINTS.DAMAGE_REPORTS}/search?q=${encodeURIComponent(term)}`);
       
+      // Fix: Extract data directly from the response, which is already parsed by our api utility
       setSearchResults({
-        reports: response.reports || [],
-        fieldWorkers: response.fieldWorkers || [],
-        analytics: response.analytics || [],
-        repairs: response.repairs || [],
+        reports: response?.reports || [],
+        fieldWorkers: response?.fieldWorkers || [],
+        analytics: response?.analytics || [],
+        repairs: response?.repairs || [],
       });
       
       setSearchPerformed(true);
       navigate('/search-results');
     } catch (error) {
       console.error('Search error:', error);
+      // Set empty results on error to prevent displaying stale data
+      setSearchResults({
+        reports: [],
+        fieldWorkers: [],
+        analytics: [],
+        repairs: [],
+      });
     } finally {
       setIsSearching(false);
     }

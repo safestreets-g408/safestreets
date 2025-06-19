@@ -51,12 +51,39 @@ const SearchResults = () => {
     setActiveTab(newValue);
   };
 
+  // Parse query params
+  const queryParams = new URLSearchParams(window.location.search);
+  const filterType = queryParams.get('type');
+  const filterId = queryParams.get('id');
+
   // Re-perform search if the component mounts but we don't have results yet
+  // or handle direct navigation via query params
   useEffect(() => {
+    // If we have query params, set appropriate starting tab
+    if (filterType) {
+      if (filterType === 'fieldWorker') {
+        setActiveTab(1); // Set to field workers tab
+      } else if (filterType === 'repair') {
+        setActiveTab(3); // Set to repairs tab
+      } else if (filterType === 'report') {
+        setActiveTab(0); // Set to reports tab
+      } else if (filterType === 'analytics') {
+        setActiveTab(2); // Set to analytics tab
+      }
+    }
+    
+    // If we have an ID filter, we could highlight that specific item
+    if (filterId) {
+      // This would be implemented based on the UI requirements
+      // For now we just log it
+      console.log(`Filtering for specific item with ID: ${filterId}`);
+    }
+    
+    // Re-perform search if needed
     if (searchTerm && !searchPerformed && !isSearching) {
       performSearch(searchTerm);
     }
-  }, [searchTerm, searchPerformed, isSearching, performSearch]);
+  }, [searchTerm, searchPerformed, isSearching, performSearch, filterType, filterId]);
 
   // Get total results count
   const getTotalCount = () => {
