@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { 
   Box, 
   Typography, 
@@ -6,8 +6,12 @@ import {
   Chip, 
   Divider,
   Paper,
-  CircularProgress
+  CircularProgress,
+  IconButton,
+  Tooltip
 } from '@mui/material';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 // API constants are imported directly
 import { API_BASE_URL, API_ENDPOINTS, TOKEN_KEY } from '../../config/constants';
 import { formatLocation, getCoordinatesString } from '../../utils/formatters';
@@ -15,6 +19,42 @@ import { formatLocation, getCoordinatesString } from '../../utils/formatters';
 const ViewDamageReport = ({ report }) => {
   const [imageUrl, setImageUrl] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  // Function to handle reading out the report description
+  const handleSpeak = useCallback(() => {
+    // If already speaking, stop the speech
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    // If no description, nothing to read
+    if (!report.description) {
+      return;
+    }
+
+    // Create the text to speech
+    const speech = new SpeechSynthesisUtterance(report.description);
+    speech.rate = 0.9; // slightly slower than default
+    speech.pitch = 1;
+    speech.volume = 1;
+
+    // When speech ends, reset the speaking state
+    speech.onend = () => {
+      setIsSpeaking(false);
+    };
+
+    // If speech is interrupted or errors out
+    speech.onerror = () => {
+      setIsSpeaking(false);
+    };
+
+    // Start speaking
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(speech);
+  }, [report.description, isSpeaking]);
 
   // Get image URL with authentication token
   const getAuthenticatedImageUrl = (reportId, type) => {
@@ -77,7 +117,10 @@ const ViewDamageReport = ({ report }) => {
     loadImage();
     
     return () => {
-      // No cleanup needed for direct URLs
+      // Cancel any ongoing speech when component unmounts
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
     };
   }, [report]);
 
@@ -179,7 +222,19 @@ const ViewDamageReport = ({ report }) => {
                 <Typography variant="body1">{report.priority}</Typography>
               </Grid>
               <Grid item xs={12}>
-                <Typography variant="body2" color="text.secondary">Description</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">Description</Typography>
+                  <Tooltip title={isSpeaking ? "Stop reading" : "Read description aloud"}>
+                    <IconButton 
+                      size="small" 
+                      onClick={handleSpeak} 
+                      color={isSpeaking ? "primary" : "default"}
+                      disabled={!report.description}
+                    >
+                      {isSpeaking ? <VolumeUpIcon /> : <VolumeOffIcon />}
+                    </IconButton>
+                  </Tooltip>
+                </Box>
                 <Typography variant="body1" sx={{ mt: 1 }}>
                   {report.description}
                 </Typography>

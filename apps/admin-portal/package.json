@@ -19,6 +19,8 @@
     "date-fns": "^2.30.0",
     "dotenv": "^16.5.0",
     "framer-motion": "^10.12.12",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.1",
     "leaflet": "^1.9.4",
     "prop-types": "^15.8.1",
     "react": "^18.2.0",

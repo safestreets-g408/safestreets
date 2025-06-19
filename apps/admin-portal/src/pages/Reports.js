@@ -659,53 +659,36 @@ function Reports() {
 
   const handleDownloadReport = async (report) => {
     try {
-      // Fetch the report data with image
+      setActionLoading(true);
+      
+      // Show loading notification
+      setSnackbarOpen(true);
+      setSnackbarMessage('Generating PDF report...');
+      setSnackbarSeverity('info');
+      
+      // Fetch the report data with complete details
       const reportData = await api.get(`/damage/report/${report.reportId}`);
       
-      // Fetch the image separately
-      const imageBlob = await fetch(`${API_BASE_URL}/damage/report/${report.reportId}/image/before`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
-        }
-      }).then(res => res.blob());
+      // Get the authenticated image URL
+      const imageUrl = `${API_BASE_URL}/damage/report/${report.reportId}/image/before?token=${localStorage.getItem(TOKEN_KEY)}`;
       
-      // Create a URL for the image
-      const imageUrl = URL.createObjectURL(imageBlob);
+      // Import the PDF utility dynamically to reduce initial load time
+      const { generateReportPDF } = await import('../utils/pdfUtils');
       
-      // Create a formatted report for downloading
-      const formattedReport = {
-        reportId: reportData.reportId,
-        createdAt: new Date(reportData.createdAt).toLocaleString(),
-        damageType: reportData.damageType,
-        severity: reportData.severity,
-        priority: reportData.priority,
-        region: reportData.region,
-        location: reportData.location,
-        description: reportData.description,
-        status: reportData.status,
-        action: reportData.action,
-        imageUrl,
-      };
+      // Generate and download the PDF
+      await generateReportPDF(reportData, imageUrl);
       
-      // Download as JSON
-      const jsonString = JSON.stringify(formattedReport, null, 2);
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      const downloadUrl = URL.createObjectURL(blob);
-      
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = `report-${report.reportId}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      
-      // Clean up URLs
-      URL.revokeObjectURL(imageUrl);
-      URL.revokeObjectURL(downloadUrl);
-      
-    } catch (err) {
-      console.error('Error downloading report:', err);
-      // TODO: Add error notification
+      // Show success notification
+      setSnackbarOpen(true);
+      setSnackbarMessage('PDF report downloaded successfully!');
+      setSnackbarSeverity('success');
+    } catch (error) {
+      console.error('Error downloading report:', error);
+      setSnackbarOpen(true);
+      setSnackbarMessage('Error generating PDF report. Please try again.');
+      setSnackbarSeverity('error');
+    } finally {
+      setActionLoading(false);
     }
   };
 
