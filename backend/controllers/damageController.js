@@ -5,6 +5,7 @@ const FieldWorker = require('../models/FieldWorker');
 const upload = require('../middleware/multerConfig');
 const path = require('path');
 const { generateDamageSummary } = require('../utils/aiUtils');
+const { clearDamageReportCaches, clearSingleReportCache } = require('../utils/cacheUtils');
 
 
 // Helper function to validate MongoDB ObjectId

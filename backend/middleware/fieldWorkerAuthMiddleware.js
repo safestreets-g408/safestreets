@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const FieldWorker = require('../models/FieldWorker');
 const Tenant = require('../models/Tenant');
+const { getTokenFromCache } = require('../utils/jwtCache');
 
 const protectFieldWorker = async (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -10,11 +11,21 @@ const protectFieldWorker = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // First check if token is in Redis cache
+    const cachedToken = await getTokenFromCache(token);
     
-    // Check if token contains fieldWorkerId
-    if (!decoded.fieldWorkerId) {
-      return res.status(401).json({ message: 'Invalid token format' });
+    let decoded;
+    if (cachedToken && cachedToken.userId) {
+      // Use the cached user ID directly
+      decoded = { fieldWorkerId: cachedToken.userId };
+    } else {
+      // If not in cache, verify JWT signature and decode
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      
+      // Check if token contains fieldWorkerId
+      if (!decoded.fieldWorkerId) {
+        return res.status(401).json({ message: 'Invalid token format' });
+      }
     }
     
     // Verify field worker exists and is active

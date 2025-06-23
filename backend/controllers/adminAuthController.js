@@ -1,6 +1,7 @@
 const Admin = require('../models/Admin');
 const Tenant = require('../models/Tenant');
 const jwt = require('jsonwebtoken');
+const { cacheUserToken, invalidateToken } = require('../utils/jwtCache');
 
 // Register Admin
 const registerAdmin = async (req, res) => {
@@ -104,6 +105,9 @@ const loginAdmin = async (req, res) => {
 
     const token = jwt.sign({ adminId: admin._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
     
+    // Cache token in Redis for faster validation
+    await cacheUserToken(admin._id.toString(), token, 60 * 60); // 1 hour
+    
     // Return admin data (excluding password)
     const adminData = {
       _id: admin._id,
@@ -129,4 +133,24 @@ const loginAdmin = async (req, res) => {
   }
 };
 
-module.exports = { registerAdmin, loginAdmin };
+// Logout Admin
+const logoutAdmin = async (req, res) => {
+  try {
+    // Get token from header
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(400).json({ message: 'No token provided' });
+    }
+    
+    // Invalidate token in Redis
+    await invalidateToken(token);
+    
+    res.status(200).json({ message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+module.exports = { registerAdmin, loginAdmin, logoutAdmin };

@@ -1,6 +1,7 @@
 const FieldWorker = require('../models/FieldWorker');
 const Tenant = require('../models/Tenant');
 const jwt = require('jsonwebtoken');
+const { cacheUserToken, invalidateToken } = require('../utils/jwtCache');
 
 // Register Field Worker
 const registerFieldWorker = async (req, res) => {
@@ -95,6 +96,9 @@ const loginFieldWorker = async (req, res) => {
       { expiresIn: '24h' }
     );
     
+    // Cache the token in Redis for faster validation
+    await cacheUserToken(fieldWorker._id.toString(), token, 24 * 60 * 60); // 24 hours
+    
     // Return field worker data (excluding password)
     const fieldWorkerData = {
       _id: fieldWorker._id,
@@ -186,10 +190,31 @@ const refreshToken = async (req, res) => {
   }
 };
 
+// Logout Field Worker
+const logoutFieldWorker = async (req, res) => {
+  try {
+    // Get token from header
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(400).json({ message: 'No token provided' });
+    }
+    
+    // Invalidate token in Redis
+    await invalidateToken(token);
+    
+    res.status(200).json({ message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = { 
   registerFieldWorker, 
   loginFieldWorker, 
   getFieldWorkerProfile,
   updateFieldWorkerProfile,
-  refreshToken
+  refreshToken,
+  logoutFieldWorker
 };

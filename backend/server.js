@@ -2,6 +2,7 @@ const express = require('express');
 const connectDB = require('./utils/db');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const { getRedisClient } = require('./utils/redisClient');
 const adminRoutes = require('./routes/adminRoutes');
 const adminProfileRoutes = require('./routes/adminProfileRoutes');
 const imageRoutes = require('./routes/ImageRoutes');
@@ -16,7 +17,13 @@ const aiRoutes = require('./routes/aiRoutes');
 const path = require('path');
 
 dotenv.config();
-connectDB()
+connectDB();
+
+// Initialize Redis connection
+getRedisClient().catch(err => {
+  console.error('Failed to connect to Redis:', err);
+  console.log('Server continues without Redis caching');
+});
 
 const app = express();
 app.use(cors());

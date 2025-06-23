@@ -22,16 +22,19 @@ const { protectAdmin, ensureTenantIsolation } = require('../middleware/adminAuth
 const { enforceDamageTenantIsolation } = require('../middleware/tenantIsolationMiddleware');
 const router = express.Router();
 
+// Import cache middleware
+const cacheMiddleware = require('../middleware/cacheMiddleware');
+
 // Protected routes with tenant isolation
 router.post('/upload', protectAdmin, ensureTenantIsolation(), upload.single('image'), uploadDamageReport);
-router.get('/history', protectAdmin, ensureTenantIsolation(), enforceDamageTenantIsolation, getDamageHistory);
-router.get('/reports', protectAdmin, ensureTenantIsolation(), enforceDamageTenantIsolation, getReports);
-router.get('/search', protectAdmin, ensureTenantIsolation(), searchAllReportsAndData); // New global search endpoint
+router.get('/history', protectAdmin, ensureTenantIsolation(), enforceDamageTenantIsolation, cacheMiddleware(600), getDamageHistory);
+router.get('/reports', protectAdmin, ensureTenantIsolation(), enforceDamageTenantIsolation, cacheMiddleware(300), getReports);
+router.get('/search', protectAdmin, ensureTenantIsolation(), cacheMiddleware(300), searchAllReportsAndData); // New global search endpoint
 router.post('/reports', protectAdmin, ensureTenantIsolation(), createDamageReport); // Direct report creation endpoint
-router.get('/report/:reportId', protectAdmin, ensureTenantIsolation(), enforceDamageTenantIsolation, getReportById);
+router.get('/report/:reportId', protectAdmin, ensureTenantIsolation(), enforceDamageTenantIsolation, cacheMiddleware(600), getReportById);
 router.post('/generate-summary', generateDamageSummary); // AI summary generation endpoint - no auth for testing
 // Allow image access with token in URL for <img> tag compatibility
-router.get('/report/:reportId/image/:type', getReportImage); // Consider tenant isolation for this endpoint too
+router.get('/report/:reportId/image/:type', cacheMiddleware(3600), getReportImage); // Consider tenant isolation for this endpoint too
 
 // New routes for AI report integration and repair management - adding tenant isolation
 router.post('/reports/create-from-ai', protectAdmin, ensureTenantIsolation(), createFromAiReport);

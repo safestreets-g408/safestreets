@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const Admin = require('../models/Admin');
+const { getTokenFromCache } = require('../utils/jwtCache');
 
 // Protect admin routes
 const protectAdmin = async (req, res, next) => {
@@ -10,8 +11,17 @@ const protectAdmin = async (req, res, next) => {
       return res.status(401).json({ message: 'No token, authorization denied' });
     }
     
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // First check if token is in Redis cache
+    const cachedToken = await getTokenFromCache(token);
+    
+    let decoded;
+    if (cachedToken && cachedToken.userId) {
+      // Use the cached user ID directly
+      decoded = { adminId: cachedToken.userId };
+    } else {
+      // If not in cache, verify JWT signature and decode
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    }
     
     // Check if admin still exists
     const admin = await Admin.findById(decoded.adminId).populate('tenant');
