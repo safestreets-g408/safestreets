@@ -1,5 +1,30 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, getBaseUrl } from '../config';
+import { Alert, Platform } from 'react-native';
+
+// Utility function to check network connectivity
+export const checkNetworkConnectivity = async () => {
+  try {
+    // Try a lightweight fetch to a reliable endpoint
+    const response = await fetch('https://www.google.com', { 
+      method: 'HEAD',
+      timeout: 5000 
+    });
+    return response.ok;
+  } catch (error) {
+    console.log('Network connectivity test failed:', error);
+    return false;
+  }
+};
+
+// Utility function to show network error
+export const showNetworkError = (message = 'Network connection error') => {
+  Alert.alert(
+    'Connection Error',
+    message,
+    [{ text: 'OK', onPress: () => console.log('OK Pressed') }]
+  );
+};
 
 export const storeAuthToken = async (token) => {
   try {
@@ -56,27 +81,89 @@ export const removeFieldWorkerData = async () => {
 // API calls
 export const loginFieldWorker = async (email, password) => {
   try {
+    // Get the latest API URL (in case it was updated)
+    const currentApiUrl = API_BASE_URL;
+    console.log(`API URL being used:`, currentApiUrl);
+    
     // Create an AbortController to handle request timeouts
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      console.error('Login request timed out after 20 seconds');
+    }, 20000); // Increased timeout to 20 seconds
     
-    const response = await fetch(`${API_BASE_URL}/fieldworker/auth/login`, {
+    const loginUrl = `${currentApiUrl}/fieldworker/auth/login`;
+    console.log(`Attempting to login with API URL: ${loginUrl}`);
+    console.log(`Sending POST request to: ${loginUrl}`);
+    
+    // Test if network is available first
+    let networkAvailable = false;
+    try {
+      const networkCheck = await fetch('https://www.google.com', { method: 'HEAD', timeout: 5000 })
+        .then(res => res.ok)
+        .catch(() => false);
+      
+      networkAvailable = networkCheck;
+      if (!networkAvailable) {
+        console.log('No internet connection detected');
+        throw new Error('No internet connection. Please check your network settings.');
+      }
+    } catch (netError) {
+      // Continue anyway - server might be reachable even if google.com isn't
+      console.log('Network check error, continuing anyway:', netError.message);
+    }
+    
+    // Make the actual login request
+    const response = await fetch(loginUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
       body: JSON.stringify({ email, password }),
       signal: controller.signal
+    }).catch(fetchError => {
+      console.error('Fetch error details:', fetchError);
+      
+      // More detailed error message with API URL info
+      let errorMessage = `Network request failed: ${fetchError.message}`;
+      
+      if (loginUrl.includes('localhost') || loginUrl.includes('127.0.0.1')) {
+        errorMessage += `\n\nYou're using localhost (${loginUrl}), which doesn't work with Expo Go on physical devices. Please use the Settings screen to change the API URL to your computer's actual IP address.`;
+      } else {
+        errorMessage += `\n\nServer URL: ${loginUrl}`;
+      }
+      
+      throw new Error(errorMessage);
     });
     
     // Clear the timeout since the request completed
     clearTimeout(timeoutId);
+    
+    console.log('Login response status:', response.status);
+    
+    // Check if the response is ok before trying to parse JSON
+    if (!response.ok) {
+      let errorMessage = '';
+      try {
+        const errorText = await response.text();
+        console.error('Login error response:', errorText);
+        try {
+          // Try to parse as JSON
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.message || errorText;
+        } catch {
+          // If not JSON, use the raw text
+          errorMessage = errorText;
+        }
+      } catch (e) {
+        errorMessage = 'Unknown server error';
+      }
+      throw new Error(`Login failed with status ${response.status}: ${errorMessage}`);
+    }
 
     const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Login failed');
-    }
+    console.log('Login successful, storing credentials');
 
     // Store token and field worker data
     await storeAuthToken(data.token);
@@ -85,6 +172,17 @@ export const loginFieldWorker = async (email, password) => {
     return data;
   } catch (error) {
     console.error('Login error:', error);
+    
+    // Add a link to the settings screen in error messages
+    if (error.message.includes('Network request failed') || 
+        error.message.includes('connect') || 
+        error.message.includes('ECONNREFUSED') ||
+        error.message.includes('timed out')) {
+      
+      throw new Error(
+        `Cannot connect to server. Please check your internet connection and that the server is running.\n\nTry changing the API URL in Settings.`
+      );
+    }
     throw error;
   }
 };
@@ -371,25 +469,62 @@ export const getValidAuthToken = async () => {
     const token = await getAuthToken();
     
     if (!token) {
+      console.log('No token found in storage');
       return null;
     }
     
     // Check if token is expired by decoding it
     // This is a simple check without validation
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const expiresAt = payload.exp * 1000; // Convert to milliseconds
+      // Handle potential token format issues
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        console.log('Invalid token format, attempting to refresh token');
+        return await refreshAuthToken();
+      }
       
-      // If token is expired or about to expire in the next 5 minutes
-      if (Date.now() >= expiresAt - (5 * 60 * 1000)) {
-        console.log('Token is expired or about to expire, refreshing...');
+      // Fix padding for base64 decoding which can cause issues in React Native
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const paddedBase64 = base64 + '==='.slice((base64.length + 3) % 4);
+      
+      try {
+        // Use more robust decoding approach that works in React Native
+        const jsonPayload = decodeURIComponent(
+          Array.from(atob(paddedBase64))
+            .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
+        
+        const payload = JSON.parse(jsonPayload);
+        
+        if (!payload.exp) {
+          console.log('Token has no expiration claim, refreshing to be safe');
+          return await refreshAuthToken();
+        }
+        
+        const expiresAt = payload.exp * 1000; // Convert to milliseconds
+        const fiveMinutesMs = 5 * 60 * 1000;
+        
+        // If token is expired or about to expire in the next 5 minutes
+        if (Date.now() >= expiresAt - fiveMinutesMs) {
+          console.log('Token is expired or about to expire, refreshing...');
+          const newToken = await refreshAuthToken();
+          return newToken || token; // Fallback to original token if refresh fails
+        }
+        
+        console.log('Token is valid, no refresh needed');
+      } catch (parseError) {
+        console.error('Error parsing token payload:', parseError);
+        // If we can't parse the payload, try to refresh the token
         const newToken = await refreshAuthToken();
-        return newToken;
+        return newToken || token;
       }
     } catch (decodeError) {
       console.error('Error decoding token:', decodeError);
-      // If we can't decode the token, try to refresh it anyway
-      return await refreshAuthToken();
+      // If we can't decode the token at all, try to refresh it
+      const newToken = await refreshAuthToken();
+      return newToken || token;
     }
     
     return token;

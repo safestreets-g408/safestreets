@@ -140,9 +140,25 @@ const HomeScreen = ({ navigation }) => {
     
     try {
       setLoading(true);
+      console.log('Starting dashboard data load');
       
       // Load dashboard data with enhanced stats
-      const dashboardData = await getDashboardData();
+      const dashboardData = await getDashboardData().catch(error => {
+        console.log('Dashboard data fetch error:', error);
+        // Return empty data structure to prevent app crashes
+        return {
+          stats: {
+            reportsThisWeek: 0,
+            repairsCompleted: 0,
+            pendingIssues: 0,
+            completionRate: 0,
+            byDamageType: {},
+            byStatus: {},
+          },
+          recentReports: [],
+          urgentReports: []
+        };
+      });
       
       setReports(dashboardData.recentReports || []);
       setCityStats(dashboardData.stats || {

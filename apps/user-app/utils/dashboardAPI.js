@@ -308,6 +308,42 @@ export const getNotifications = async (unreadOnly = false) => {
   }
 };
 
+// New function to get reports by field worker ID
+export const getFieldWorkerReportsByID = async (fieldWorkerId) => {
+  try {
+    const token = await getValidAuthToken();
+    
+    if (!token) {
+      throw new Error('No valid auth token found');
+    }
+
+    const url = `${API_BASE_URL}/fieldworker/damage/reports?fieldWorkerId=${fieldWorkerId}`;
+    console.log('Fetching field worker reports from:', url);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    // Check if response is ok first before trying to parse JSON
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('Field worker reports API error response:', text);
+      throw new Error(`Field worker reports API returned ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Get field worker reports error:', error);
+    // Return empty array instead of throwing
+    return [];
+  }
+};
+
 // Mock weather data function for fallback
 const getMockWeatherData = (coordinates) => {
   // Generate semi-realistic weather data
