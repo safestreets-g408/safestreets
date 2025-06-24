@@ -56,6 +56,8 @@ const uploadImage = async (req, res) => {
         console.log('Request headers:', req.headers);
         console.log('Files:', req.file ? 'File present' : 'No file');
         console.log('Body keys:', Object.keys(req.body));
+        console.log('Admin:', req.admin ? `ID: ${req.admin._id}, Role: ${req.admin.role}` : 'Not set');
+        console.log('TenantId:', req.tenantId || 'Not set');
 
         if (!req.file) {
             console.error('No image file uploaded');
@@ -69,9 +71,23 @@ const uploadImage = async (req, res) => {
         const { latitude, longitude, address } = req.body;
         console.log('Location data received:', { latitude, longitude, address });
 
+        // Get tenant ID either from req.tenantId or from req.admin.tenant
+        const tenantId = req.tenantId || (req.admin && req.admin.tenant && req.admin.tenant._id) || 
+                          (req.admin && req.admin.tenant);
+                          
+        if (!tenantId) {
+            console.error('No tenant ID available');
+            return res.status(400).json({
+                message: 'No tenant association found. Please contact support.',
+                success: false
+            });
+        }
+        
+        console.log('Using tenant ID:', tenantId);
+        
         // Create a new image document
         const newImage = new Image({
-            tenant: req.tenantId,
+            tenant: tenantId,
             data: req.file.buffer,
             contentType: req.file.mimetype,
             result: 'Processing'

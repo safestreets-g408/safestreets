@@ -2,7 +2,14 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI, {
+    // Check if MONGO_URI is defined
+    const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/safestreets';
+    
+    if (!mongoURI) {
+      throw new Error('MongoDB URI is not defined. Please check your .env file.');
+    }
+    
+    const conn = await mongoose.connect(mongoURI, {
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000
     });
