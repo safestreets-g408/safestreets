@@ -28,7 +28,6 @@ const cacheUserToken = async (userId, token, expirySeconds = DEFAULT_TOKEN_EXPIR
 
 const getTokenFromCache = async (token) => {
   try {
-    console.log('Validating token:', token); // Add logging
 
     // Check if token is blacklisted
     const isBlacklisted = await getCachedData(`${JWT_BLACKLIST_PREFIX}${token}`);
