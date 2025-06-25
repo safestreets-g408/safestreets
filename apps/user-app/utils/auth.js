@@ -36,7 +36,9 @@ export const storeAuthToken = async (token) => {
 
 export const getAuthToken = async () => {
   try {
-    return await AsyncStorage.getItem('fieldWorkerToken');
+    const token = await AsyncStorage.getItem('fieldWorkerToken');
+    console.log('Retrieved token from storage:', token); // Add logging
+    return token;
   } catch (error) {
     console.error('Error getting auth token:', error);
     return null;
@@ -428,35 +430,57 @@ export const refreshAuthToken = async () => {
     const token = await getAuthToken();
     
     if (!token) {
-      throw new Error('No auth token found');
+      console.log('No auth token found for refresh');
+      return null;
     }
 
-    const response = await fetch(`${API_BASE_URL}/fieldworker/auth/refresh-token`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    // First check network connectivity
+    const isConnected = await checkNetworkConnectivity();
+    if (!isConnected) {
+      console.log('No network connectivity, cannot refresh token');
+      return token; // Return existing token if no connectivity
+    }
 
-    const data = await response.json();
+    try {
+      const response = await fetch(`${API_BASE_URL}/fieldworker/auth/refresh-token`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        // Add timeout to prevent long waits
+        timeout: 10000
+      });
 
-    if (!response.ok) {
-      // If token refresh fails, clear the token and return null
-      if (response.status === 401) {
-        await removeAuthToken();
-        await removeFieldWorkerData();
+      if (!response.ok) {
+        // If token refresh fails with auth error, clear tokens
+        if (response.status === 401 || response.status === 403) {
+          console.log('Auth error during token refresh, clearing tokens');
+          await removeAuthToken();
+          await removeFieldWorkerData();
+          return null;
+        }
+        
+        // For other errors, log but return existing token
+        console.log(`Token refresh failed with status: ${response.status}`);
+        return token;
       }
-      throw new Error(data.message || 'Failed to refresh token');
-    }
 
-    // Store new token
-    if (data.token) {
-      await storeAuthToken(data.token);
-      return data.token;
-    }
+      const data = await response.json();
 
-    return token; // Return the original token if no new token was provided
+      // Store new token
+      if (data && data.token) {
+        console.log('Received and storing new token');
+        await storeAuthToken(data.token);
+        return data.token;
+      } else {
+        console.log('No token in refresh response');
+        return token;
+      }
+    } catch (fetchError) {
+      console.error('Fetch error during token refresh:', fetchError);
+      return token; // Return existing token on network errors
+    }
   } catch (error) {
     console.error('Token refresh error:', error);
     return null;
@@ -466,67 +490,12 @@ export const refreshAuthToken = async () => {
 // Enhanced auth token getter with built-in refresh attempt
 export const getValidAuthToken = async () => {
   try {
+    // Simply return stored token without pre-emptive refresh
     const token = await getAuthToken();
-    
     if (!token) {
       console.log('No token found in storage');
       return null;
     }
-    
-    // Check if token is expired by decoding it
-    // This is a simple check without validation
-    try {
-      // Handle potential token format issues
-      const parts = token.split('.');
-      if (parts.length !== 3) {
-        console.log('Invalid token format, attempting to refresh token');
-        return await refreshAuthToken();
-      }
-      
-      // Fix padding for base64 decoding which can cause issues in React Native
-      const base64Url = parts[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const paddedBase64 = base64 + '==='.slice((base64.length + 3) % 4);
-      
-      try {
-        // Use more robust decoding approach that works in React Native
-        const jsonPayload = decodeURIComponent(
-          Array.from(atob(paddedBase64))
-            .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-            .join('')
-        );
-        
-        const payload = JSON.parse(jsonPayload);
-        
-        if (!payload.exp) {
-          console.log('Token has no expiration claim, refreshing to be safe');
-          return await refreshAuthToken();
-        }
-        
-        const expiresAt = payload.exp * 1000; // Convert to milliseconds
-        const fiveMinutesMs = 5 * 60 * 1000;
-        
-        // If token is expired or about to expire in the next 5 minutes
-        if (Date.now() >= expiresAt - fiveMinutesMs) {
-          console.log('Token is expired or about to expire, refreshing...');
-          const newToken = await refreshAuthToken();
-          return newToken || token; // Fallback to original token if refresh fails
-        }
-        
-        console.log('Token is valid, no refresh needed');
-      } catch (parseError) {
-        console.error('Error parsing token payload:', parseError);
-        // If we can't parse the payload, try to refresh the token
-        const newToken = await refreshAuthToken();
-        return newToken || token;
-      }
-    } catch (decodeError) {
-      console.error('Error decoding token:', decodeError);
-      // If we can't decode the token at all, try to refresh it
-      const newToken = await refreshAuthToken();
-      return newToken || token;
-    }
-    
     return token;
   } catch (error) {
     console.error('Error getting valid auth token:', error);

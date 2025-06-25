@@ -28,15 +28,22 @@ import {
   getTaskAnalytics, 
   getWeeklyReportStats,
   getReportStatusSummary,
-  getNearbyReports,
-  getWeatherInfo,
   getNotifications,
-  markNotificationAsRead
+  markNotificationAsRead,
+  getWeatherInfo
 } from '../utils/dashboardAPI';
 
+// Demo weather data - used instead of API calls
+const DEMO_WEATHER = {
+  temperature: 72,
+  condition: 'Sunny',
+  humidity: 10,
+  windSpeed: 8,
+  icon: 'weather-sunny'
+};
 
 const HomeScreen = ({ navigation }) => {
-  const { fieldWorker } = useAuth();
+  const { fieldWorker, logout } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -59,6 +66,7 @@ const HomeScreen = ({ navigation }) => {
   const [nearbyReports, setNearbyReports] = useState([]);
   const [loadingMore, setLoadingMore] = useState(false);
   const animationRef = useRef(null);
+  const [authErrorShown, setAuthErrorShown] = useState(false);  // Track if auth error is shown
 
   useEffect(() => {
     // Start animation when component mounts
@@ -69,8 +77,11 @@ const HomeScreen = ({ navigation }) => {
     // Load initial data
     loadDashboardData();
     
-    // Get current location
+    // Get current location for weather display
     getCurrentLocation();
+    
+    // Get field worker's reports
+    fetchFieldWorkerReports();
   }, [fieldWorker]);
 
   const getCurrentLocation = async () => {
@@ -99,8 +110,8 @@ const HomeScreen = ({ navigation }) => {
       // Fetch weather data using coordinates
       fetchWeatherData(location.coords);
       
-      // Get nearby reports
-      fetchNearbyReports(location.coords);
+      // Get field worker's reports instead of nearby reports
+      fetchFieldWorkerReports();
     } catch (error) {
       setErrorMsg('Could not fetch location');
       setLocationName(fieldWorker?.region || 'Location unavailable');
@@ -109,21 +120,80 @@ const HomeScreen = ({ navigation }) => {
 
   const fetchWeatherData = async (coordinates) => {
     try {
-      const data = await getWeatherInfo(coordinates);
-      setWeatherData(data);
+      console.log('Fetching weather with coordinates:', coordinates);
+      const weatherResponse = await getWeatherInfo(coordinates);
+      
+      if (weatherResponse) {
+        // Transform OpenWeatherMap data to our format
+        const transformedWeather = {
+          temperature: Math.round(weatherResponse.main?.temp || 72),
+          condition: weatherResponse.weather?.[0]?.main || 'Sunny',
+          humidity: weatherResponse.main?.humidity || 10,
+          windSpeed: Math.round(weatherResponse.wind?.speed || 8),
+          icon: mapWeatherIconToName(weatherResponse.weather?.[0]?.icon || '01d')
+        };
+        console.log('Weather data transformed:', transformedWeather);
+        setWeatherData(transformedWeather);
+      } else {
+        // Fallback to demo data if weather response is empty
+        console.log('Falling back to demo weather data');
+        setWeatherData(DEMO_WEATHER);
+      }
     } catch (error) {
       console.error('Error fetching weather data:', error);
-      // Weather is non-critical, so just log the error
+      // Weather is non-critical, so fall back to demo data
+      setWeatherData(DEMO_WEATHER);
     }
   };
+  
+  // Map OpenWeatherMap icon codes to MaterialCommunityIcons names
+  const mapWeatherIconToName = (iconCode) => {
+    const iconMap = {
+      '01d': 'weather-sunny',
+      '01n': 'weather-night',
+      '02d': 'weather-partly-cloudy',
+      '02n': 'weather-night-partly-cloudy',
+      '03d': 'weather-cloudy',
+      '03n': 'weather-cloudy',
+      '04d': 'weather-cloudy',
+      '04n': 'weather-cloudy',
+      '09d': 'weather-pouring',
+      '09n': 'weather-pouring',
+      '10d': 'weather-rainy',
+      '10n': 'weather-rainy',
+      '11d': 'weather-lightning',
+      '11n': 'weather-lightning',
+      '13d': 'weather-snowy',
+      '13n': 'weather-snowy',
+      '50d': 'weather-fog',
+      '50n': 'weather-fog'
+    };
+    
+    return iconMap[iconCode] || 'weather-sunny';
+  };
 
-  const fetchNearbyReports = async (coordinates) => {
+  const fetchFieldWorkerReports = async () => {
     try {
-      const data = await getNearbyReports(coordinates, 5); // 5km radius
-      setNearbyReports(data);
+      if (!fieldWorker || !fieldWorker._id) {
+        console.log('No field worker ID available');
+        return;
+      }
+      
+      // Instead of location-based, we'll use fieldWorker's reports
+      const data = await getFilteredReports({ fieldWorkerId: fieldWorker._id, limit: 5 });
+      
+      // Extract reports array from the response
+      const reports = data?.reports || [];
+      setNearbyReports(reports); // Still using the same state variable for compatibility
+
+      // Add logging to debug API response
+      console.log('API response for field worker reports:', data);
+      console.log('Extracted reports:', reports);
     } catch (error) {
-      console.error('Error fetching nearby reports:', error);
-      // Non-critical, just log the error
+     console.error('Error fetching field worker reports:', error);
+      // Check if it's an auth error
+      handleAuthError(error);
+      // Non-critical, just log the error if not auth related
     }
   };
 
@@ -143,10 +213,20 @@ const HomeScreen = ({ navigation }) => {
       console.log('Starting dashboard data load');
       
       // Load dashboard data with enhanced stats
-      const dashboardData = await getDashboardData().catch(error => {
+      let dashboardData;
+      try {
+        dashboardData = await getDashboardData();
+      } catch (error) {
         console.log('Dashboard data fetch error:', error);
-        // Return empty data structure to prevent app crashes
-        return {
+        
+        // Use common auth error handler
+        if (handleAuthError(error)) {
+          setLoading(false);
+          return; // Exit function early if auth error
+        }
+        
+        // If not an auth error, use empty data structure
+        dashboardData = {
           stats: {
             reportsThisWeek: 0,
             repairsCompleted: 0,
@@ -158,7 +238,7 @@ const HomeScreen = ({ navigation }) => {
           recentReports: [],
           urgentReports: []
         };
-      });
+      }
       
       setReports(dashboardData.recentReports || []);
       setCityStats(dashboardData.stats || {
@@ -171,10 +251,18 @@ const HomeScreen = ({ navigation }) => {
       // Load notifications
       try {
         const notificationsData = await getNotifications();
-        setNotifications(notificationsData);
+        // Merge backend notifications with generated notifications from reports
+        const generatedNotifications = generateNotificationsFromReports();
+        const allNotifications = [...generatedNotifications, ...notificationsData];
+        setNotifications(allNotifications);
+        console.log('All notifications:', allNotifications.length);
       } catch (notifError) {
         console.error('Failed to load notifications:', notifError);
-        // Continue without notifications
+        // Check if it's an auth error
+        handleAuthError(notifError);
+        // Continue with just the generated notifications
+        const generatedNotifications = generateNotificationsFromReports();
+        setNotifications(generatedNotifications);
       }
       
       // Load task analytics
@@ -190,29 +278,8 @@ const HomeScreen = ({ navigation }) => {
       console.error('Error loading dashboard data:', error);
       
       // Check if it's an authentication error
-      if (error.message && (
-          error.message.includes('token') || 
-          error.message.includes('auth') || 
-          error.message.includes('unauthorized') ||
-          error.message.includes('401')
-        )) {
-        Alert.alert(
-          'Session Expired',
-          'Your session has expired. Please log in again.',
-          [
-            { 
-              text: 'OK', 
-              onPress: () => {
-                // Navigate to login
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'Login' }],
-                });
-              } 
-            }
-          ]
-        );
-      } else {
+      if (!handleAuthError(error)) {
+        // Only show general error if it's not an auth error
         Alert.alert('Error', 'Failed to load dashboard data. Please try again.');
       }
       
@@ -236,6 +303,8 @@ const HomeScreen = ({ navigation }) => {
       setTaskAnalytics(data);
     } catch (error) {
       console.error('Error loading task analytics:', error);
+      // Check if it's an auth error but don't exit early
+      handleAuthError(error);
       // Non-critical, continue without analytics
     }
   };
@@ -246,6 +315,8 @@ const HomeScreen = ({ navigation }) => {
       setWeeklyStats(data);
     } catch (error) {
       console.error('Error loading weekly stats:', error);
+      // Check if it's an auth error but don't exit early
+      handleAuthError(error);
       // Non-critical, continue without weekly stats
     }
   };
@@ -256,6 +327,8 @@ const HomeScreen = ({ navigation }) => {
       setStatusSummary(data);
     } catch (error) {
       console.error('Error loading status summary:', error);
+      // Check if it's an auth error but don't exit early
+      handleAuthError(error);
       // Non-critical, continue without status summary
     }
   };
@@ -276,6 +349,8 @@ const HomeScreen = ({ navigation }) => {
       );
     } catch (error) {
       console.error('Error marking notification as read:', error);
+      // Check if it's an auth error
+      handleAuthError(error);
     }
   };
 
@@ -324,7 +399,8 @@ const HomeScreen = ({ navigation }) => {
     setRefreshing(true);
     try {
       await loadDashboardData();
-      await getCurrentLocation(); // Also refresh location and weather
+      await getCurrentLocation(); // Get location for weather display
+      await fetchFieldWorkerReports(); // Get field worker's reports
     } catch (error) {
       console.error('Error refreshing data:', error);
     } finally {
@@ -348,7 +424,11 @@ const HomeScreen = ({ navigation }) => {
       Alert.alert('Success', 'Repair status updated successfully');
       await loadDashboardData(); // Reload data
     } catch (error) {
-      Alert.alert('Error', 'Failed to update repair status');
+      // Check if it's an auth error
+      if (!handleAuthError(error)) {
+        // Only show this error if it's not auth-related
+        Alert.alert('Error', 'Failed to update repair status');
+      }
     }
   };
 
@@ -411,50 +491,52 @@ const HomeScreen = ({ navigation }) => {
       delay={parseInt(item.id.split('_')[1] || item.id) * 100}
     >
       <TouchableOpacity onPress={() => handleNotificationPress(item)}>
-        <Card style={[styles.notificationCard, !item.read && styles.unreadCard]}>
-          <Card.Content style={styles.notificationContent}>
-            <View style={styles.notificationHeader}>
-              <View style={styles.notificationTitleContainer}>
-                <Avatar.Icon 
-                  size={36} 
-                  icon={item.icon} 
-                  style={{
-                    backgroundColor: item.type === 'success' ? '#4caf50' : 
-                                   item.type === 'info' ? '#2196f3' : '#ff9800'
-                  }} 
-                />
-                <View style={{marginLeft: 10, flex: 1}}>
-                  <Title style={styles.notificationTitle}>{item.title}</Title>
-                  {!item.read && <Badge style={styles.badge}>New</Badge>}
+        <View style={styles.cardWrapper}>
+          <Card style={[styles.notificationCard, !item.read && styles.unreadCard]}>
+            <Card.Content style={styles.notificationContent}>
+              <View style={styles.notificationHeader}>
+                <View style={styles.notificationTitleContainer}>
+                  <Avatar.Icon 
+                    size={36} 
+                    icon={item.icon} 
+                    style={{
+                      backgroundColor: item.type === 'success' ? '#4caf50' : 
+                                     item.type === 'info' ? '#2196f3' : '#ff9800'
+                    }} 
+                  />
+                  <View style={{marginLeft: 10, flex: 1}}>
+                    <Title style={styles.notificationTitle}>{item.title}</Title>
+                    {!item.read && <Badge style={styles.badge}>New</Badge>}
+                  </View>
                 </View>
+                <Text style={styles.notificationTime}>{item.time}</Text>
               </View>
-              <Text style={styles.notificationTime}>{item.time}</Text>
-            </View>
-            <Paragraph style={styles.notificationMessage}>{item.message}</Paragraph>
-            <View style={styles.notificationActions}>
-              <Chip 
-                icon={item.read ? "check" : "email-open"} 
-                onPress={() => {
-                  // Mark as read logic could be added here
-                  const updatedNotifications = notifications.map(n => 
-                    n.id === item.id ? { ...n, read: true } : n
-                  );
-                  setNotifications(updatedNotifications);
-                }} 
-                style={{height: 30}}
-              >
-                {item.read ? "Read" : "Mark as read"}
-              </Chip>
-              {item.reportId && (
-                <IconButton 
-                  icon="eye" 
-                  size={20} 
-                  onPress={() => navigation.navigate('ViewReport', { reportId: item.reportId })} 
-                />
-              )}
-            </View>
-          </Card.Content>
-        </Card>
+              <Paragraph style={styles.notificationMessage}>{item.message}</Paragraph>
+              <View style={styles.notificationActions}>
+                <Chip 
+                  icon={item.read ? "check" : "email-open"} 
+                  onPress={() => {
+                    // Mark as read logic could be added here
+                    const updatedNotifications = notifications.map(n => 
+                      n.id === item.id ? { ...n, read: true } : n
+                    );
+                    setNotifications(updatedNotifications);
+                  }} 
+                  style={{height: 30}}
+                >
+                  {item.read ? "Read" : "Mark as read"}
+                </Chip>
+                {item.reportId && (
+                  <IconButton 
+                    icon="eye" 
+                    size={20} 
+                    onPress={() => navigation.navigate('ViewReport', { reportId: item.reportId })} 
+                  />
+                )}
+              </View>
+            </Card.Content>
+          </Card>
+        </View>
       </TouchableOpacity>
     </Animatable.View>
   );
@@ -515,6 +597,92 @@ const HomeScreen = ({ navigation }) => {
     </TouchableOpacity>
   );
 
+  // Function to handle authentication errors
+  const handleAuthError = (error) => {
+    if (authErrorShown) return; // Prevent multiple alerts
+    
+    if (error.message && (
+      error.message.includes('token') || 
+      error.message.includes('expired') ||
+      error.message.includes('unauthorized') ||
+      error.message.includes('401') ||
+      error.message.includes('auth') ||
+      error.message.toLowerCase().includes('no valid auth token')
+    )) {
+      setAuthErrorShown(true);
+      Alert.alert(
+        'Session Expired',
+        'Your session has expired. Please log in again.',
+        [{ 
+          text: 'OK', 
+          onPress: async () => {
+            try {
+              // Perform logout
+              await logout();
+              // Navigate to login
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              });
+            } catch (logoutError) {
+              console.error('Error during logout:', logoutError);
+              // Force navigation to login even if logout fails
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              });
+            }
+          } 
+        }]
+      );
+      return true; // Indicates auth error was handled
+    }
+    return false; // Not an auth error
+  };
+
+  // Generate notifications from reports and AI data
+  const generateNotificationsFromReports = () => {
+    const notificationArray = [];
+    
+    // Add notifications for assigned reports
+    if (Array.isArray(nearbyReports) && nearbyReports.length > 0) {
+      nearbyReports.forEach((report, index) => {
+        notificationArray.push({
+          id: `report_${report._id}`,
+          title: `Assigned: ${report.damageType}`,
+          message: `You have been assigned to inspect a ${report.severity || 'medium'} severity ${report.damageType} damage at ${report.location}.`,
+          time: formatTimeAgo(new Date(report.assignedAt || report.createdAt)),
+          read: false,
+          icon: 'clipboard-alert',
+          type: report.severity === 'HIGH' ? 'warning' : 'info',
+          reportId: report._id
+        });
+      });
+    }
+    
+    // Add notifications based on upcoming tasks
+    if (Array.isArray(nearbyReports) && nearbyReports.length > 0) {
+      // High priority reports notification
+      const highPriorityReports = nearbyReports.filter(report => 
+        report.priority > 5 || report.severity === 'HIGH'
+      );
+      
+      if (highPriorityReports.length > 0) {
+        notificationArray.push({
+          id: `high_priority`,
+          title: 'High Priority Tasks',
+          message: `You have ${highPriorityReports.length} high priority tasks that require attention.`,
+          time: 'Now',
+          read: false,
+          icon: 'alert-circle',
+          type: 'warning'
+        });
+      }
+    }
+    
+    return notificationArray;
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor="#003366" />
@@ -567,82 +735,94 @@ const HomeScreen = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         <Animatable.View animation="fadeInUp" duration={800} delay={300}>
-          <Card style={styles.locationCard} elevation={3}>
-            <View style={styles.locationCardContent}>
-              <View style={styles.locationIconContainer}>
-                <MaterialCommunityIcons name="map-marker" size={24} color="#003366" />
+          <View style={styles.cardWrapper}>
+            <Card style={styles.locationCard} elevation={3}>
+              <View style={styles.locationCardContent}>
+                <View style={styles.locationIconContainer}>
+                  <MaterialCommunityIcons name="map-marker" size={24} color="#003366" />
+                </View>
+                <View style={styles.locationTextContainer}>
+                  <Text style={styles.locationTitle}>{locationName}</Text>
+                  <Text style={styles.locationDate}>
+                    {new Date().toLocaleDateString('en-US', {
+                      weekday: 'long', 
+                      month: 'long', 
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </Text>
+                </View>
+                <View style={styles.statusBadge}>
+                  <Text style={styles.statusText}>Active</Text>
+                </View>
               </View>
-              <View style={styles.locationTextContainer}>
-                <Text style={styles.locationTitle}>{locationName}</Text>
-                <Text style={styles.locationDate}>
-                  {new Date().toLocaleDateString('en-US', {
-                    weekday: 'long', 
-                    month: 'long', 
-                    day: 'numeric',
-                    year: 'numeric'
-                  })}
-                </Text>
-              </View>
-              <View style={styles.statusBadge}>
-                <Text style={styles.statusText}>Active</Text>
-              </View>
-            </View>
-          </Card>
+            </Card>
+          </View>
         </Animatable.View>
         <Animatable.View animation="fadeInUp" duration={800} delay={300}>
-          <Card style={styles.weatherCard}>
-            <LinearGradient
-              colors={['#4facfe', '#00f2fe']}
-              style={styles.weatherGradient}
-            >
-              <View style={styles.weatherHeader}>
-                <Text style={styles.weatherCity}>{locationName}</Text>
-                <Text style={styles.weatherDate}>Today</Text>
-              </View>
-              <View style={styles.weatherContent}>
-                <View style={styles.weatherMain}>
-                  <Text style={styles.weatherTemp}>72°</Text>
-                  <Text style={styles.weatherDesc}>Sunny</Text>
+          <View style={styles.cardWrapper}>
+            <Card style={styles.weatherCard}>
+              <LinearGradient
+                colors={['#4facfe', '#00f2fe']}
+                style={styles.weatherGradient}
+              >
+                <View style={styles.weatherHeader}>
+                  <Text style={styles.weatherCity}>{locationName}</Text>
+                  <Text style={styles.weatherDate}>Today</Text>
                 </View>
-                <View style={styles.weatherDetails}>
-                  <View style={styles.weatherDetailItem}>
-                    <IconButton icon="water" color="#fff" size={20} />
-                    <Text style={styles.weatherDetailText}>10%</Text>
+                <View style={styles.weatherContent}>
+                  <View style={styles.weatherMain}>
+                    <Text style={styles.weatherTemp}>{weatherData ? `${weatherData.temperature}°` : '72°'}</Text>
+                    <Text style={styles.weatherDesc}>{weatherData?.condition || 'Sunny'}</Text>
                   </View>
-                  <View style={styles.weatherDetailItem}>
-                    <IconButton icon="weather-windy" color="#fff" size={20} />
-                    <Text style={styles.weatherDetailText}>8 mph</Text>
+                  <View style={styles.weatherDetails}>
+                    <View style={styles.weatherDetailItem}>
+                      <IconButton icon="water" color="#fff" size={20} />
+                      <Text style={styles.weatherDetailText}>{weatherData?.humidity || '10'}%</Text>
+                    </View>
+                    <View style={styles.weatherDetailItem}>
+                      <IconButton icon="weather-windy" color="#fff" size={20} />
+                      <Text style={styles.weatherDetailText}>{weatherData?.windSpeed || '8'} mph</Text>
+                    </View>
+                    <MaterialCommunityIcons 
+                      name={weatherData?.icon || "weather-sunny"} 
+                      size={48} 
+                      color="#fff"
+                      style={{position: 'absolute', right: 5, top: -30}} 
+                    />
                   </View>
                 </View>
-              </View>
-            </LinearGradient>
-          </Card>
+              </LinearGradient>
+            </Card>
+          </View>
         </Animatable.View>
 
         <Animatable.View animation="fadeInUp" duration={800}>
-          <Card style={styles.statsCard}>
-            <LinearGradient
-              colors={['rgba(26, 115, 232, 0.1)', 'rgba(66, 133, 244, 0.05)']}
-              style={styles.statsGradient}
-            >
-              <Card.Content style={styles.statsContent}>
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>12</Text>
-                  <Text style={styles.statLabel}>Reports</Text>
-                </View>
-                <View style={styles.statDivider} />
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>8</Text>
-                  <Text style={styles.statLabel}>Approved</Text>
-                </View>
-                <View style={styles.statDivider} />
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>3</Text>
-                  <Text style={styles.statLabel}>In Progress</Text>
-                </View>
-              </Card.Content>
-            </LinearGradient>
-          </Card>
+          <View style={styles.cardWrapper}>
+            <Card style={styles.statsCard}>
+              <LinearGradient
+                colors={['rgba(26, 115, 232, 0.1)', 'rgba(66, 133, 244, 0.05)']}
+                style={styles.statsGradient}
+              >
+                <Card.Content style={styles.statsContent}>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statNumber}>12</Text>
+                    <Text style={styles.statLabel}>Reports</Text>
+                  </View>
+                  <View style={styles.statDivider} />
+                  <View style={styles.statItem}>
+                    <Text style={styles.statNumber}>8</Text>
+                    <Text style={styles.statLabel}>Approved</Text>
+                  </View>
+                  <View style={styles.statDivider} />
+                  <View style={styles.statItem}>
+                    <Text style={styles.statNumber}>3</Text>
+                    <Text style={styles.statLabel}>In Progress</Text>
+                  </View>
+                </Card.Content>
+              </LinearGradient>
+            </Card>
+          </View>
         </Animatable.View>
 
         <View style={styles.sectionHeader}>
@@ -677,54 +857,56 @@ const HomeScreen = ({ navigation }) => {
         </View>
 
         <Animatable.View animation="fadeIn" duration={800} delay={200}>
-          <Card style={styles.cityStatsCard}>
-            <Card.Content>
-              <Title style={styles.cityStatsTitle}>City Statistics</Title>
-              <View style={styles.cityStatsRow}>
-                <View style={styles.cityStatItem}>
-                  <IconButton icon="chart-line" color="#1a73e8" size={24} />
-                  <View>
-                    <Text style={styles.cityStatValue}>{cityStats.reportsThisWeek}</Text>
-                    <Text style={styles.cityStatLabel}>Reports This Week</Text>
+          <View style={styles.cardWrapper}>
+            <Card style={styles.cityStatsCard}>
+              <Card.Content>
+                <Title style={styles.cityStatsTitle}>City Statistics</Title>
+                <View style={styles.cityStatsRow}>
+                  <View style={styles.cityStatItem}>
+                    <IconButton icon="chart-line" color="#1a73e8" size={24} />
+                    <View>
+                      <Text style={styles.cityStatValue}>{cityStats.reportsThisWeek}</Text>
+                      <Text style={styles.cityStatLabel}>Reports This Week</Text>
+                    </View>
+                  </View>
+                  <View style={styles.cityStatItem}>
+                    <IconButton icon="check-all" color="#4caf50" size={24} />
+                    <View>
+                      <Text style={styles.cityStatValue}>{cityStats.repairsCompleted}</Text>
+                      <Text style={styles.cityStatLabel}>Repairs Completed</Text>
+                    </View>
                   </View>
                 </View>
-                <View style={styles.cityStatItem}>
-                  <IconButton icon="check-all" color="#4caf50" size={24} />
-                  <View>
-                    <Text style={styles.cityStatValue}>{cityStats.repairsCompleted}</Text>
-                    <Text style={styles.cityStatLabel}>Repairs Completed</Text>
+                <View style={styles.cityStatsRow}>
+                  <View style={styles.cityStatItem}>
+                    <IconButton icon="clock-outline" color="#ff9800" size={24} />
+                    <View>
+                      <Text style={styles.cityStatValue}>{cityStats.pendingIssues}</Text>
+                      <Text style={styles.cityStatLabel}>Pending Issues</Text>
+                    </View>
+                  </View>
+                  <View style={styles.cityStatItem}>
+                    <IconButton icon="percent" color="#9c27b0" size={24} />
+                    <View>
+                      <Text style={styles.cityStatValue}>{Math.round(cityStats.completionRate * 100)}%</Text>
+                      <Text style={styles.cityStatLabel}>Completion Rate</Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-              <View style={styles.cityStatsRow}>
-                <View style={styles.cityStatItem}>
-                  <IconButton icon="clock-outline" color="#ff9800" size={24} />
-                  <View>
-                    <Text style={styles.cityStatValue}>{cityStats.pendingIssues}</Text>
-                    <Text style={styles.cityStatLabel}>Pending Issues</Text>
+                <View style={styles.progressContainer}>
+                  <View style={styles.progressLabelContainer}>
+                    <Text style={styles.progressLabel}>Overall Repair Progress</Text>
+                    <Text style={styles.progressValue}>{Math.round(cityStats.completionRate * 100)}%</Text>
                   </View>
+                  <ProgressBar progress={cityStats.completionRate} color="#1a73e8" style={styles.progressBar} />
                 </View>
-                <View style={styles.cityStatItem}>
-                  <IconButton icon="percent" color="#9c27b0" size={24} />
-                  <View>
-                    <Text style={styles.cityStatValue}>{Math.round(cityStats.completionRate * 100)}%</Text>
-                    <Text style={styles.cityStatLabel}>Completion Rate</Text>
-                  </View>
-                </View>
-              </View>
-              <View style={styles.progressContainer}>
-                <View style={styles.progressLabelContainer}>
-                  <Text style={styles.progressLabel}>Overall Repair Progress</Text>
-                  <Text style={styles.progressValue}>{Math.round(cityStats.completionRate * 100)}%</Text>
-                </View>
-                <ProgressBar progress={cityStats.completionRate} color="#1a73e8" style={styles.progressBar} />
-              </View>
-            </Card.Content>
-          </Card>
+              </Card.Content>
+            </Card>
+          </View>
         </Animatable.View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Your Recent Reports</Text>
+          <Text style={styles.sectionTitle}>Your Assigned Reports</Text>
           <TouchableOpacity onPress={() => navigation.navigate('Reports')}>
             <Text style={styles.seeAllText}>See All</Text>
           </TouchableOpacity>
@@ -736,12 +918,12 @@ const HomeScreen = ({ navigation }) => {
           style={styles.recentReportsContainer}
           contentContainerStyle={styles.recentReportsContentContainer}
         >
-          {reports.slice(0, 3).map(item => (
+          {Array.isArray(nearbyReports) && nearbyReports.slice(0, 3).map(item => (
             <Animatable.View key={item._id} animation="fadeInRight" duration={500} delay={100}>
               {renderRecentReportItem(item)}
             </Animatable.View>
           ))}
-          {reports.length === 0 && !loading && (
+          {nearbyReports.length === 0 && !loading && (
             <View style={styles.noReportsContainer}>
               <MaterialCommunityIcons name="clipboard-list" size={48} color="#ccc" />
               <Text style={styles.noReportsText}>No assignments yet</Text>
@@ -874,16 +1056,9 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 120 : 100, // Adjusted for iOS
   },
   locationCard: {
-    marginVertical: 12,
     borderRadius: 8,
-    elevation: 2,
-    overflow: 'hidden',
     borderWidth: 0,
     backgroundColor: '#ffffff',
-    shadowColor: 'rgba(0,51,102,0.1)',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
     padding: 16,
   },
   locationCardContent: {
@@ -923,16 +1098,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  weatherCard: {
+  cardWrapper: {
     marginVertical: 12,
-    borderRadius: 8,
-    elevation: 3,
-    overflow: 'hidden',
-    borderWidth: 0,
     shadowColor: 'rgba(0,51,102,0.2)',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
+    elevation: 3,
+  },
+  weatherCard: {
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 0,
   },
   weatherGradient: {
     borderRadius: 20,
@@ -985,17 +1162,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   statsCard: {
-    marginVertical: 12,
     borderRadius: 8,
-    elevation: 2,
-    overflow: 'hidden',
     borderColor: 'rgba(0, 51, 102, 0.08)',
     borderWidth: 1,
     backgroundColor: '#fff',
-    shadowColor: 'rgba(0, 51, 102, 0.1)',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    overflow: 'hidden',
   },
   statsGradient: {
     borderRadius: 0,
@@ -1090,14 +1261,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   cityStatsCard: {
-    marginTop: 12,
-    marginBottom: 12,
     borderRadius: 8,
-    elevation: 2,
-    shadowColor: 'rgba(0,51,102,0.1)',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
     backgroundColor: '#fff',
     padding: 20, 
   },
@@ -1224,13 +1388,8 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   notificationCard: {
-    marginBottom: 12,
+    marginBottom: 0,
     borderRadius: 16,
-    elevation: 3,
-    shadowColor: '#1a73e8',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
     borderColor: 'rgba(26, 115, 232, 0.1)',
     borderWidth: 1,
     backgroundColor: '#fff',

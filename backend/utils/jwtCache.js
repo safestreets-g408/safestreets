@@ -28,12 +28,18 @@ const cacheUserToken = async (userId, token, expirySeconds = DEFAULT_TOKEN_EXPIR
 
 const getTokenFromCache = async (token) => {
   try {
+    console.log('Validating token:', token); // Add logging
+
     // Check if token is blacklisted
     const isBlacklisted = await getCachedData(`${JWT_BLACKLIST_PREFIX}${token}`);
-    if (isBlacklisted) return null;
-    
+    if (isBlacklisted) {
+      console.log('Token is blacklisted:', token); // Add logging
+      return null;
+    }
+
     // Check if token exists in cache
     const tokenData = await getCachedData(`${JWT_TOKEN_PREFIX}${token}`);
+
     return tokenData && tokenData.valid ? tokenData : null;
   } catch (error) {
     console.error('Error retrieving cached JWT token:', error);
