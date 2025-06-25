@@ -12,7 +12,6 @@ const clearDamageReportCaches = async (tenantId) => {
       await clearCachePattern(`*damage*`);
       await clearCachePattern(`*report*`);
     }
-    console.log(`🧹 Cleared damage report caches${tenantId ? ` for tenant ${tenantId}` : ''}`);
     return true;
   } catch (error) {
     console.error('Failed to clear damage report caches:', error);
@@ -28,7 +27,6 @@ const clearSingleReportCache = async (reportId, tenantId) => {
     } else {
       await clearCachePattern(`*report/${reportId}*`);
     }
-    console.log(`🧹 Cleared cache for report ${reportId}`);
     return true;
   } catch (error) {
     console.error(`Failed to clear cache for report ${reportId}:`, error);

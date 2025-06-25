@@ -22,7 +22,6 @@ const cacheMiddleware = (duration = 3600, keyGenerator = null) => {
       const cachedData = await getCachedData(tenantKey);
       
       if (cachedData) {
-        console.log(`🚀 Cache hit: ${tenantKey}`);
         return res.status(200).json(cachedData);
       }
       
