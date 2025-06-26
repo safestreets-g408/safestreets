@@ -1,12 +1,20 @@
 // app.config.js - provides configuration for Expo app
-import { getConfig } from '@expo/config';
+import { ConfigContext } from '@expo/config';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
-// Get the base config from app.json
-const config = getConfig(__dirname);
+// Read the app.json file directly to avoid circular dependency
+const appJsonPath = join(__dirname, 'app.json');
+const rawConfig = JSON.parse(readFileSync(appJsonPath, 'utf8'));
 
-// Set the entry point explicitly
-if (config?.expo) {
-  config.expo.entryPoint = './index.js';
-}
-
-export default config;
+// Add or modify properties as needed
+export default ({ config }) => {
+  return {
+    ...rawConfig,
+    expo: {
+      ...rawConfig.expo,
+      entryPoint: './index.js',
+      // Add any additional dynamic configurations here
+    }
+  };
+};

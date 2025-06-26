@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getAuthToken, getFieldWorkerData, logout } from '../utils/auth';
+import { preloadImageToken } from '../utils/imageUtils';
 
 const AuthContext = createContext();
 
@@ -28,6 +29,15 @@ export const AuthProvider = ({ children }) => {
       if (token && fieldWorkerData) {
         setIsAuthenticated(true);
         setFieldWorker(fieldWorkerData);
+        
+        // Preload image token for faster image loading throughout the app
+        try {
+          await preloadImageToken();
+          console.log('Image token preloaded during auth check');
+        } catch (tokenError) {
+          console.error('Failed to preload image token:', tokenError);
+          // Continue anyway as this is not critical
+        }
       } else {
         setIsAuthenticated(false);
         setFieldWorker(null);

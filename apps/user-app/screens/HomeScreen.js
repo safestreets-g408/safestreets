@@ -1,25 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
-  Text, 
   StyleSheet, 
   ScrollView, 
-  TouchableOpacity, 
-  Image,
-  FlatList,
-  Dimensions,
   RefreshControl,
   StatusBar,
-  ActivityIndicator,
-  Alert
+  Alert,
+  Platform
 } from 'react-native';
-import { Card, Title, Paragraph, Badge, IconButton, Divider, Button, Avatar, Chip, ProgressBar } from 'react-native-paper';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Animatable from 'react-native-animatable';
+import { useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { Platform } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { updateRepairStatus } from '../utils/auth';
 import { 
@@ -32,8 +23,21 @@ import {
   markNotificationAsRead,
   getWeatherInfo
 } from '../utils/dashboardAPI';
+import { getReportImageUrlSync, preloadImageToken } from '../utils/imageUtils';
+import { API_BASE_URL } from '../config';
 
-// Demo weather data - used instead of API calls
+// Import home components
+import { 
+  HeaderComponent,
+  LocationInfoComponent,
+  WeatherComponent,
+  QuickActionsComponent,
+  StatsComponent,
+  RecentReportsComponent,
+  NotificationsComponent
+} from '../components/home';
+
+// Demo weather data
 const DEMO_WEATHER = {
   temperature: 72,
   condition: 'Sunny',
@@ -42,8 +46,44 @@ const DEMO_WEATHER = {
   icon: 'weather-sunny'
 };
 
+const quickActions = [
+  {
+    id: '1',
+    title: 'Report Damage',
+    icon: 'camera',
+    color: ['#1a73e8', '#4285f4', '#5e97f6'],
+    screen: 'Camera',
+    animation: 'pulse'
+  },
+  {
+    id: '2',
+    title: 'My Reports',
+    icon: 'clipboard-list',
+    color: ['#0d47a1', '#1565c0', '#1976d2'],
+    screen: 'Reports',
+    animation: 'fadeIn'
+  },
+  {
+    id: '3',
+    title: 'Tasks',
+    icon: 'check-circle',
+    color: ['#2962ff', '#448aff', '#82b1ff'],
+    screen: 'TaskManagement',
+    animation: 'fadeIn'
+  },
+  {
+    id: '4',
+    title: 'Profile',
+    icon: 'account',
+    color: ['#0277bd', '#0288d1', '#039be5'],
+    screen: 'Profile',
+    animation: 'fadeIn'
+  }
+];
+
 const HomeScreen = ({ navigation }) => {
   const { fieldWorker, logout } = useAuth();
+  const theme = useTheme();
   const [notifications, setNotifications] = useState([]);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -73,6 +113,17 @@ const HomeScreen = ({ navigation }) => {
     if (animationRef.current) {
       animationRef.current.play();
     }
+    
+    // Preload image token for faster image loading - make this a priority
+    const setupTokens = async () => {
+      try {
+        await preloadImageToken();
+        console.log('Image tokens preloaded in HomeScreen');
+      } catch (err) {
+        console.error('Failed to preload image token in HomeScreen:', err);
+      }
+    };
+    setupTokens();
     
     // Load initial data
     loadDashboardData();
@@ -186,11 +237,8 @@ const HomeScreen = ({ navigation }) => {
       const reports = data?.reports || [];
       setNearbyReports(reports); // Still using the same state variable for compatibility
 
-      // Add logging to debug API response
-      console.log('API response for field worker reports:', data);
-      console.log('Extracted reports:', reports);
     } catch (error) {
-     console.error('Error fetching field worker reports:', error);
+      console.error('Error fetching field worker reports:', error);
       // Check if it's an auth error
       handleAuthError(error);
       // Non-critical, just log the error if not auth related
@@ -210,7 +258,6 @@ const HomeScreen = ({ navigation }) => {
     
     try {
       setLoading(true);
-      console.log('Starting dashboard data load');
       
       // Load dashboard data with enhanced stats
       let dashboardData;
@@ -255,7 +302,6 @@ const HomeScreen = ({ navigation }) => {
         const generatedNotifications = generateNotificationsFromReports();
         const allNotifications = [...generatedNotifications, ...notificationsData];
         setNotifications(allNotifications);
-        console.log('All notifications:', allNotifications.length);
       } catch (notifError) {
         console.error('Failed to load notifications:', notifError);
         // Check if it's an auth error
@@ -354,32 +400,6 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
-  const calculateStats = (reports) => {
-    const now = new Date();
-    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    
-    const reportsThisWeek = reports.filter(report => 
-      new Date(report.createdAt) >= oneWeekAgo
-    ).length;
-    
-    const repairsCompleted = reports.filter(report => 
-      report.repairStatus === 'completed'
-    ).length;
-    
-    const pendingIssues = reports.filter(report => 
-      report.repairStatus === 'pending' || report.repairStatus === 'in_progress'
-    ).length;
-    
-    const completionRate = reports.length > 0 ? repairsCompleted / reports.length : 0;
-    
-    return {
-      reportsThisWeek,
-      repairsCompleted,
-      pendingIssues,
-      completionRate
-    };
-  };
-
   const formatTimeAgo = (date) => {
     const now = new Date();
     const diffInMinutes = Math.floor((now - date) / (1000 * 60));
@@ -432,176 +452,11 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
-  const quickActions = [
-    {
-      id: '1',
-      title: 'Report Damage',
-      icon: 'camera',
-      color: ['#1a73e8', '#4285f4', '#5e97f6'],
-      screen: 'Camera',
-      animation: 'pulse'
-    },
-    {
-      id: '2',
-      title: 'My Reports',
-      icon: 'clipboard-list',
-      color: ['#0d47a1', '#1565c0', '#1976d2'],
-      screen: 'Reports',
-      animation: 'fadeIn'
-    },
-    {
-      id: '3',
-      title: 'Tasks',
-      icon: 'check-circle',
-      color: ['#2962ff', '#448aff', '#82b1ff'],
-      screen: 'TaskManagement',
-      animation: 'fadeIn'
-    },
-    {
-      id: '4',
-      title: 'Profile',
-      icon: 'account',
-      color: ['#0277bd', '#0288d1', '#039be5'],
-      screen: 'Profile',
-      animation: 'fadeIn'
-    }
-  ];
-
-  const recentReports = [
-    {
-      id: '1',
-      title: 'Pothole on Main St',
-      status: 'approved',
-      date: '2 days ago',
-      image: 'https://via.placeholder.com/100'
-    },
-    {
-      id: '2',
-      title: 'Broken Sidewalk',
-      status: 'pending',
-      date: '4 days ago',
-      image: 'https://via.placeholder.com/100'
-    }
-  ];
-
-  const renderNotificationItem = ({ item }) => (
-    <Animatable.View 
-      animation="fadeIn" 
-      duration={800} 
-      delay={parseInt(item.id.split('_')[1] || item.id) * 100}
-    >
-      <TouchableOpacity onPress={() => handleNotificationPress(item)}>
-        <View style={styles.cardWrapper}>
-          <Card style={[styles.notificationCard, !item.read && styles.unreadCard]}>
-            <Card.Content style={styles.notificationContent}>
-              <View style={styles.notificationHeader}>
-                <View style={styles.notificationTitleContainer}>
-                  <Avatar.Icon 
-                    size={36} 
-                    icon={item.icon} 
-                    style={{
-                      backgroundColor: item.type === 'success' ? '#4caf50' : 
-                                     item.type === 'info' ? '#2196f3' : '#ff9800'
-                    }} 
-                  />
-                  <View style={{marginLeft: 10, flex: 1}}>
-                    <Title style={styles.notificationTitle}>{item.title}</Title>
-                    {!item.read && <Badge style={styles.badge}>New</Badge>}
-                  </View>
-                </View>
-                <Text style={styles.notificationTime}>{item.time}</Text>
-              </View>
-              <Paragraph style={styles.notificationMessage}>{item.message}</Paragraph>
-              <View style={styles.notificationActions}>
-                <Chip 
-                  icon={item.read ? "check" : "email-open"} 
-                  onPress={() => {
-                    // Mark as read logic could be added here
-                    const updatedNotifications = notifications.map(n => 
-                      n.id === item.id ? { ...n, read: true } : n
-                    );
-                    setNotifications(updatedNotifications);
-                  }} 
-                  style={{height: 30}}
-                >
-                  {item.read ? "Read" : "Mark as read"}
-                </Chip>
-                {item.reportId && (
-                  <IconButton 
-                    icon="eye" 
-                    size={20} 
-                    onPress={() => navigation.navigate('ViewReport', { reportId: item.reportId })} 
-                  />
-                )}
-              </View>
-            </Card.Content>
-          </Card>
-        </View>
-      </TouchableOpacity>
-    </Animatable.View>
-  );
-
-  const renderRecentReportItem = (item) => (
-    <TouchableOpacity 
-      style={styles.recentReportCard}
-      onPress={() => navigation.navigate('ViewReport', { reportId: item._id })}
-    >
-      <Image 
-        source={{ 
-          uri: item.imageUrl || 'https://via.placeholder.com/100?text=No+Image' 
-        }} 
-        style={styles.recentReportImage} 
-      />
-      <View style={styles.recentReportContent}>
-        <Text style={styles.recentReportTitle}>
-          {item.damageType || 'Road Damage'} - {item.location || 'Unknown Location'}
-        </Text>
-        <View style={styles.recentReportFooter}>
-          <Chip 
-            style={{
-              backgroundColor: item.repairStatus === 'completed' ? '#e8f5e9' : 
-                             item.repairStatus === 'in_progress' ? '#fff3e0' : '#e3f2fd',
-              height: 24
-            }}
-            textStyle={{fontSize: 10}}
-          >
-            {item.repairStatus || 'pending'}
-          </Chip>
-          <Text style={styles.recentReportDate}>
-            {formatTimeAgo(new Date(item.createdAt))}
-          </Text>
-        </View>
-        {item.repairStatus === 'pending' && (
-          <View style={styles.quickActions}>
-            <TouchableOpacity 
-              style={styles.quickActionButton}
-              onPress={() => handleQuickStatusUpdate(item._id, 'in_progress')}
-            >
-              <MaterialCommunityIcons name="play" size={14} color="#fff" />
-              <Text style={styles.quickActionText}>Start</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        {item.repairStatus === 'in_progress' && (
-          <View style={styles.quickActions}>
-            <TouchableOpacity 
-              style={[styles.quickActionButton, { backgroundColor: '#4caf50' }]}
-              onPress={() => handleQuickStatusUpdate(item._id, 'completed')}
-            >
-              <MaterialCommunityIcons name="check" size={14} color="#fff" />
-              <Text style={styles.quickActionText}>Complete</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
-
   // Function to handle authentication errors
   const handleAuthError = (error) => {
-    if (authErrorShown) return; // Prevent multiple alerts
+    if (authErrorShown) return false; // Prevent multiple alerts
     
-    if (error.message && (
+    if (error?.message && (
       error.message.includes('token') || 
       error.message.includes('expired') ||
       error.message.includes('unauthorized') ||
@@ -631,7 +486,7 @@ const HomeScreen = ({ navigation }) => {
                 index: 0,
                 routes: [{ name: 'Login' }],
               });
-            }
+            } 
           } 
         }]
       );
@@ -666,7 +521,6 @@ const HomeScreen = ({ navigation }) => {
       const highPriorityReports = nearbyReports.filter(report => 
         report.priority > 5 || report.severity === 'HIGH'
       );
-      
       if (highPriorityReports.length > 0) {
         notificationArray.push({
           id: `high_priority`,
@@ -679,52 +533,14 @@ const HomeScreen = ({ navigation }) => {
         });
       }
     }
-    
     return notificationArray;
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor="#003366" />
-      <LinearGradient
-        colors={['#003366', '#004080', '#0055a4']}
-        style={styles.header}
-        start={{x: 0, y: 0}}
-        end={{x: 1, y: 1}}
-      >
-        <View style={styles.headerContent}>
-          <View>
-            <Animatable.Text 
-              animation="fadeInDown" 
-              duration={800} 
-              style={styles.greeting}
-            >
-              Hello, {fieldWorker?.name?.split(' ')[0] || 'Field Worker'}
-            </Animatable.Text>
-            <Animatable.Text 
-              animation="fadeInDown" 
-              duration={800} 
-              delay={200}
-              style={styles.subGreeting}
-            >
-              {fieldWorker?.specialization || 'Road Maintenance'} - {fieldWorker?.region || 'Your Region'}
-            </Animatable.Text>
-          </View>
-          <View style={styles.headerActions}>
-            <TouchableOpacity 
-              style={styles.avatarContainer}
-              onPress={() => navigation.navigate('Profile')}
-            >
-              <Avatar.Text 
-                size={40} 
-                label={fieldWorker?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'FW'} 
-                style={styles.avatar} 
-              />
-              <View style={styles.onlineIndicator} />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </LinearGradient>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
+      
+      <HeaderComponent fieldWorker={fieldWorker} cityStats={cityStats} />
 
       <ScrollView 
         style={styles.content}
@@ -734,245 +550,26 @@ const HomeScreen = ({ navigation }) => {
         }
         showsVerticalScrollIndicator={false}
       >
-        <Animatable.View animation="fadeInUp" duration={800} delay={300}>
-          <View style={styles.cardWrapper}>
-            <Card style={styles.locationCard} elevation={3}>
-              <View style={styles.locationCardContent}>
-                <View style={styles.locationIconContainer}>
-                  <MaterialCommunityIcons name="map-marker" size={24} color="#003366" />
-                </View>
-                <View style={styles.locationTextContainer}>
-                  <Text style={styles.locationTitle}>{locationName}</Text>
-                  <Text style={styles.locationDate}>
-                    {new Date().toLocaleDateString('en-US', {
-                      weekday: 'long', 
-                      month: 'long', 
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
-                  </Text>
-                </View>
-                <View style={styles.statusBadge}>
-                  <Text style={styles.statusText}>Active</Text>
-                </View>
-              </View>
-            </Card>
-          </View>
-        </Animatable.View>
-        <Animatable.View animation="fadeInUp" duration={800} delay={300}>
-          <View style={styles.cardWrapper}>
-            <Card style={styles.weatherCard}>
-              <LinearGradient
-                colors={['#4facfe', '#00f2fe']}
-                style={styles.weatherGradient}
-              >
-                <View style={styles.weatherHeader}>
-                  <Text style={styles.weatherCity}>{locationName}</Text>
-                  <Text style={styles.weatherDate}>Today</Text>
-                </View>
-                <View style={styles.weatherContent}>
-                  <View style={styles.weatherMain}>
-                    <Text style={styles.weatherTemp}>{weatherData ? `${weatherData.temperature}°` : '72°'}</Text>
-                    <Text style={styles.weatherDesc}>{weatherData?.condition || 'Sunny'}</Text>
-                  </View>
-                  <View style={styles.weatherDetails}>
-                    <View style={styles.weatherDetailItem}>
-                      <IconButton icon="water" color="#fff" size={20} />
-                      <Text style={styles.weatherDetailText}>{weatherData?.humidity || '10'}%</Text>
-                    </View>
-                    <View style={styles.weatherDetailItem}>
-                      <IconButton icon="weather-windy" color="#fff" size={20} />
-                      <Text style={styles.weatherDetailText}>{weatherData?.windSpeed || '8'} mph</Text>
-                    </View>
-                    <MaterialCommunityIcons 
-                      name={weatherData?.icon || "weather-sunny"} 
-                      size={48} 
-                      color="#fff"
-                      style={{position: 'absolute', right: 5, top: -30}} 
-                    />
-                  </View>
-                </View>
-              </LinearGradient>
-            </Card>
-          </View>
-        </Animatable.View>
-
-        <Animatable.View animation="fadeInUp" duration={800}>
-          <View style={styles.cardWrapper}>
-            <Card style={styles.statsCard}>
-              <LinearGradient
-                colors={['rgba(26, 115, 232, 0.1)', 'rgba(66, 133, 244, 0.05)']}
-                style={styles.statsGradient}
-              >
-                <Card.Content style={styles.statsContent}>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statNumber}>12</Text>
-                    <Text style={styles.statLabel}>Reports</Text>
-                  </View>
-                  <View style={styles.statDivider} />
-                  <View style={styles.statItem}>
-                    <Text style={styles.statNumber}>8</Text>
-                    <Text style={styles.statLabel}>Approved</Text>
-                  </View>
-                  <View style={styles.statDivider} />
-                  <View style={styles.statItem}>
-                    <Text style={styles.statNumber}>3</Text>
-                    <Text style={styles.statLabel}>In Progress</Text>
-                  </View>
-                </Card.Content>
-              </LinearGradient>
-            </Card>
-          </View>
-        </Animatable.View>
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-        </View>
-
-        <View style={styles.quickActionsContainer}>
-          {quickActions.map((action, index) => (
-            <Animatable.View 
-              key={action.id} 
-              animation={action.animation} 
-              duration={500} 
-              delay={index * 100}
-              style={styles.quickActionWrapper}
-            >
-              <TouchableOpacity 
-                style={styles.quickAction}
-                onPress={() => navigation.navigate(action.screen)}
-              >
-                <LinearGradient
-                  colors={action.color}
-                  style={styles.quickActionGradient}
-                  start={{x: 0, y: 0}}
-                  end={{x: 1, y: 1}}
-                >
-                  <IconButton icon={action.icon} color="#fff" size={32} />
-                  <Text style={styles.quickActionText}>{action.title}</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </Animatable.View>
-          ))}
-        </View>
-
-        <Animatable.View animation="fadeIn" duration={800} delay={200}>
-          <View style={styles.cardWrapper}>
-            <Card style={styles.cityStatsCard}>
-              <Card.Content>
-                <Title style={styles.cityStatsTitle}>City Statistics</Title>
-                <View style={styles.cityStatsRow}>
-                  <View style={styles.cityStatItem}>
-                    <IconButton icon="chart-line" color="#1a73e8" size={24} />
-                    <View>
-                      <Text style={styles.cityStatValue}>{cityStats.reportsThisWeek}</Text>
-                      <Text style={styles.cityStatLabel}>Reports This Week</Text>
-                    </View>
-                  </View>
-                  <View style={styles.cityStatItem}>
-                    <IconButton icon="check-all" color="#4caf50" size={24} />
-                    <View>
-                      <Text style={styles.cityStatValue}>{cityStats.repairsCompleted}</Text>
-                      <Text style={styles.cityStatLabel}>Repairs Completed</Text>
-                    </View>
-                  </View>
-                </View>
-                <View style={styles.cityStatsRow}>
-                  <View style={styles.cityStatItem}>
-                    <IconButton icon="clock-outline" color="#ff9800" size={24} />
-                    <View>
-                      <Text style={styles.cityStatValue}>{cityStats.pendingIssues}</Text>
-                      <Text style={styles.cityStatLabel}>Pending Issues</Text>
-                    </View>
-                  </View>
-                  <View style={styles.cityStatItem}>
-                    <IconButton icon="percent" color="#9c27b0" size={24} />
-                    <View>
-                      <Text style={styles.cityStatValue}>{Math.round(cityStats.completionRate * 100)}%</Text>
-                      <Text style={styles.cityStatLabel}>Completion Rate</Text>
-                    </View>
-                  </View>
-                </View>
-                <View style={styles.progressContainer}>
-                  <View style={styles.progressLabelContainer}>
-                    <Text style={styles.progressLabel}>Overall Repair Progress</Text>
-                    <Text style={styles.progressValue}>{Math.round(cityStats.completionRate * 100)}%</Text>
-                  </View>
-                  <ProgressBar progress={cityStats.completionRate} color="#1a73e8" style={styles.progressBar} />
-                </View>
-              </Card.Content>
-            </Card>
-          </View>
-        </Animatable.View>
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Your Assigned Reports</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Reports')}>
-            <Text style={styles.seeAllText}>See All</Text>
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          style={styles.recentReportsContainer}
-          contentContainerStyle={styles.recentReportsContentContainer}
-        >
-          {Array.isArray(nearbyReports) && nearbyReports.slice(0, 3).map(item => (
-            <Animatable.View key={item._id} animation="fadeInRight" duration={500} delay={100}>
-              {renderRecentReportItem(item)}
-            </Animatable.View>
-          ))}
-          {nearbyReports.length === 0 && !loading && (
-            <View style={styles.noReportsContainer}>
-              <MaterialCommunityIcons name="clipboard-list" size={48} color="#ccc" />
-              <Text style={styles.noReportsText}>No assignments yet</Text>
-            </View>
-          )}
-          <TouchableOpacity 
-            style={styles.newReportCard}
-            onPress={() => navigation.navigate('Camera')}
-          >
-            <LinearGradient
-              colors={['#1a73e8', '#4285f4']}
-              style={styles.newReportGradient}
-            >
-              <IconButton icon="plus" color="#fff" size={32} />
-              <Text style={styles.newReportText}>New Report</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </ScrollView>
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Notifications</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
-            <Text style={styles.seeAllText}>See All</Text>
-          </TouchableOpacity>
-        </View>
-
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#1a73e8" />
-            <Text style={styles.loadingText}>Loading notifications...</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={notifications}
-            renderItem={renderNotificationItem}
-            keyExtractor={item => item.id}
-            scrollEnabled={false}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <MaterialCommunityIcons name="bell-off-outline" size={48} color="#4285f4" />
-                <Text style={styles.emptyText}>No notifications yet</Text>
-              </View>
-            }
-          />
-        )}
-        
+        <LocationInfoComponent locationName={locationName} />
+        <WeatherComponent weatherData={weatherData} locationName={locationName} />
+        <QuickActionsComponent actions={quickActions} navigation={navigation} />
+        <StatsComponent cityStats={cityStats} />
+        <RecentReportsComponent 
+          reports={nearbyReports}
+          navigation={navigation}
+          formatTimeAgo={formatTimeAgo}
+          handleQuickStatusUpdate={handleQuickStatusUpdate}
+          loading={loading}
+        />
+        <NotificationsComponent 
+          notifications={notifications}
+          navigation={navigation}
+          handleMarkAsRead={handleMarkAsRead}
+          handleNotificationPress={handleNotificationPress}
+          loading={loading}
+        />
         <View style={styles.spacer} />
       </ScrollView>
-    
     </SafeAreaView>
   );
 };
@@ -980,73 +577,6 @@ const HomeScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f7f9fc',
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    borderBottomLeftRadius: 0,  // Remove rounded corners for more professional look
-    borderBottomRightRadius: 0,
-    elevation: 4,
-    shadowColor: 'rgba(0,51,102,0.4)',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    marginTop: Platform.OS === 'ios' ? -50 : 0
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerActions: {
-    flexDirection: 'row',
-  },
-  avatarContainer: {
-    position: 'relative',
-  },
-  avatar: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-  },
-  onlineIndicator: {
-    width: 12,
-    height: 12,
-    backgroundColor: '#4CAF50',
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#003366',
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-  },
-  headerButton: {
-    position: 'relative',
-    padding: 8,
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    backgroundColor: '#ff3b30',
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#ffffff',
-  },
-  greeting: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#fff',
-    letterSpacing: 0.5,
-  },
-  subGreeting: {
-    fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.85)',
-    marginTop: 4,
-    letterSpacing: 0.2,
   },
   content: {
     flex: 1,
@@ -1055,420 +585,9 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: Platform.OS === 'ios' ? 120 : 100, // Adjusted for iOS
   },
-  locationCard: {
-    borderRadius: 8,
-    borderWidth: 0,
-    backgroundColor: '#ffffff',
-    padding: 16,
-  },
-  locationCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  locationIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0,51,102,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
-  locationTextContainer: {
-    flex: 1,
-  },
-  locationTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#263238',
-    marginBottom: 3,
-  },
-  locationDate: {
-    fontSize: 13,
-    color: '#78909C',
-  },
-  statusBadge: {
-    backgroundColor: 'rgba(0,153,102,0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  statusText: {
-    color: '#00755E',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  cardWrapper: {
-    marginVertical: 12,
-    shadowColor: 'rgba(0,51,102,0.2)',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  weatherCard: {
-    borderRadius: 8,
-    overflow: 'hidden',
-    borderWidth: 0,
-  },
-  weatherGradient: {
-    borderRadius: 20,
-    padding: 15,
-  },
-  weatherHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  weatherCity: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  weatherDate: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  weatherContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  weatherMain: {
-    alignItems: 'flex-start',
-  },
-  weatherTemp: {
-    fontSize: 42,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  weatherDesc: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
-  },
-  weatherDetails: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  weatherDetailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 15,
-    marginTop: 5,
-  },
-  weatherDetailText: {
-    color: '#fff',
-    fontSize: 14,
-  },
-  statsCard: {
-    borderRadius: 8,
-    borderColor: 'rgba(0, 51, 102, 0.08)',
-    borderWidth: 1,
-    backgroundColor: '#fff',
-    overflow: 'hidden',
-  },
-  statsGradient: {
-    borderRadius: 0,
-  },
-  statsContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 24,
-  },
-  statItem: {
-    alignItems: 'center',
-    paddingHorizontal: 8,
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#003366',
-  },
-  statLabel: {
-    fontSize: 13,
-    color: '#546e7a',
-    marginTop: 6,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  statDivider: {
-    width: 1.5,
-    backgroundColor: 'rgba(0, 51, 102, 0.08)',
-    height: '70%',
-    alignSelf: 'center',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 28,
-    marginBottom: 16,
-    paddingHorizontal: 4,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#003366',
-    letterSpacing: 0.3,
-  },
-  seeAllText: {
-    color: '#0055a4',
-    fontWeight: '500',
-    padding: 8,
-  },
-  quickActionsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  quickActionWrapper: {
-    width: '48%',
-    marginBottom: 16,
-  },
-  quickAction: {
-    borderRadius: 8,
-    overflow: 'hidden',
-    elevation: 2,
-    shadowColor: 'rgba(0,51,102,0.2)',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-  },
-  quickActionGradient: {
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 110,
-  },
-  quickActions: {
-    flexDirection: 'row',
-    marginTop: 8,
-    gap: 6,
-  },
-  quickActionButton: {
-    backgroundColor: '#2196f3',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  quickActionText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '500',
-  },
-  cityStatsCard: {
-    borderRadius: 8,
-    backgroundColor: '#fff',
-    padding: 20, 
-  },
-  cityStatsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#003366',
-    marginBottom: 16,
-    letterSpacing: 0.3,
-  },
-  cityStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    flexWrap: 'wrap',
-  },
-  cityStatItem: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    width: '48%',
-    marginBottom: 12,
-    padding: 12,
-    backgroundColor: 'rgba(0,51,102,0.03)',
-    borderRadius: 6,
-  },
-  cityStatValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#003366',
-    marginBottom: 4,
-  },
-  cityStatLabel: {
-    fontSize: 12,
-    color: '#546e7a',
-    letterSpacing: 0.2,
-  },
-  progressContainer: {
-    marginTop: 10,
-  },
-  progressLabelContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 5,
-  },
-  progressLabel: {
-    fontSize: 14,
-    color: '#0d47a1',
-  },
-  progressValue: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#1a73e8',
-  },
-  progressBar: {
-    height: 8,
-    borderRadius: 4,
-  },
-  recentReportsContainer: {
-    flexDirection: 'row',
-    marginBottom: 20,
-  },
-  recentReportsContentContainer: {
-    paddingRight: 16,
-    paddingLeft: 4, // Added left padding for consistency
-  },
-  recentReportCard: {
-    width: 200,
-    height: 180,
-    marginRight: 15,
-    borderRadius: 15,
-    overflow: 'hidden',
-    backgroundColor: '#fff',
-    elevation: 4,
-    shadowColor: '#1a73e8',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-  },
-  recentReportImage: {
-    width: '100%',
-    height: 120,
-    resizeMode: 'cover',
-  },
-  recentReportContent: {
-    padding: 10,
-  },
-  recentReportTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#0d47a1',
-    marginBottom: 5,
-  },
-  recentReportFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  recentReportDate: {
-    fontSize: 12,
-    color: '#4285f4',
-  },
-  newReportCard: {
-    width: 200,
-    height: 180,
-    marginRight: 15,
-    borderRadius: 15,
-    overflow: 'hidden',
-    elevation: 4,
-    shadowColor: '#1a73e8',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-  },
-  newReportGradient: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  newReportText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-    marginTop: 10,
-  },
-  notificationCard: {
-    marginBottom: 0,
-    borderRadius: 16,
-    borderColor: 'rgba(26, 115, 232, 0.1)',
-    borderWidth: 1,
-    backgroundColor: '#fff',
-  },
-  unreadCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#1a73e8',
-  },
-  notificationContent: {
-    padding: 16,
-  },
-  notificationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  notificationTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  notificationTitle: {
-    fontSize: 16,
-    marginRight: 8,
-    color: '#0d47a1',
-    fontWeight: 'bold',
-    flexShrink: 1,
-  },
-  badge: {
-    backgroundColor: '#1a73e8',
-  },
-  notificationTime: {
-    fontSize: 12,
-    color: '#4285f4',
-    marginLeft: 5,
-  },
-  notificationMessage: {
-    fontSize: 14,
-    color: '#555',
-    lineHeight: 20,
-  },
-  loadingContainer: {
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 150,
-  },
-  loadingText: {
-    color: '#4285f4',
-    fontSize: 16,
-    marginTop: 10,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 30,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#4285f4',
-    fontSize: 16,
-    marginTop: 10,
-  },
-  noReportsContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 30,
-    width: 200,
-  },
-  noReportsText: {
-    color: '#666',
-    fontSize: 14,
-    marginTop: 10,
-    textAlign: 'center',
-  },
   spacer: {
-    height: Platform.OS === 'ios' ? 100 : 80, 
-  },
+    height: 50
+  }
 });
 
 export default HomeScreen;

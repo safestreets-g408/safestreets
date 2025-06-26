@@ -153,3 +153,52 @@ export const updateReportStatus = async (reportId, status, notes = '') => {
     throw error;
   }
 };
+
+export const getReportById = async (reportId) => {
+  try {
+    const token = await getValidAuthToken();
+    
+    if (!token) {
+      throw new Error('No valid auth token found');
+    }
+
+    // Try first endpoint format
+    let response = await fetch(`${API_BASE_URL}/fieldworker/damage/report/${reportId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    // If first endpoint doesn't work, try alternative endpoint format
+    if (response.status === 404) {
+      response = await fetch(`${API_BASE_URL}/fieldworker/damage/reports/${reportId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+
+    // Handle error response
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to fetch report details');
+    }
+
+    // Parse and return successful response
+    const data = await response.json();
+    
+    // Ensure consistency in ID fields
+    if (data && !data.id && data._id) {
+      data.id = data._id;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Fetch report details error:', error);
+    throw error;
+  }
+};

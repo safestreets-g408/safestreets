@@ -9,13 +9,16 @@ import {
   RefreshControl,
   Image,
   Alert,
-  StatusBar
+  StatusBar,
+  Platform
 } from 'react-native';
 import { Card, Title, Paragraph, Chip, ActivityIndicator, Button, Surface, Divider, Searchbar, Menu } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { getUserReports, getFilteredUserReports } from '../utils/reportAPI';
+import { getReportImageUrlSync } from '../utils/imageUtils';
+import { API_BASE_URL } from '../config';
 
 const ReportsScreen = ({ navigation }) => {
   const { fieldWorker } = useAuth();
@@ -200,7 +203,29 @@ const ReportsScreen = ({ navigation }) => {
 
   // Handle report selection
   const handleReportPress = (report) => {
-    navigation.navigate('ViewReport', { reportId: report._id || report.id });
+    let reportId = null;
+    
+    // First try the standard ID fields
+    if (report._id) {
+      reportId = report._id;
+    } else if (report.id) {
+      reportId = report.id;
+    } else if (report.reportId) {
+      reportId = report.reportId;
+    }
+    
+    // Ensure we have a valid ID before navigating
+    if (!reportId) {
+      console.error('Invalid report object, no ID found:', report);
+      Alert.alert('Error', 'Could not view report details. Invalid report data.');
+      return;
+    }
+    
+    // Log the ID we're using for easier debugging
+    console.log('Navigating to ViewReport with ID:', reportId);
+    
+    // Navigate with the proper ID
+    navigation.navigate('ViewReport', { reportId });
   };
 
   // Render loading footer when loading more items
@@ -214,19 +239,38 @@ const ReportsScreen = ({ navigation }) => {
     );
   };
 
-  // Get appropriate image URL
+  // Get appropriate image URL using our utility function
   const getImageUrl = (report) => {
     if (!report) return 'https://via.placeholder.com/300';
     
-    // Return direct URL if available
-    if (report.imageUrl) return report.imageUrl;
-    
-    // For API-based reports
-    if (report.images && report.images.length > 0) {
-      return `${API_BASE_URL}/damage/report/${report._id}/image/thumbnail`;
+    try {
+      // Try different image types in order of preference
+      const imageTypes = ['before', 'main', 'thumbnail', 'default'];
+      
+      for (const type of imageTypes) {
+        const url = getReportImageUrlSync(report, type);
+        // If we have a valid URL that's not a placeholder, use it
+        if (url && !url.includes('placeholder')) {
+          return url;
+        }
+      }
+      
+      // Check if there are images in the report object directly
+      if (report.images && report.images.length > 0) {
+        const firstImage = report.images[0];
+        if (typeof firstImage === 'string' && firstImage.startsWith('http')) {
+          return firstImage;
+        } else if (firstImage.url && firstImage.url.startsWith('http')) {
+          return firstImage.url;
+        }
+      }
+      
+      // Fallback to basic function
+      return getReportImageUrlSync(report);
+    } catch (error) {
+      console.error('Error getting image URL:', error);
+      return 'https://via.placeholder.com/300?text=Error';
     }
-    
-    return 'https://via.placeholder.com/300';
   };
 
   // Loading state
@@ -245,6 +289,14 @@ const ReportsScreen = ({ navigation }) => {
       <View style={styles.container}>
         <StatusBar backgroundColor="#003366" barStyle="light-content" />
         
+        {/* Header */}
+        <View style={styles.headerContainer}>
+          <Text style={styles.headerTitle}>My Reports</Text>
+          <Text style={styles.headerSubtitle}>
+            Track and manage your submitted reports
+          </Text>
+        </View>
+        
         {/* Search and filter bar */}
         <View style={styles.searchContainer}>
           <Searchbar
@@ -252,6 +304,9 @@ const ReportsScreen = ({ navigation }) => {
             onChangeText={handleSearch}
             value={searchQuery}
             style={styles.searchBar}
+            icon="magnify"
+            clearIcon="close-circle"
+            theme={{ colors: { primary: '#003366' } }}
           />
           <Menu
             visible={filterVisible}
@@ -265,22 +320,31 @@ const ReportsScreen = ({ navigation }) => {
                 {statusFilter ? <View style={styles.filterIndicator} /> : null}
               </TouchableOpacity>
             }
+            contentStyle={styles.menuContent}
           >
-            <Menu.Item onPress={() => handleStatusFilter('')} title="All" />
-            <Menu.Item onPress={() => handleStatusFilter('pending')} title="Pending" />
-            <Menu.Item onPress={() => handleStatusFilter('in_progress')} title="In Progress" />
-            <Menu.Item onPress={() => handleStatusFilter('completed')} title="Completed" />
-            <Menu.Item onPress={() => handleStatusFilter('cancelled')} title="Cancelled" />
+            <Menu.Item onPress={() => handleStatusFilter('')} title="All" leadingIcon="apps" />
+            <Menu.Item onPress={() => handleStatusFilter('pending')} title="Pending" leadingIcon="clock-outline" />
+            <Menu.Item onPress={() => handleStatusFilter('in_progress')} title="In Progress" leadingIcon="progress-wrench" />
+            <Menu.Item onPress={() => handleStatusFilter('completed')} title="Completed" leadingIcon="check-circle" />
+            <Menu.Item onPress={() => handleStatusFilter('cancelled')} title="Cancelled" leadingIcon="close-circle" />
           </Menu>
         </View>
 
         <View style={styles.centerContainer}>
-          <Surface style={styles.emptySurface} elevation={2}>
-            <Ionicons name="document-text-outline" size={70} color="#78909C" />
+          <Surface style={styles.emptySurface} elevation={4}>
+            {searchQuery || statusFilter ? (
+              <Ionicons name="search" size={80} color="#78909C" />
+            ) : (
+              <Image
+                source={require('../assets/icon.png')}
+                style={styles.emptyStateImage}
+                resizeMode="contain"
+              />
+            )}
             <Text style={styles.emptyText}>
               {searchQuery || statusFilter 
                 ? "No reports match your filters" 
-                : "No Reports Submitted"}
+                : "No Reports Submitted Yet"}
             </Text>
             <Text style={styles.emptySubText}>
               {searchQuery || statusFilter
@@ -292,12 +356,20 @@ const ReportsScreen = ({ navigation }) => {
               icon="camera"
               style={styles.emptyButton}
               onPress={() => navigation.navigate('Camera')}
-              buttonColor="#003366"
+              contentStyle={styles.emptyButtonContent}
+              labelStyle={styles.emptyButtonLabel}
             >
               Submit New Report
             </Button>
           </Surface>
         </View>
+        
+        <TouchableOpacity 
+          style={styles.fab}
+          onPress={() => navigation.navigate('Camera')}
+        >
+          <Ionicons name="camera" size={24} color="white" />
+        </TouchableOpacity>
       </View>
     );
   }
@@ -306,6 +378,14 @@ const ReportsScreen = ({ navigation }) => {
     <View style={styles.container}>
       <StatusBar backgroundColor="#003366" barStyle="light-content" />
       
+      {/* Header and Search bar */}
+      <View style={styles.headerContainer}>
+        <Text style={styles.headerTitle}>My Reports</Text>
+        <Text style={styles.headerSubtitle}>
+          Track and manage your submitted reports
+        </Text>
+      </View>
+      
       {/* Search and filter bar */}
       <View style={styles.searchContainer}>
         <Searchbar
@@ -313,6 +393,9 @@ const ReportsScreen = ({ navigation }) => {
           onChangeText={handleSearch}
           value={searchQuery}
           style={styles.searchBar}
+          icon="magnify"
+          clearIcon="close-circle"
+          theme={{ colors: { primary: '#003366' } }}
         />
         <Menu
           visible={filterVisible}
@@ -326,12 +409,13 @@ const ReportsScreen = ({ navigation }) => {
               {statusFilter ? <View style={styles.filterIndicator} /> : null}
             </TouchableOpacity>
           }
+          contentStyle={styles.menuContent}
         >
-          <Menu.Item onPress={() => handleStatusFilter('')} title="All" />
-          <Menu.Item onPress={() => handleStatusFilter('pending')} title="Pending" />
-          <Menu.Item onPress={() => handleStatusFilter('in_progress')} title="In Progress" />
-          <Menu.Item onPress={() => handleStatusFilter('completed')} title="Completed" />
-          <Menu.Item onPress={() => handleStatusFilter('cancelled')} title="Cancelled" />
+          <Menu.Item onPress={() => handleStatusFilter('')} title="All" leadingIcon="apps" />
+          <Menu.Item onPress={() => handleStatusFilter('pending')} title="Pending" leadingIcon="clock-outline" />
+          <Menu.Item onPress={() => handleStatusFilter('in_progress')} title="In Progress" leadingIcon="progress-wrench" />
+          <Menu.Item onPress={() => handleStatusFilter('completed')} title="Completed" leadingIcon="check-circle" />
+          <Menu.Item onPress={() => handleStatusFilter('cancelled')} title="Cancelled" leadingIcon="close-circle" />
         </Menu>
       </View>
       
@@ -423,16 +507,17 @@ const ReportsScreen = ({ navigation }) => {
           <TouchableOpacity 
             onPress={() => handleReportPress(item)}
             activeOpacity={0.7}
+            style={styles.cardWrapper}
           >
-            <Card style={styles.card} elevation={2}>
-              <Card.Content>
-                <View style={styles.cardHeader}>
-                  <View style={styles.idContainer}>
-                    <Text style={styles.idLabel}>REPORT</Text>
-                    <Text style={styles.idNumber}>
-                      #{item.reportId || item._id || item.id}
-                    </Text>
-                  </View>
+            <Card style={styles.card} elevation={3}>
+              {/* Card Top Section with Image and Status */}
+              <View style={styles.cardTopSection}>
+                <Image 
+                  source={{ uri: getImageUrl(item) }} 
+                  style={styles.cardImage} 
+                  defaultSource={require('../assets/icon.png')}
+                />
+                <View style={styles.cardOverlay}>
                   <View style={[
                     styles.statusIndicator, 
                     { backgroundColor: getStatusColor(item.repairStatus || item.status) }
@@ -447,53 +532,60 @@ const ReportsScreen = ({ navigation }) => {
                       {(item.repairStatus || item.status).replace('_', ' ').toUpperCase()}
                     </Text>
                   </View>
-                </View>
-                
-                <Divider style={styles.divider} />
-                
-                <View style={styles.cardContent}>
-                  <Image 
-                    source={{ uri: getImageUrl(item) }} 
-                    style={styles.thumbnail} 
-                    defaultSource={require('../assets/icon.png')}
-                  />
-                  <View style={styles.details}>
-                    <View style={styles.tagContainer}>
-                      <Chip 
-                        style={styles.tagChip}
-                        textStyle={styles.tagChipText}
-                      >
-                        {item.damageType || 'Unknown'}
-                      </Chip>
-                    </View>
-                    <Paragraph numberOfLines={2} style={styles.description}>
-                      {item.description || 'No description provided'}
-                    </Paragraph>
-                    <View style={styles.metaContainer}>
-                      <View style={styles.metaItem}>
-                        <Ionicons name="calendar-outline" size={14} color="#7f8c8d" />
-                        <Text style={styles.metaText}>{formatDate(item.createdAt)}</Text>
-                      </View>
-                      <View style={styles.metaItem}>
-                        <Ionicons name="location-outline" size={14} color="#7f8c8d" />
-                        <Text style={styles.metaText}>
-                          {item.location || 'Unknown location'}
-                        </Text>
-                      </View>
-                    </View>
+                  <View style={styles.idIndicator}>
+                    <Text style={styles.idNumber}>
+                      #{item.reportId || item._id || item.id}
+                    </Text>
                   </View>
                 </View>
+              </View>
+              
+              <Card.Content style={styles.cardContentPadded}>
+                <View style={styles.tagRow}>
+                  <Chip 
+                    style={styles.tagChip}
+                    textStyle={styles.tagChipText}
+                    icon={() => <Ionicons name="construct-outline" size={14} color="#003366" />}
+                  >
+                    {item.damageType || 'Unknown'}
+                  </Chip>
+                  <Text style={styles.dateIndicator}>{formatDate(item.createdAt).split(',')[0]}</Text>
+                </View>
+                
+                <Paragraph numberOfLines={2} style={styles.description}>
+                  {item.description || 'No description provided'}
+                </Paragraph>
+                
+                <View style={styles.locationRow}>
+                  <Ionicons name="location-outline" size={16} color="#2980b9" />
+                  <Text style={styles.locationText} numberOfLines={1}>
+                    {item.location || 'Unknown location'}
+                  </Text>
+                </View>
+                
+                <View style={styles.cardFooter}>
+                  <View style={styles.priorityIndicator}>
+                    {item.priority > 7 ? (
+                      <Chip compact style={styles.highPriorityChip}>High Priority</Chip>
+                    ) : item.priority > 4 ? (
+                      <Chip compact style={styles.mediumPriorityChip}>Medium Priority</Chip>
+                    ) : (
+                      <Chip compact style={styles.lowPriorityChip}>Low Priority</Chip>
+                    )}
+                  </View>
+                  <Button 
+                    mode="contained" 
+                    compact 
+                    onPress={() => handleReportPress(item)}
+                    style={styles.viewButton}
+                    labelStyle={styles.viewButtonLabel}
+                    icon="arrow-right"
+                    contentStyle={{flexDirection: 'row-reverse'}}
+                  >
+                    View
+                  </Button>
+                </View>
               </Card.Content>
-              <Card.Actions style={styles.cardActions}>
-                <Button 
-                  mode="text" 
-                  compact 
-                  onPress={() => handleReportPress(item)}
-                  color="#3498db"
-                >
-                  View Details
-                </Button>
-              </Card.Actions>
             </Card>
           </TouchableOpacity>
         )}
@@ -514,8 +606,119 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f7f9fc',
   },
+  headerContainer: {
+    backgroundColor: '#003366',
+    paddingTop: 60,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    elevation: 4,
+    shadowColor: 'rgba(0,0,0,0.3)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 5,
+    shadowOpacity: 0.3,
+    marginBottom: 8,
+    marginTop: Platform.OS === 'ios' ? -5 : 0,
+  },
+  headerTitle: {
+    color: 'white',
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 14,
+    fontWeight: '400',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  searchBar: {
+    flex: 1,
+    elevation: 2,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    height: 44,
+  },
+  filterButton: {
+    width: 44,
+    height: 44,
+    marginLeft: 8,
+    borderRadius: 10,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+  },
+  filterIndicator: {
+    position: 'absolute',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#e74c3c',
+    top: 10,
+    right: 10,
+  },
+  menuContent: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: 'white',
+    elevation: 4,
+  },
+  sortContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: 'white',
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 10,
+    elevation: 2,
+  },
+  sortLabel: {
+    color: '#34495e',
+    fontSize: 14,
+    fontWeight: '500',
+    marginRight: 12,
+  },
+  sortOption: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 8,
+    alignItems: 'center',
+    backgroundColor: '#f1f2f6',
+  },
+  sortOptionActive: {
+    backgroundColor: 'rgba(0, 51, 102, 0.1)',
+  },
+  sortText: {
+    fontSize: 13,
+    color: '#78909C',
+    marginRight: 4,
+  },
+  sortTextActive: {
+    color: '#003366',
+    fontWeight: '600',
+  },
+  resultsContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  resultsText: {
+    fontSize: 14,
+    color: '#78909C',
+    fontStyle: 'italic',
+  },
   listContent: {
-    padding: 16,
+    padding: 12,
     paddingBottom: 80, // Extra padding for FAB
   },
   centerContainer: {
@@ -532,96 +735,152 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     letterSpacing: 0.3,
   },
-  card: {
+  // Card styling
+  cardWrapper: {
     marginBottom: 16,
-    elevation: 2,
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 51, 102, 0.08)',
   },
-  cardHeader: {
+  card: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 3,
+    backgroundColor: 'white',
+    margin: 0,
+  },
+  cardTopSection: {
+    position: 'relative',
+    height: 160,
+    width: '100%',
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  cardOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
+    padding: 12,
   },
-  idContainer: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-  },
-  idLabel: {
-    fontSize: 12,
-    color: '#78909C',
-    marginBottom: 2,
-    letterSpacing: 0.5,
-  },
-  idNumber: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#263238',
+  cardContentPadded: {
+    padding: 16,
+    paddingTop: 12,
   },
   statusIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 4,
+    borderRadius: 20,
+    elevation: 2,
   },
   statusText: {
     color: 'white',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     letterSpacing: 0.5,
   },
-  divider: {
-    marginVertical: 12,
+  idIndicator: {
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    elevation: 2,
   },
-  cardContent: {
+  idNumber: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#003366',
+  },
+  tagRow: {
     flexDirection: 'row',
-  },
-  thumbnail: {
-    width: 90,
-    height: 90,
-    borderRadius: 8,
-  },
-  details: {
-    flex: 1,
-    marginLeft: 12,
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  tagChip: {
+    backgroundColor: 'rgba(0, 51, 102, 0.1)',
+    height: 28,
+  },
+  tagChipText: {
+    fontSize: 12,
+    color: '#003366',
+    fontWeight: '600',
+  },
+  dateIndicator: {
+    fontSize: 12,
+    color: '#78909C',
+    fontWeight: '500',
   },
   description: {
     fontSize: 15,
-    marginBottom: 8,
+    marginVertical: 10,
     color: '#34495e',
     lineHeight: 20,
   },
-  metaContainer: {
-    marginTop: 4,
-  },
-  metaItem: {
+  locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginVertical: 8,
   },
-  metaText: {
-    fontSize: 12,
-    color: '#7f8c8d',
-    marginLeft: 4,
+  locationText: {
+    fontSize: 13,
+    color: '#2980b9',
+    marginLeft: 6,
+    flex: 1,
   },
-  cardActions: {
-    justifyContent: 'flex-end',
-    paddingTop: 0,
-  },
-  emptySurface: {
-    padding: 24,
-    borderRadius: 12,
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    elevation: 2,
+    marginTop: 10,
+  },
+  priorityIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  highPriorityChip: {
+    backgroundColor: 'rgba(231, 76, 60, 0.15)',
+    height: 24,
+  },
+  mediumPriorityChip: {
+    backgroundColor: 'rgba(243, 156, 18, 0.15)',
+    height: 24,
+  },
+  lowPriorityChip: {
+    backgroundColor: 'rgba(46, 204, 113, 0.15)',
+    height: 24,
+  },
+  viewButton: {
+    backgroundColor: '#003366',
+    borderRadius: 20,
+    height: 36,
+  },
+  viewButtonLabel: {
+    fontSize: 14,
+    marginLeft: 0,
+  },
+  // Empty state styling
+  emptySurface: {
+    padding: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    elevation: 4,
     width: '100%',
+    backgroundColor: 'white',
+  },
+  emptyStateImage: {
+    width: 120,
+    height: 120,
+    marginBottom: 20,
+    opacity: 0.8,
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#34495e',
     marginTop: 16,
@@ -632,23 +891,47 @@ const styles = StyleSheet.create({
     color: '#7f8c8d',
     textAlign: 'center',
     marginBottom: 24,
+    lineHeight: 20,
   },
   emptyButton: {
+    backgroundColor: '#003366',
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 30,
+    elevation: 2,
   },
+  emptyButtonContent: {
+    height: 48,
+  },
+  emptyButtonLabel: {
+    fontSize: 16,
+    letterSpacing: 0.5,
+  },
+  // FAB styling
   fab: {
     position: 'absolute',
     right: 20,
     bottom: 20,
-    backgroundColor: '#3498db',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    backgroundColor: '#003366',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  footerLoader: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+  },
+  footerText: {
+    fontSize: 14,
+    color: '#78909C',
+    marginTop: 8,
   },
 });
 

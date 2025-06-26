@@ -8,12 +8,17 @@ import {
   KeyboardAvoidingView, 
   Platform,
   ScrollView,
-  Alert
+  Alert,
+  StatusBar
 } from 'react-native';
-import { TextInput, Button, Title, Paragraph } from 'react-native-paper';
+import { TextInput, Title, Paragraph, useTheme } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Animatable from 'react-native-animatable';
 import { loginFieldWorker } from '../utils/auth';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { GradientButton } from '../components/ui';
 
 const LoginScreen = ({ navigation, route }) => {
   const [email, setEmail] = useState('');
@@ -21,6 +26,7 @@ const LoginScreen = ({ navigation, route }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [secureTextEntry, setSecureTextEntry] = useState(true);
   const { login } = useAuth();
+  const theme = useTheme();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -111,155 +117,199 @@ const LoginScreen = ({ navigation, route }) => {
   };
 
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.logoContainer}>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primaryDark} />
+      
+      {/* Background Gradient */}
+      <LinearGradient
+        colors={[theme.colors.primary, theme.colors.primaryDark]}
+        style={styles.headerGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+      >
+        <Animatable.View animation="fadeIn" duration={1000}>
           <Image 
             source={require('../assets/icon.png')} 
-            style={styles.logo}
+            style={styles.headerLogo}
             resizeMode="contain"
           />
-          <Title style={styles.appTitle}>Safe Streets</Title>
-          <Paragraph style={styles.appSubtitle}>
-            Official road maintenance reporting system
+        </Animatable.View>
+      </LinearGradient>
+      
+      <Animatable.View 
+        style={styles.formContainer}
+        animation="fadeInUpBig"
+        duration={800}
+      >
+        <View style={styles.titleSection}>
+          <Title style={[styles.title, { color: theme.colors.text }]}>
+            Welcome Back
+          </Title>
+          <Paragraph style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
+            Sign in to continue to SafeStreets
           </Paragraph>
         </View>
-
-        <View style={styles.formContainer}>
-          <TextInput
-            label="Email"
-            value={email}
-            onChangeText={setEmail}
-            style={styles.input}
-            mode="outlined"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            left={<TextInput.Icon name="email" color="#003366" />}
-            outlineColor="#E0E6ED"
-            activeOutlineColor="#003366"
-            theme={{ colors: { primary: '#003366', text: '#263238' } }}
-          />
-
-          <TextInput
-            label="Password"
-            value={password}
-            onChangeText={setPassword}
-            style={styles.input}
-            mode="outlined"
-            secureTextEntry={secureTextEntry}
-            outlineColor="#E0E6ED"
-            activeOutlineColor="#003366"
-            theme={{ colors: { primary: '#003366', text: '#263238' } }}
-            right={
-              <TextInput.Icon 
-                name={secureTextEntry ? "eye" : "eye-off"} 
-                onPress={toggleSecureEntry} 
-                color="#003366"
-              />
-            }
-            left={<TextInput.Icon name="lock" color="#003366" />}
-          />
-
-          <Button 
-            mode="contained" 
-            onPress={handleLogin} 
-            style={styles.loginButton}
-            buttonColor="#003366"
-            loading={isLoading}
-            disabled={isLoading}
-            icon="login"
+        
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.formWrapper}
+        >
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            SIGN IN
-          </Button>
+            <TextInput
+              label="Email Address"
+              value={email}
+              onChangeText={setEmail}
+              style={styles.input}
+              mode="outlined"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              left={<TextInput.Icon icon="email" color={theme.colors.primary} />}
+              activeOutlineColor={theme.colors.primary}
+              outlineColor={theme.colors.border}
+              theme={{ roundness: theme.roundness }}
+            />
 
-          <View style={styles.forgotPasswordContainer}>
-            <TouchableOpacity onPress={() => Alert.alert('Reset Password', 'A password reset link will be sent to your email address.')}>
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            <TextInput
+              label="Password"
+              value={password}
+              onChangeText={setPassword}
+              style={styles.input}
+              mode="outlined"
+              secureTextEntry={secureTextEntry}
+              activeOutlineColor={theme.colors.primary}
+              outlineColor={theme.colors.border}
+              theme={{ roundness: theme.roundness }}
+              left={<TextInput.Icon icon="lock" color={theme.colors.primary} />}
+              right={
+                <TextInput.Icon 
+                  icon={secureTextEntry ? "eye" : "eye-off"} 
+                  onPress={toggleSecureEntry} 
+                  color={theme.colors.secondary}
+                />
+              }
+            />
+            
+            <View style={styles.forgotPasswordContainer}>
+              <TouchableOpacity 
+                onPress={() => Alert.alert('Reset Password', 'A password reset link will be sent to your email address.')}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={[styles.forgotPasswordText, { color: theme.colors.primary }]}>
+                  Forgot Password?
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <GradientButton
+              title="SIGN IN"
+              onPress={handleLogin}
+              loading={isLoading}
+              disabled={isLoading}
+              mode="primary"
+              style={styles.loginButton}
+              icon={<MaterialCommunityIcons name="login" size={20} color="white" style={{ marginRight: 8 }} />}
+            />
+            
+            <View style={styles.dividerContainer}>
+              <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+              <Text style={[styles.dividerText, { color: theme.colors.textSecondary }]}>
+                Field Worker Portal
+              </Text>
+              <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+            </View>
+            
+            <Paragraph style={[styles.supportText, { color: theme.colors.textSecondary }]}>
+              Having trouble logging in? Contact support at support@safestreets.com
+            </Paragraph>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Animatable.View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f7f9fc',
+    backgroundColor: 'white',
+  },
+  headerGradient: {
+    height: '35%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerLogo: {
+    width: 120,
+    height: 120,
+    tintColor: 'white',
+  },
+  formContainer: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    marginTop: -40,
+    paddingHorizontal: 24,
+    paddingTop: 30,
+  },
+  titleSection: {
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+  },
+  subtitle: {
+    fontSize: 16,
+    marginTop: 8,
+  },
+  formWrapper: {
+    flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  logo: {
-    width: 120,
-    height: 120,
-    marginBottom: 16,
-  },
-  appTitle: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#003366',
-    letterSpacing: 0.5,
-  },
-  appSubtitle: {
-    fontSize: 15,
-    color: '#546E7A',
-    textAlign: 'center',
-    marginTop: 8,
-    letterSpacing: 0.2,
-    maxWidth: 280,
-  },
-  formContainer: {
-    width: '100%',
+    paddingBottom: 24,
   },
   input: {
     marginBottom: 18,
     backgroundColor: 'white',
-    borderRadius: 4,
     height: 56,
   },
   loginButton: {
-    marginTop: 10,
-    borderRadius: 4,
-    height: 48,
-    justifyContent: 'center',
-    elevation: 1,
+    marginTop: 16,
+    height: 50,
   },
   forgotPasswordContainer: {
-    alignItems: 'center',
-    marginTop: 16,
+    alignItems: 'flex-end',
+    marginTop: -8,
+    marginBottom: 16,
   },
   forgotPasswordText: {
-    color: '#0055a4',
     fontWeight: '500',
     fontSize: 14,
-    letterSpacing: 0.2,
   },
-  signupContainer: {
+  dividerContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 40,
-    marginBottom: 20,
+    alignItems: 'center',
+    marginVertical: 28,
   },
-  signupText: {
-    color: '#455A64',
+  divider: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    paddingHorizontal: 16,
     fontSize: 14,
   },
-  signupLink: {
-    color: '#003366',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
+  supportText: {
+    textAlign: 'center',
+    fontSize: 13,
+    marginTop: 8,
+  }
 });
 
 export default LoginScreen;

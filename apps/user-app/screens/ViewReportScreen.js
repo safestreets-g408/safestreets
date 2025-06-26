@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -8,51 +8,107 @@ import {
   TouchableOpacity,
   Alert,
   Linking,
-  StatusBar
+  StatusBar,
+  Platform,
+  ImageBackground
 } from 'react-native';
-import { Card, Title, Paragraph, Chip, Button, ActivityIndicator, Divider, Surface, Avatar } from 'react-native-paper';
-import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { Card, Title, Paragraph, Chip, Button, ActivityIndicator, 
+  Divider, Surface, Avatar, Badge, IconButton, Menu, Portal, Modal } from 'react-native-paper';
+import { MaterialIcons, Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { getReportImageUrlSync, preloadImageToken } from '../utils/imageUtils';
+import { API_BASE_URL } from '../config';
+import { getReportById } from '../utils/reportAPI';
+import { useAuth } from '../context/AuthContext';
 
-const ViewReportScreen = ({ route, navigation }) => {
-  const { reportId } = route.params || { reportId: 1 }; 
+const ViewReportScreen = ({ route = {}, navigation }) => {
+  const { reportId } = route.params || {}; 
+  const { fieldWorker } = useAuth();
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  // Mock data for UI demonstration
-  const mockReport = {
-    id: reportId,
-    status: 'pending',
-    imageUrl: 'https://via.placeholder.com/300',
-    description: 'Pothole on Main Street that needs immediate attention',
-    createdAt: new Date().toISOString(),
-    latitude: 37.7749,
-    longitude: -122.4194,
-    address: '123 Main St, San Francisco, CA',
-    updatedAt: new Date().toISOString(),
-    comments: [
-      { id: 1, text: 'Scheduled for repair next week', timestamp: new Date(Date.now() - 86400000).toISOString() },
-      { id: 2, text: 'Materials ordered', timestamp: new Date(Date.now() - 43200000).toISOString() }
-    ]
-  };
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [imageUrl, setImageUrl] = useState(null);
 
   // Fetch report details
+  const fetchReportDetails = useCallback(async () => {
+    if (!reportId) {
+      Alert.alert('Error', 'No report ID provided');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      console.log('Fetching report details for ID:', reportId);
+      const reportData = await getReportById(reportId);
+      
+      if (!reportData) {
+        throw new Error('Failed to fetch report details');
+      }
+      
+      console.log('Report data fetched:', reportData);
+      
+      // Ensure ID consistency
+      if (!reportData.id && reportData._id) {
+        reportData.id = reportData._id;
+      } else if (!reportData._id && reportData.id) {
+        reportData._id = reportData.id;
+      }
+      
+      setReport(reportData);
+      
+      // Try to refresh token before loading images
+      await preloadImageToken();
+      
+      // Pre-generate image URL - try multiple image types in case the API structure varies
+      let url = null;
+      
+      // Try different image types in order of preference
+      const imageTypes = ['before', 'main', 'thumbnail', 'default'];
+      
+      for (const type of imageTypes) {
+        url = getReportImageUrlSync(reportData, type);
+        // If we have a valid URL that's not a placeholder, use it
+        if (url && !url.includes('placeholder')) {
+          break;
+        }
+      }
+      
+      // If we still don't have a valid URL, check if there are images in the report object
+      if ((!url || url.includes('placeholder')) && reportData.images && reportData.images.length > 0) {
+        const firstImage = reportData.images[0];
+        if (typeof firstImage === 'string' && firstImage.startsWith('http')) {
+          url = firstImage;
+        } else if (firstImage.url && firstImage.url.startsWith('http')) {
+          url = firstImage.url;
+        }
+      }
+      
+      setImageUrl(url);
+      console.log('Image URL set to:', url);
+    } catch (error) {
+      console.error('Error fetching report details:', error);
+      Alert.alert('Error', 'Failed to load report details. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [reportId]);
+
   useEffect(() => {
-    const fetchReportDetails = async () => {
+    // Preload image token first, then fetch report details
+    const loadData = async () => {
       try {
-        // Simulate API call delay
-        setTimeout(() => {
-          setReport(mockReport);
-          setLoading(false);
-        }, 1000);
-      } catch (error) {
-        console.error('Error fetching report details:', error);
-        Alert.alert('Error', 'Failed to load report details');
-        setLoading(false);
+        await preloadImageToken();
+        console.log('Image token preloaded in ViewReportScreen');
+        await fetchReportDetails();
+      } catch (err) {
+        console.error('Error in ViewReportScreen setup:', err);
+        fetchReportDetails(); // Still try to fetch report details even if token loading fails
       }
     };
-
-    fetchReportDetails();
-  }, [reportId]);
+    
+    loadData();
+  }, [fetchReportDetails]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -98,8 +154,11 @@ const ViewReportScreen = ({ route, navigation }) => {
     return (
       <View style={styles.loadingContainer}>
         <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
-        <ActivityIndicator size="large" color="#3498db" />
-        <Text style={styles.loadingText}>Loading report details...</Text>
+        <Surface style={styles.loadingCard}>
+          <ActivityIndicator size="large" color="#3498db" />
+          <Text style={styles.loadingText}>Loading report details...</Text>
+          <Text style={styles.loadingSubText}>Please wait while we fetch the report information</Text>
+        </Surface>
       </View>
     );
   }
@@ -108,267 +167,767 @@ const ViewReportScreen = ({ route, navigation }) => {
     return (
       <View style={styles.errorContainer}>
         <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
-        <Ionicons name="alert-circle-outline" size={60} color="#e74c3c" />
-        <Text style={styles.errorText}>Report not found</Text>
-        <Button 
-          mode="contained" 
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-          icon="arrow-left"
-        >
-          Go Back
-        </Button>
+        <Surface style={styles.errorCard}>
+          <View style={styles.errorIconContainer}>
+            <Ionicons name="alert-circle-outline" size={60} color="#e74c3c" />
+          </View>
+          <Text style={styles.errorText}>Report Not Found</Text>
+          <Text style={styles.errorSubText}>We couldn't find the report you're looking for.</Text>
+          <Button 
+            mode="contained" 
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+            labelStyle={styles.backButtonLabel}
+            icon="arrow-left"
+            uppercase={false}
+          >
+            Back to Reports
+          </Button>
+        </Surface>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
       
+      {/* Modern Header with Action Buttons */}
       <Surface style={styles.headerSurface}>
         <View style={styles.headerContent}>
-          <Title style={styles.title}>Report #{report.id}</Title>
-          <Chip 
-            style={[styles.statusChip, { backgroundColor: getStatusColor(report.status) }]}
-            textStyle={styles.statusText}
-            icon={() => <Ionicons name={getStatusIcon(report.status)} size={16} color="white" />}
+          <View style={styles.backButtonContainer}>
+            <IconButton
+              icon="arrow-left"
+              size={24}
+              color="#0f172a"
+              style={{ backgroundColor: 'rgba(0,0,0,0.03)', borderRadius: 12 }}
+              onPress={() => navigation.goBack()}
+            />
+          </View>
+          <Title style={styles.title}>Report Details</Title>
+          <Menu
+            visible={menuVisible}
+            onDismiss={() => setMenuVisible(false)}
+            anchor={
+              <IconButton
+                icon="dots-vertical"
+                size={24}
+                color="#0f172a"
+                style={{ backgroundColor: 'rgba(0,0,0,0.03)', borderRadius: 12 }}
+                onPress={() => setMenuVisible(true)}
+              />
+            }
+            contentStyle={styles.menuContent}
           >
-            {report.status.replace('_', ' ').toUpperCase()}
-          </Chip>
+            <Menu.Item 
+              onPress={() => {
+                setMenuVisible(false);
+                Alert.alert('Share Report', 'Sharing functionality would be implemented here');
+              }} 
+              title="Share Report" 
+              icon="share-variant"
+            />
+            <Menu.Item 
+              onPress={() => {
+                setMenuVisible(false);
+                Alert.alert('Download Report', 'Download functionality would be implemented here');
+              }} 
+              title="Download PDF" 
+              icon="file-pdf-box"
+            />
+            <Menu.Item 
+              onPress={() => {
+                setMenuVisible(false);
+                Alert.alert('Report Issue', 'Report issue functionality would be implemented here');
+              }} 
+              title="Report an Issue" 
+              icon="flag"
+            />
+          </Menu>
         </View>
-        <Text style={styles.dateText}>
-          <Ionicons name="calendar-outline" size={14} color="#7f8c8d" /> Reported on {formatDate(report.createdAt)}
-        </Text>
       </Surface>
-      
-      <Card style={styles.imageCard} elevation={3}>
-        <Card.Cover 
-          source={{ uri: report.imageUrl }} 
-          style={styles.image} 
-          resizeMode="cover"
-        />
-        <Card.Actions style={styles.imageActions}>
-          <Button 
-            icon="image-filter" 
-            mode="text" 
-            onPress={() => Alert.alert('View Full Image', 'This would open the full-size image')}>
-            View Full Size
-          </Button>
-        </Card.Actions>
-      </Card>
-      
-      <Card style={styles.detailsCard} elevation={2}>
-        <Card.Content>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="document-text-outline" size={20} color="#3498db" />
-            <Title style={styles.sectionTitle}>Description</Title>
-          </View>
-          <Paragraph style={styles.description}>{report.description}</Paragraph>
-          
-          <Divider style={styles.divider} />
-          
-          <View style={styles.sectionHeader}>
-            <Ionicons name="location-outline" size={20} color="#3498db" />
-            <Title style={styles.sectionTitle}>Location</Title>
-          </View>
-          <Paragraph style={styles.locationText}>{report.address}</Paragraph>
-          <Button 
-            mode="outlined" 
-            icon="map-marker" 
-            onPress={openMap} 
-            style={styles.mapButton}
+
+      <ScrollView style={styles.scrollContent}>
+        {/* Image Hero Section with Overlay */}
+        <Card style={styles.imageCard} elevation={4}>
+          <ImageBackground 
+            source={{ uri: imageUrl || 'https://via.placeholder.com/600?text=Report+Image' }} 
+            style={styles.imageBackground}
+            imageStyle={{ opacity: 0.95 }}
+            resizeMode="cover"
+            defaultSource={require('../assets/icon.png')}
+            onError={(e) => {
+              console.log('Image failed to load:', e.nativeEvent.error);
+              // If image fails, try to generate a new URL with a different param
+              if (report) {
+                const newUrl = getReportImageUrlSync(report, 'main');
+                if (newUrl !== imageUrl) {
+                  setImageUrl(newUrl);
+                }
+              }
+            }}
           >
-            View on Map
-          </Button>
-        </Card.Content>
-      </Card>
-      
-      {report.comments && report.comments.length > 0 && (
-        <Card style={styles.commentsCard} elevation={2}>
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.8)']}
+              style={styles.imageGradient}
+            >
+              <View style={styles.imageOverlayContent}>
+                <View style={styles.reportIdContainer}>
+                  <Text style={styles.reportIdLabel}>REPORT ID</Text>
+                  <Text style={styles.reportIdValue}>#{report.id || report._id || 'Unknown'}</Text>
+                </View>
+                
+                <TouchableOpacity 
+                  style={styles.viewImageButton}
+                  onPress={() => setImageModalVisible(true)}
+                >
+                  <MaterialIcons name="fullscreen" size={20} color="white" />
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </ImageBackground>
+        </Card>
+        
+        {/* Status and Date Info Bar */}
+        <Surface style={styles.statusSurface}>
+          <View style={styles.statusContainer}>
+            <View style={[styles.statusIndicator, { backgroundColor: getStatusColor(report.status) }]} />
+            <View>
+              <Text style={styles.statusLabel}>STATUS</Text>
+              <Text style={styles.statusValue}>{report.status.replace('_', ' ').toUpperCase()}</Text>
+            </View>
+          </View>
+          <View style={styles.dateContainer}>
+            <Text style={styles.dateLabel}>REPORTED</Text>
+            <Text style={styles.dateValue}>{formatDate(report.createdAt)}</Text>
+          </View>
+        </Surface>
+        
+        {/* Description Card */}
+        <Card style={styles.detailsCard} elevation={3}>
           <Card.Content>
             <View style={styles.sectionHeader}>
-              <Ionicons name="chatbubble-ellipses-outline" size={20} color="#3498db" />
-              <Title style={styles.sectionTitle}>Updates</Title>
+              <MaterialCommunityIcons name="text-box-outline" size={22} color="#3498db" />
+              <Title style={styles.sectionTitle}>Description</Title>
             </View>
-            
-            {report.comments.map(comment => (
-              <Surface key={comment.id} style={styles.commentContainer}>
-                <Text style={styles.commentText}>{comment.text}</Text>
-                <View style={styles.commentFooter}>
-                  <Ionicons name="time-outline" size={12} color="#7f8c8d" />
-                  <Text style={styles.commentDate}>{formatDate(comment.timestamp)}</Text>
-                </View>
-              </Surface>
-            ))}
+            <Paragraph style={styles.description}>
+              {report.description || 'No detailed description available for this report.'}
+            </Paragraph>
           </Card.Content>
         </Card>
-      )}
+        
+        {/* Location Card */}
+        <Card style={styles.detailsCard} elevation={3}>
+          <Card.Content>
+            <View style={styles.sectionHeader}>
+              <MaterialCommunityIcons name="map-marker-radius" size={22} color="#3498db" />
+              <Title style={styles.sectionTitle}>Location</Title>
+            </View>
+            <Paragraph style={styles.locationText}>
+              {report.address || report.location || 'Location information not available'}
+            </Paragraph>
+            
+            {/* Map Preview Placeholder */}
+            <View style={styles.mapPreviewContainer}>
+              <View style={styles.mapPlaceholder}>
+                <MaterialCommunityIcons name="map-marker-radius" size={40} color="#3498db" />
+                <Text style={styles.mapPlaceholderText}>Map Preview</Text>
+              </View>
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.6)']}
+                style={styles.mapPreviewGradient}
+              >
+                <TouchableOpacity style={styles.mapButton} onPress={openMap}>
+                  <MaterialIcons name="directions" size={18} color="white" />
+                  <Text style={styles.mapButtonText}>Get Directions</Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+          </Card.Content>
+        </Card>
+        
+        {/* Activity Timeline */}
+        {report.comments && report.comments.length > 0 && (
+          <Card style={styles.commentsCard} elevation={3}>
+            <Card.Content>
+              <View style={styles.sectionHeader}>
+                <MaterialCommunityIcons name="timeline-clock-outline" size={22} color="#3498db" />
+                <Title style={styles.sectionTitle}>Activity Timeline</Title>
+              </View>
+              
+              <View style={styles.timelineContainer}>
+                {report.comments.map((comment, index) => (
+                  <View key={comment.id} style={styles.timelineItem}>
+                    <View style={styles.timelineLine} />
+                    <View style={[styles.timelineDot, { backgroundColor: index === 0 ? '#3498db' : '#bdc3c7' }]}>
+                      <MaterialCommunityIcons 
+                        name={index === 0 ? "comment-text-outline" : "clock-outline"} 
+                        size={16} 
+                        color="white" 
+                      />
+                    </View>
+                    <View style={styles.timelineContent}>
+                      <Surface style={styles.timelineCard}>
+                        <Text style={styles.commentText}>{comment.text}</Text>
+                        <View style={styles.commentFooter}>
+                          <MaterialCommunityIcons name="clock-outline" size={14} color="#7f8c8d" />
+                          <Text style={styles.commentDate}>{formatDate(comment.timestamp)}</Text>
+                        </View>
+                      </Surface>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </Card.Content>
+          </Card>
+        )}
+        
+        <View style={styles.buttonContainer}>
+          <Button 
+            mode="contained" 
+            onPress={() => navigation.goBack()}
+            style={styles.button}
+            labelStyle={styles.buttonLabel}
+            icon="arrow-left"
+            uppercase={false}
+          >
+            Back to Reports
+          </Button>
+        </View>
+      </ScrollView>
       
-      <View style={styles.buttonContainer}>
-        <Button 
-          mode="contained" 
-          onPress={() => navigation.goBack()}
-          style={styles.button}
-          icon="arrow-left"
-          contentStyle={styles.buttonContent}
+      {/* Image Fullscreen Modal */}
+      <Portal>
+        <Modal
+          visible={imageModalVisible}
+          onDismiss={() => setImageModalVisible(false)}
+          contentContainerStyle={styles.imageModal}
         >
-          Back to Reports
-        </Button>
-      </View>
-    </ScrollView>
+          <IconButton
+            icon="close"
+            size={24}
+            color="white"
+            style={styles.closeModalButton}
+            onPress={() => setImageModalVisible(false)}
+          />
+          <Image
+            source={{ uri: imageUrl || 'https://via.placeholder.com/300' }}
+            style={styles.fullScreenImage}
+            resizeMode="contain"
+            defaultSource={require('../assets/icon.png')}
+            onError={(e) => {
+              console.log('Modal image failed to load:', e.nativeEvent.error);
+              Alert.alert('Image Error', 'Could not load the full image. The image may be unavailable.');
+            }}
+          />
+          <Text style={styles.imageHintText}>Report ID: {report && (report.id || report._id || 'Unknown')}</Text>
+        </Modal>
+      </Portal>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f9f9fb',
   },
+  scrollContent: {
+    flex: 1,
+    backgroundColor: '#f9f9fb',
+    paddingBottom: 8,
+  },
+  // Loading State Styles
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f9f9fb',
+  },
+  loadingCard: {
+    padding: 28,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 3,
+    width: '85%',
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
   },
   loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#7f8c8d',
+    marginTop: 20,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
+    letterSpacing: 0.2,
   },
+  loadingSubText: {
+    marginTop: 10,
+    fontSize: 14,
+    textAlign: 'center',
+    color: '#64748b',
+    paddingHorizontal: 20,
+    lineHeight: 20,
+  },
+  // Error State Styles
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#f5f5f5',
+    padding: 24,
+    backgroundColor: '#f9f9fb',
+  },
+  errorCard: {
+    padding: 28,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 3,
+    width: '88%',
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
+  },
+  errorIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   errorText: {
-    fontSize: 18,
-    color: '#e74c3c',
-    marginBottom: 20,
-    marginTop: 10,
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#ef4444',
+    marginBottom: 10,
+    letterSpacing: 0.2,
   },
+  errorSubText: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: '#64748b',
+    marginBottom: 26,
+    paddingHorizontal: 10,
+    lineHeight: 22,
+  },
+  // Header Styles
   headerSurface: {
-    margin: 16,
-    padding: 16,
-    borderRadius: 8,
-    elevation: 4,
-    backgroundColor: 'white',
+    backgroundColor: '#fff',
+    paddingTop: Platform.OS === 'ios' ? 50 : 10,
+    paddingBottom: 14,
+    paddingHorizontal: 16,
+    elevation: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    zIndex: 100,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+    borderBottomWidth: 1,
   },
   headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginTop: 6,
+  },
+  backButtonContainer: {
+    marginRight: 8,
   },
   title: {
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '700',
     flex: 1,
+    textAlign: 'center',
+    color: '#1a1a2e',
+    letterSpacing: 0.2,
   },
-  statusChip: {
-    height: 32,
+  menuContent: {
+    borderRadius: 8,
+    marginTop: 40,
   },
-  statusText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-  dateText: {
-    color: '#7f8c8d',
-    fontSize: 14,
-  },
+  // Image Styles
   imageCard: {
     marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 8,
+    marginTop: 16,
+    marginBottom: 8,
+    borderRadius: 16,
     overflow: 'hidden',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    backgroundColor: 'transparent',
   },
-  image: {
-    height: 220,
-  },
-  imageActions: {
+  imageBackground: {
+    height: 280,
+    width: '100%',
     justifyContent: 'flex-end',
   },
+  imageGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '60%',
+    justifyContent: 'flex-end',
+    padding: 20,
+  },
+  imageOverlayContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  reportIdContainer: {
+    padding: 8,
+  },
+  reportIdLabel: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 11,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  reportIdValue: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  viewImageButton: {
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  // Status Styles
+  statusSurface: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 16,
+    padding: 18,
+    borderRadius: 16,
+    backgroundColor: 'white',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusIndicator: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+  },
+  statusLabel: {
+    fontSize: 10,
+    color: '#94a3b8',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 3,
+  },
+  statusValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#334155',
+  },
+  dateContainer: {
+    alignItems: 'flex-end',
+  },
+  dateLabel: {
+    fontSize: 10,
+    color: '#94a3b8',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 3,
+  },
+  dateValue: {
+    fontSize: 15,
+    color: '#334155',
+    fontWeight: '500',
+  },
+  // Card Styles
   detailsCard: {
     marginHorizontal: 16,
     marginBottom: 16,
-    borderRadius: 8,
+    borderRadius: 16,
+    backgroundColor: 'white',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.02)',
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginLeft: 8,
+    fontSize: 17,
+    fontWeight: '700',
+    marginLeft: 10,
+    color: '#1e293b',
+    letterSpacing: 0.2,
   },
   description: {
-    fontSize: 16,
+    fontSize: 15,
     lineHeight: 24,
-    color: '#2c3e50',
-  },
-  divider: {
-    marginVertical: 16,
-    height: 1,
-    backgroundColor: '#ecf0f1',
+    color: '#475569',
+    paddingHorizontal: 4,
+    letterSpacing: 0.1,
   },
   locationText: {
-    fontSize: 16,
-    color: '#2c3e50',
-    marginBottom: 10,
+    fontSize: 15,
+    color: '#475569',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+    letterSpacing: 0.1,
+  },
+  // Map Styles
+  mapPreviewContainer: {
+    height: 180,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
+  },
+  mapPreviewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  mapPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#f1f5f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mapPlaceholderText: {
+    color: '#94a3b8',
+    fontSize: 15,
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  mapPreviewGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '50%',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    padding: 14,
   },
   mapButton: {
-    marginTop: 5,
-    borderColor: '#3498db',
+    flexDirection: 'row',
+    backgroundColor: '#0284c7',
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 25,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
   },
+  mapButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    marginLeft: 6,
+    fontSize: 14,
+  },
+  // Comments / Timeline Styles
   commentsCard: {
     marginHorizontal: 16,
     marginBottom: 16,
-    borderRadius: 8,
+    borderRadius: 16,
+    backgroundColor: 'white',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.02)',
   },
-  commentContainer: {
-    padding: 12,
-    borderRadius: 8,
-    marginVertical: 6,
-    backgroundColor: '#f8f9fa',
+  timelineContainer: {
+    marginTop: 12,
+    paddingLeft: 12,
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    marginBottom: 24,
+    position: 'relative',
+  },
+  timelineLine: {
+    position: 'absolute',
+    left: 16,
+    top: 26,
+    bottom: -14,
+    width: 2,
+    backgroundColor: '#e2e8f0',
+  },
+  timelineDot: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#0ea5e9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+    zIndex: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  timelineContent: {
+    flex: 1,
+    paddingBottom: 6,
+  },
+  timelineCard: {
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#f8fafc',
     elevation: 1,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   commentText: {
     fontSize: 15,
-    color: '#2c3e50',
+    color: '#334155',
+    lineHeight: 22,
+    letterSpacing: 0.1,
   },
   commentFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 12,
   },
   commentDate: {
     fontSize: 12,
-    color: '#7f8c8d',
-    marginLeft: 4,
+    color: '#64748b',
+    marginLeft: 6,
+    fontWeight: '500',
   },
+  // Button Styles
   buttonContainer: {
-    margin: 16,
+    marginHorizontal: 16,
     marginTop: 8,
+    marginBottom: 28,
   },
   button: {
     paddingVertical: 8,
-    backgroundColor: '#3498db',
-    borderRadius: 8,
+    backgroundColor: '#0284c7',
+    borderRadius: 12,
     elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
-  buttonContent: {
-    height: 48,
+  buttonLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    padding: 4,
+    letterSpacing: 0.2,
   },
   backButton: {
-    backgroundColor: '#3498db',
-    paddingHorizontal: 24,
+    backgroundColor: '#0284c7',
+    borderRadius: 12,
     paddingVertical: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  backButtonLabel: {
+    fontSize: 15,
+    letterSpacing: 0.5,
+    fontWeight: '600',
+  },
+  // Modal Styles
+  imageModal: {
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    flex: 1,
+    margin: 0,
+    padding: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeModalButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 20,
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 24,
+    zIndex: 10,
+    padding: 4,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  fullScreenImage: {
+    width: '100%',
+    height: '85%',
+  },
+  imageHintText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 13,
+    position: 'absolute',
+    bottom: 30,
+    alignSelf: 'center',
+    padding: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    letterSpacing: 0.5,
+    overflow: 'hidden',
   }
 });
 
