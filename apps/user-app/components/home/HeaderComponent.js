@@ -2,12 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Animatable from 'react-native-animatable';
-import { Avatar } from 'react-native-paper';
+import { Avatar, useTheme } from 'react-native-paper';
 
 const HeaderComponent = ({ fieldWorker, cityStats }) => {
+  const theme = useTheme();
+  
   return (
     <LinearGradient
-      colors={['#003366', '#004080']}
+      colors={[theme.colors.primary, theme.colors.primaryDark]}
       style={styles.header}
       start={{x: 0, y: 0}}
       end={{x: 1, y: 1}}

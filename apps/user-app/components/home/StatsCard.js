@@ -1,32 +1,34 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Card, Title, Paragraph, ProgressBar } from 'react-native-paper';
+import { Card, Title, Paragraph, ProgressBar, useTheme } from 'react-native-paper';
 import * as Animatable from 'react-native-animatable';
 
 const StatsCard = ({ stats }) => {
+  const theme = useTheme();
+  
   return (
     <Animatable.View animation="fadeInUp" duration={1000} delay={300}>
       <Card style={styles.card}>
         <Card.Content>
-          <Title style={styles.cardTitle}>City Overview</Title>
+          <Title style={[styles.cardTitle, { color: theme.colors.text }]}>City Overview</Title>
           
           <View style={styles.statRow}>
             <View style={styles.statItem}>
-              <Title style={styles.statValue}>{stats.reportsThisWeek}</Title>
-              <Paragraph style={styles.statLabel}>New Reports</Paragraph>
+              <Title style={[styles.statValue, { color: theme.colors.primary }]}>{stats.reportsThisWeek}</Title>
+              <Paragraph style={[styles.statLabel, { color: theme.colors.textSecondary }]}>New Reports</Paragraph>
             </View>
             <View style={styles.statItem}>
-              <Title style={styles.statValue}>{stats.repairsCompleted}</Title>
-              <Paragraph style={styles.statLabel}>Completed</Paragraph>
+              <Title style={[styles.statValue, { color: theme.colors.primary }]}>{stats.repairsCompleted}</Title>
+              <Paragraph style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Completed</Paragraph>
             </View>
             <View style={styles.statItem}>
-              <Title style={styles.statValue}>{stats.pendingIssues}</Title>
-              <Paragraph style={styles.statLabel}>Pending</Paragraph>
+              <Title style={[styles.statValue, { color: theme.colors.primary }]}>{stats.pendingIssues}</Title>
+              <Paragraph style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Pending</Paragraph>
             </View>
           </View>
           
           <View style={styles.progressContainer}>
-            <Paragraph style={styles.progressLabel}>
+            <Paragraph style={[styles.progressLabel, { color: theme.colors.text }]}>
               Completion Rate: {stats.completionRate}%
             </Paragraph>
             <ProgressBar
@@ -64,12 +66,10 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 20,
-    color: '#003366',
     fontWeight: 'bold',
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
   },
   progressContainer: {
     marginTop: 15,

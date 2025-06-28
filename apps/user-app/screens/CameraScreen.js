@@ -10,16 +10,33 @@ import {
   Alert,
   SafeAreaView,
   StatusBar,
+  Dimensions,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import { Button, Card, Title, Paragraph, Surface } from 'react-native-paper';
+import { MaterialIcons, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { 
+  Button, 
+  Card, 
+  Title, 
+  Paragraph, 
+  Surface,
+  useTheme,
+  IconButton,
+  Chip,
+  ActivityIndicator as PaperActivityIndicator
+} from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Animatable from 'react-native-animatable';
+import { ConsistentHeader } from '../components/ui';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const CameraScreen = ({ navigation }) => {
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [hasLocationPermission, setHasLocationPermission] = useState(null);
+  const theme = useTheme();
   const [capturedImage, setCapturedImage] = useState(null);
   const [location, setLocation] = useState(null);
   const [locationAddress, setLocationAddress] = useState(null);
@@ -200,27 +217,38 @@ const CameraScreen = ({ navigation }) => {
 
   if (cameraPermission === undefined || hasLocationPermission === null) {
     return (
-      <SafeAreaView style={[styles.container, styles.centered]}>
-        <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
-        <ActivityIndicator size="large" color="#3498db" />
-        <Text style={styles.loadingText}>Requesting permissions...</Text>
+      <SafeAreaView style={[styles.container, styles.centered, { backgroundColor: theme.colors.background }]}>
+        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background} />
+        <PaperActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+          Requesting permissions...
+        </Text>
       </SafeAreaView>
     );
   }
 
   if (!cameraPermission.granted) {
     return (
-      <SafeAreaView style={[styles.container, styles.centered]}>
-        <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
-        <Surface style={styles.permissionCard}>
-          <Title style={styles.permissionTitle}>Camera Access Required</Title>
-          <Paragraph style={styles.noPermissionText}>
+      <SafeAreaView style={[styles.container, styles.centered, { backgroundColor: theme.colors.background }]}>
+        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background} />
+        <Surface style={[styles.permissionCard, { backgroundColor: theme.colors.surface }]} elevation={4}>
+          <MaterialCommunityIcons 
+            name="camera-off" 
+            size={64} 
+            color={theme.colors.outline} 
+            style={styles.permissionIcon}
+          />
+          <Title style={[styles.permissionTitle, { color: theme.colors.text }]}>
+            Camera Access Required
+          </Title>
+          <Paragraph style={[styles.noPermissionText, { color: theme.colors.textSecondary }]}>
             Camera permission is required to use this feature. Please enable camera access in your device settings.
           </Paragraph>
           <Button
             mode="contained"
             onPress={() => navigation.navigate('Reports')}
-            style={styles.permissionButton}
+            style={[styles.permissionButton, { backgroundColor: theme.colors.primary }]}
+            contentStyle={styles.buttonContent}
           >
             Go to Reports
           </Button>
@@ -230,73 +258,92 @@ const CameraScreen = ({ navigation }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle={capturedImage ? "dark-content" : "light-content"} backgroundColor={capturedImage ? "#f5f5f5" : "#000"} />
+    <SafeAreaView style={[styles.container, { backgroundColor: capturedImage ? theme.colors.background : '#000' }]} edges={capturedImage ? ['top'] : []}>
+      <StatusBar barStyle={capturedImage ? "light-content" : "light-content"} backgroundColor={capturedImage ? theme.colors.primary : "#000"} />
+      
       {capturedImage ? (
-        <View style={styles.capturedContainer}>
-          <Card style={styles.imageCard}>
-            <Card.Cover
-              source={{ uri: capturedImage.uri }}
-              style={styles.capturedImage}
-            />
-          </Card>
+        <View style={[styles.capturedContainer, { backgroundColor: theme.colors.background }]}>
+          {/* Header */}
+          <ConsistentHeader
+            title="Review & Submit"
+            useGradient={true}
+            elevated={true}
+            centered={true}
+            back={{
+              visible: true,
+              onPress: () => navigation.goBack()
+            }}
+          />
 
-          {fetchingLocation ? (
-            <Card style={styles.locationCard}>
-              <Card.Content>
-                <View style={styles.locationContent}>
-                  <ActivityIndicator size="small" color="#3498db" style={{marginRight: 10}} />
-                  <Paragraph style={styles.locationText}>
-                    Fetching location...
-                  </Paragraph>
-                </View>
-              </Card.Content>
-            </Card>
-          ) : location ? (
-            <Card style={styles.locationCard}>
-              <Card.Content>
-                <View style={styles.locationContent}>
-                  <Ionicons name="location" size={20} color="#3498db" />
-                  <Paragraph style={styles.locationText}>
-                    {locationAddress || 'Address not available'}
-                  </Paragraph>
-                </View>
-              </Card.Content>
-            </Card>
-          ) : (
-            <Card style={styles.locationCard}>
-              <Card.Content>
-                <View style={styles.locationContent}>
-                  <Ionicons name="warning" size={20} color="#e74c3c" />
-                  <Paragraph style={styles.locationText}>
-                    Failed to get location
-                  </Paragraph>
-                </View>
-              </Card.Content>
-            </Card>
-          )}
+          <View style={styles.contentContainer}>
+            <Animatable.View animation="fadeInUp" delay={200}>
+              <Surface style={[styles.imageCard, { backgroundColor: theme.colors.surface }]} elevation={4}>
+                <Image
+                  source={{ uri: capturedImage.uri }}
+                  style={styles.capturedImage}
+                  resizeMode="cover"
+                />
+              </Surface>
+            </Animatable.View>
 
-          <View style={styles.buttonRow}>
-            <Button
-              mode="outlined"
-              onPress={retakePicture}
-              style={styles.retakeButton}
-              disabled={isSubmitting}
-              icon="camera-retake"
-            >
-              Retake
-            </Button>
+            <Animatable.View animation="fadeInUp" delay={400}>
+              {fetchingLocation ? (
+                <Surface style={[styles.locationCard, { backgroundColor: theme.colors.surface }]} elevation={2}>
+                  <View style={styles.locationContent}>
+                    <PaperActivityIndicator size="small" color={theme.colors.primary} />
+                    <Text style={[styles.locationText, { color: theme.colors.text }]}>
+                      Fetching location...
+                    </Text>
+                  </View>
+                </Surface>
+              ) : location ? (
+                <Surface style={[styles.locationCard, { backgroundColor: theme.colors.surface }]} elevation={2}>
+                  <View style={styles.locationContent}>
+                    <MaterialCommunityIcons name="map-marker" size={20} color={theme.colors.success} />
+                    <Text style={[styles.locationText, { color: theme.colors.text }]}>
+                      {locationAddress || 'Address not available'}
+                    </Text>
+                  </View>
+                </Surface>
+              ) : (
+                <Surface style={[styles.locationCard, { backgroundColor: theme.colors.surface }]} elevation={2}>
+                  <View style={styles.locationContent}>
+                    <MaterialCommunityIcons name="alert-circle" size={20} color={theme.colors.error} />
+                    <Text style={[styles.locationText, { color: theme.colors.text }]}>
+                      Failed to get location
+                    </Text>
+                  </View>
+                </Surface>
+              )}
+            </Animatable.View>
 
-            <Button
-              mode="contained"
-              onPress={submitReport}
-              style={styles.submitButton}
-              loading={isSubmitting}
-              disabled={isSubmitting || fetchingLocation || !location}
-              icon="send"
-            >
-              Submit Report
-            </Button>
+            <Animatable.View animation="fadeInUp" delay={600}>
+              <View style={styles.buttonRow}>
+                <Button
+                  mode="outlined"
+                  onPress={retakePicture}
+                  style={[styles.retakeButton, { borderColor: theme.colors.primary }]}
+                  textColor={theme.colors.primary}
+                  disabled={isSubmitting}
+                  icon="camera-retake"
+                  contentStyle={styles.buttonContent}
+                >
+                  Retake
+                </Button>
+
+                <Button
+                  mode="contained"
+                  onPress={submitReport}
+                  style={[styles.submitButton, { backgroundColor: theme.colors.primary }]}
+                  loading={isSubmitting}
+                  disabled={isSubmitting || fetchingLocation || !location}
+                  icon="send"
+                  contentStyle={styles.buttonContent}
+                >
+                  Submit Report
+                </Button>
+              </View>
+            </Animatable.View>
           </View>
         </View>
       ) : (
@@ -307,34 +354,40 @@ const CameraScreen = ({ navigation }) => {
             facing={cameraFacing}
             ratio="16:9"
           >
-            <View style={styles.instructions}>
-              <Surface style={styles.instructionSurface}>
-                <Text style={styles.instructionText}>
+            {/* Instructions overlay */}
+            <LinearGradient
+              colors={['rgba(0,0,0,0.6)', 'transparent']}
+              style={styles.instructions}
+            >
+              <Surface style={[styles.instructionSurface, { backgroundColor: theme.colors.surface + 'E6' }]} elevation={2}>
+                <MaterialCommunityIcons name="camera" size={20} color={theme.colors.primary} />
+                <Text style={[styles.instructionText, { color: theme.colors.text }]}>
                   Take a clear photo of the road damage
                 </Text>
               </Surface>
-            </View>
+            </LinearGradient>
             
+            {/* Camera controls */}
             <View style={styles.cameraControls}>
               <TouchableOpacity
-                style={styles.flipButton}
+                style={[styles.flipButton, { backgroundColor: theme.colors.surface + 'CC' }]}
                 onPress={toggleCameraFacing}
               >
-                <MaterialIcons name="flip-camera-android" size={28} color="white" />
+                <MaterialCommunityIcons name="camera-flip" size={28} color={theme.colors.primary} />
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.captureButton}
+                style={[styles.captureButton, { borderColor: theme.colors.surface }]}
                 onPress={takePicture}
               >
-                <View style={styles.captureButtonInner} />
+                <View style={[styles.captureButtonInner, { backgroundColor: theme.colors.surface }]} />
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.galleryButton}
+                style={[styles.galleryButton, { backgroundColor: theme.colors.surface + 'CC' }]}
                 onPress={pickImage}
               >
-                <MaterialIcons name="photo-library" size={28} color="white" />
+                <MaterialCommunityIcons name="image" size={28} color={theme.colors.primary} />
               </TouchableOpacity>
             </View>
           </CameraView>
@@ -347,7 +400,6 @@ const CameraScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   centered: {
     justifyContent: 'center',
@@ -357,143 +409,174 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#555',
   },
   permissionCard: {
     padding: 24,
     borderRadius: 12,
-    elevation: 4,
     width: '90%',
     alignItems: 'center',
+  },
+  permissionIcon: {
+    marginBottom: 16,
   },
   permissionTitle: {
     marginBottom: 12,
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    textAlign: 'center',
+  },
+  noPermissionText: {
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
   },
   permissionButton: {
-    marginTop: 20,
+    borderRadius: 12,
+  },
+  buttonContent: {
     paddingVertical: 8,
+  },
+  capturedContainer: {
+    flex: 1,
+  },
+  capturedHeader: {
+    paddingTop: StatusBar.currentHeight || 44,
+    paddingBottom: 16,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 16,
+  },
+  contentContainer: {
+    flex: 1,
+    padding: 16,
+  },
+  imageCard: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  capturedImage: {
     width: '100%',
-    backgroundColor: '#3498db',
+    height: 300,
+    borderRadius: 12,
+  },
+  locationCard: {
+    marginBottom: 20,
+    borderRadius: 12,
+    padding: 16,
+  },
+  locationContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  locationText: {
+    fontSize: 14,
+    flex: 1,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  retakeButton: {
+    flex: 1,
+    borderRadius: 12,
+  },
+  submitButton: {
+    flex: 2,
+    borderRadius: 12,
   },
   cameraContainer: {
     flex: 1,
-    backgroundColor: '#000',
   },
   camera: {
     flex: 1,
   },
+  instructions: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 60,
+  },
+  instructionSurface: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 8,
+  },
+  instructionText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
   cameraControls: {
     position: 'absolute',
-    bottom: 30,
+    bottom: 40,
     left: 0,
     right: 0,
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 30,
+    paddingHorizontal: 40,
+  },
+  flipButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   captureButton: {
     width: 80,
     height: 80,
     borderRadius: 40,
     borderWidth: 4,
-    borderColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
   },
   captureButtonInner: {
-    width: 65,
-    height: 65,
-    borderRadius: 32.5,
-    backgroundColor: 'white',
-  },
-  flipButton: {
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    padding: 12,
+    width: 60,
+    height: 60,
     borderRadius: 30,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
   },
   galleryButton: {
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    padding: 12,
-    borderRadius: 30,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  capturedContainer: {
-    flex: 1,
-    padding: 16,
-  },
-  imageCard: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
     elevation: 4,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 16,
-  },
-  capturedImage: {
-    height: 250,
-    borderRadius: 0,
-  },
-  locationCard: {
-    marginBottom: 16,
-    elevation: 2,
-    borderRadius: 8,
-  },
-  locationContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  locationText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#555',
-    flexShrink: 1,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  retakeButton: {
-    flex: 1,
-    marginRight: 8,
-    borderColor: '#3498db',
-    borderWidth: 1,
-  },
-  submitButton: {
-    flex: 1.5,
-    marginLeft: 8,
-    backgroundColor: '#3498db',
-  },
-  instructions: {
-    position: 'absolute',
-    top: 20,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  instructionSurface: {
-    padding: 12,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  instructionText: {
-    color: 'white',
-    fontWeight: '500',
-  },
-  noPermissionText: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#555',
-    lineHeight: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
 });
 
 export default CameraScreen;
+

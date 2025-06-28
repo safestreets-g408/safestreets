@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'react-native';
+import { useTheme } from 'react-native-paper';
+import { useThemeContext } from './context/ThemeContext';
 
 // Import layout components
 import AppProvider from './components/layout/AppProvider';
@@ -15,6 +17,9 @@ import { useAppState } from './hooks';
 
 // App content component with access to AuthContext
 const AppContent = () => {
+  const theme = useTheme();
+  const { isDarkMode } = useThemeContext();
+  
   try {
     const { isLoading } = useAppState();
     
@@ -24,7 +29,11 @@ const AppContent = () => {
     
     return (
       <>
-        <StatusBar barStyle="light-content" backgroundColor="#003366" />
+        <StatusBar 
+          barStyle={isDarkMode ? "light-content" : "dark-content"} 
+          backgroundColor={theme?.colors?.background || '#f9fafb'}
+          animated={true}
+        />
         <AppNavigator />
       </>
     );
@@ -32,7 +41,11 @@ const AppContent = () => {
     console.error('Error in AppContent:', error);
     return (
       <>
-        <StatusBar barStyle="light-content" backgroundColor="#003366" />
+        <StatusBar 
+          barStyle="dark-content" 
+          backgroundColor={theme?.colors?.background || '#f9fafb'} 
+          animated={true}
+        />
         <AppNavigator />
       </>
     );

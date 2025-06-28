@@ -51,7 +51,8 @@ const quickActions = [
     id: '1',
     title: 'Report Damage',
     icon: 'camera',
-    color: ['#1a73e8', '#4285f4', '#5e97f6'],
+    gradientColors: ['#1a73e8', '#4285f4', '#5e97f6'],
+    color: { primary: '#1a73e8' },
     screen: 'Camera',
     animation: 'pulse'
   },
@@ -59,7 +60,8 @@ const quickActions = [
     id: '2',
     title: 'My Reports',
     icon: 'clipboard-list',
-    color: ['#0d47a1', '#1565c0', '#1976d2'],
+    gradientColors: ['#0d47a1', '#1565c0', '#1976d2'],
+    color: { primary: '#0d47a1' },
     screen: 'Reports',
     animation: 'fadeIn'
   },
@@ -67,7 +69,8 @@ const quickActions = [
     id: '3',
     title: 'Tasks',
     icon: 'check-circle',
-    color: ['#2962ff', '#448aff', '#82b1ff'],
+    gradientColors: ['#2962ff', '#448aff', '#82b1ff'],
+    color: { primary: '#2962ff' },
     screen: 'TaskManagement',
     animation: 'fadeIn'
   },
@@ -75,7 +78,8 @@ const quickActions = [
     id: '4',
     title: 'Profile',
     icon: 'account',
-    color: ['#0277bd', '#0288d1', '#039be5'],
+    gradientColors: ['#0277bd', '#0288d1', '#039be5'],
+    color: { primary: '#0277bd' },
     screen: 'Profile',
     animation: 'fadeIn'
   }
@@ -546,7 +550,7 @@ const HomeScreen = ({ navigation }) => {
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#003366', '#0055a4']} tintColor="#003366" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary, theme.colors.primaryDark]} tintColor={theme.colors.primary} />
         }
         showsVerticalScrollIndicator={false}
       >

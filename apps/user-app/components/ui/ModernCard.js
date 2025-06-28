@@ -14,8 +14,40 @@ const ModernCard = ({
 }) => {
   const theme = useTheme();
   
-  // Get shadow based on elevation
-  const shadowStyle = outlined ? styles.outlined : theme.shadows[elevation] || theme.shadows.medium;
+  // Define shadow styles based on elevation level
+  const getShadowStyle = () => {
+    if (outlined) return styles.outlined;
+    
+    // Default shadow styles if theme.shadows is not available
+    const defaultShadows = {
+      small: {
+        elevation: 2,
+        shadowColor: 'rgba(0,0,0,0.25)',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 3,
+      },
+      medium: {
+        elevation: 4,
+        shadowColor: 'rgba(0,0,0,0.25)',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.12,
+        shadowRadius: 6,
+      },
+      large: {
+        elevation: 8,
+        shadowColor: 'rgba(0,0,0,0.25)',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 12,
+      }
+    };
+    
+    // Use theme shadows if available, otherwise use default shadows
+    return (theme.shadows && theme.shadows[elevation]) || defaultShadows[elevation] || defaultShadows.medium;
+  };
+  
+  const shadowStyle = getShadowStyle();
   
   const cardStyle = [
     styles.card,

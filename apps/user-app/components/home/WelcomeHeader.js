@@ -1,10 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import * as Animatable from 'react-native-animatable';
-import { Card, Title, Paragraph } from 'react-native-paper';
+import { Card, Title, Paragraph, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const WelcomeHeader = ({ workerName, locationName }) => {
+  const theme = useTheme();
+  
   return (
     <Animatable.View 
       animation="fadeIn" 
@@ -12,12 +14,12 @@ const WelcomeHeader = ({ workerName, locationName }) => {
       style={styles.headerContainer}
     >
       <View>
-        <Text style={styles.welcomeText}>Welcome back,</Text>
-        <Text style={styles.nameText}>{workerName || 'Worker'}</Text>
+        <Text style={[styles.welcomeText, { color: theme.colors.textSecondary }]}>Welcome back,</Text>
+        <Text style={[styles.nameText, { color: theme.colors.primary }]}>{workerName || 'Worker'}</Text>
       </View>
       <View style={styles.locationContainer}>
-        <MaterialCommunityIcons name="map-marker" size={18} color="#003366" />
-        <Text style={styles.locationText}>{locationName}</Text>
+        <MaterialCommunityIcons name="map-marker" size={18} color={theme.colors.primary} />
+        <Text style={[styles.locationText, { color: theme.colors.textSecondary }]}>{locationName}</Text>
       </View>
     </Animatable.View>
   );
@@ -30,12 +32,10 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: 16,
-    color: '#555',
   },
   nameText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#003366',
   },
   locationContainer: {
     flexDirection: 'row',
@@ -44,7 +44,6 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 14,
-    color: '#555',
     marginLeft: 4,
   },
 });

@@ -6,14 +6,35 @@ import {
   ScrollView, 
   TouchableOpacity,
   Alert,
+  StatusBar,
+  Dimensions,
 } from 'react-native';
-import { Card, Title, Button, TextInput, Avatar, Divider, IconButton } from 'react-native-paper';
+import { 
+  Card, 
+  Title, 
+  Button, 
+  TextInput, 
+  Avatar, 
+  Divider, 
+  IconButton,
+  useTheme,
+  Chip,
+  Surface,
+  ActivityIndicator
+} from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Animatable from 'react-native-animatable';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { updateFieldWorkerProfile } from '../utils/auth';
+import { ModernCard, ConsistentHeader } from '../components/ui';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 const ProfileScreen = ({ navigation }) => {
   const { fieldWorker, logout, updateFieldWorker } = useAuth();
+  const theme = useTheme();
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -90,191 +111,279 @@ const ProfileScreen = ({ navigation }) => {
 
   if (!fieldWorker) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>Loading profile...</Text>
+      <View style={[styles.container, styles.centered, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+          Loading profile...
+        </Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
+      
+      {/* Header */}
       <LinearGradient
-        colors={['#003366', '#0066CC']}
+        colors={[theme.colors.primary, theme.colors.primaryDark]}
         style={styles.headerGradient}
       >
         <View style={styles.header}>
-          <Avatar.Text 
-            size={80} 
-            label={fieldWorker.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'FW'} 
-            style={styles.avatar}
-            labelStyle={{ fontSize: 24, fontWeight: 'bold' }}
-          />
-          <Title style={styles.name}>{fieldWorker.name}</Title>
-          <Text style={styles.email}>{fieldWorker.email}</Text>
-          <Text style={styles.workerId}>ID: {fieldWorker.workerId}</Text>
+          <Animatable.View animation="fadeInUp" delay={200}>
+            <Avatar.Text 
+              size={100} 
+              label={fieldWorker.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'FW'} 
+              style={[styles.avatar, { backgroundColor: theme.colors.surface }]}
+              labelStyle={{ fontSize: 28, fontWeight: 'bold', color: theme.colors.primary }}
+            />
+          </Animatable.View>
+          
+          <Animatable.View animation="fadeInUp" delay={300}>
+            <Title style={[styles.name, { color: theme.colors.onPrimary }]}>
+              {fieldWorker.name}
+            </Title>
+            <Text style={[styles.email, { color: theme.colors.onPrimary + 'DD' }]}>
+              {fieldWorker.email}
+            </Text>
+            <Chip 
+              mode="flat"
+              style={[styles.workerIdChip, { backgroundColor: theme.colors.surface + 'E6' }]}
+              textStyle={{ color: theme.colors.primary, fontWeight: '600' }}
+            >
+              ID: {fieldWorker.workerId}
+            </Chip>
+          </Animatable.View>
         </View>
       </LinearGradient>
 
-      <View style={styles.content}>
-        <Card style={styles.card}>
-          <Card.Content>
+      <ScrollView 
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Personal Information Card */}
+        <Animatable.View animation="fadeInUp" delay={400}>
+          <ModernCard style={styles.card}>
             <View style={styles.cardHeader}>
-              <Title>Personal Information</Title>
+              <View style={styles.cardTitleSection}>
+                <MaterialCommunityIcons 
+                  name="account-circle" 
+                  size={24} 
+                  color={theme.colors.primary} 
+                />
+                <Title style={[styles.cardTitle, { color: theme.colors.text }]}>
+                  Personal Information
+                </Title>
+              </View>
               <IconButton
                 icon={editing ? "close" : "pencil"}
-                mode="contained"
+                iconColor={editing ? theme.colors.error : theme.colors.primary}
+                size={24}
                 onPress={editing ? handleCancelEdit : () => setEditing(true)}
-                style={styles.editButton}
+                style={[styles.editButton, { backgroundColor: theme.colors.surface }]}
               />
             </View>
             
             <Divider style={styles.divider} />
-            
-            <View style={styles.infoContainer}>
-              <View style={styles.infoItem}>
-                <Text style={styles.label}>Full Name</Text>
-                {editing ? (
+
+            <View style={styles.infoSection}>
+              {editing ? (
+                <>
                   <TextInput
+                    label="Full Name"
                     value={formData.name}
                     onChangeText={(text) => setFormData({ ...formData, name: text })}
                     style={styles.input}
-                    mode="outlined"
+                    theme={{ colors: { primary: theme.colors.primary } }}
+                    left={<TextInput.Icon icon="account" />}
                   />
-                ) : (
-                  <Text style={styles.value}>{fieldWorker.name}</Text>
-                )}
-              </View>
-
-              <View style={styles.infoItem}>
-                <Text style={styles.label}>Specialization</Text>
-                {editing ? (
+                  
                   <TextInput
+                    label="Specialization"
                     value={formData.specialization}
                     onChangeText={(text) => setFormData({ ...formData, specialization: text })}
                     style={styles.input}
-                    mode="outlined"
+                    theme={{ colors: { primary: theme.colors.primary } }}
+                    left={<TextInput.Icon icon="tools" />}
                   />
-                ) : (
-                  <Text style={styles.value}>{fieldWorker.specialization}</Text>
-                )}
-              </View>
-
-              <View style={styles.infoItem}>
-                <Text style={styles.label}>Region</Text>
-                {editing ? (
+                  
                   <TextInput
+                    label="Region"
                     value={formData.region}
                     onChangeText={(text) => setFormData({ ...formData, region: text })}
                     style={styles.input}
-                    mode="outlined"
+                    theme={{ colors: { primary: theme.colors.primary } }}
+                    left={<TextInput.Icon icon="map-marker" />}
                   />
-                ) : (
-                  <Text style={styles.value}>{fieldWorker.region}</Text>
-                )}
-              </View>
-
-              <View style={styles.infoItem}>
-                <Text style={styles.label}>Phone Number</Text>
-                {editing ? (
+                  
                   <TextInput
+                    label="Phone Number"
                     value={formData.profile.phone}
                     onChangeText={(text) => setFormData({ 
                       ...formData, 
                       profile: { ...formData.profile, phone: text }
                     })}
                     style={styles.input}
-                    mode="outlined"
-                    keyboardType="phone-pad"
+                    theme={{ colors: { primary: theme.colors.primary } }}
+                    left={<TextInput.Icon icon="phone" />}
                   />
-                ) : (
-                  <Text style={styles.value}>{fieldWorker.profile?.phone || 'Not set'}</Text>
-                )}
-              </View>
+                  
+                  <View style={styles.buttonContainer}>
+                    <Button
+                      mode="contained"
+                      onPress={handleSaveProfile}
+                      loading={loading}
+                      disabled={loading}
+                      style={[styles.saveButton, { backgroundColor: theme.colors.primary }]}
+                      contentStyle={styles.buttonContent}
+                    >
+                      Save Changes
+                    </Button>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View style={styles.infoRow}>
+                    <MaterialCommunityIcons name="account" size={20} color={theme.colors.primary} />
+                    <View style={styles.infoContent}>
+                      <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>Full Name</Text>
+                      <Text style={[styles.infoValue, { color: theme.colors.text }]}>{fieldWorker.name}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.infoRow}>
+                    <MaterialCommunityIcons name="tools" size={20} color={theme.colors.primary} />
+                    <View style={styles.infoContent}>
+                      <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>Specialization</Text>
+                      <Text style={[styles.infoValue, { color: theme.colors.text }]}>{fieldWorker.specialization}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.infoRow}>
+                    <MaterialCommunityIcons name="map-marker" size={20} color={theme.colors.primary} />
+                    <View style={styles.infoContent}>
+                      <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>Region</Text>
+                      <Text style={[styles.infoValue, { color: theme.colors.text }]}>{fieldWorker.region}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.infoRow}>
+                    <MaterialCommunityIcons name="phone" size={20} color={theme.colors.primary} />
+                    <View style={styles.infoContent}>
+                      <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>Phone</Text>
+                      <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+                        {fieldWorker.profile?.phone || 'Not provided'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.infoRow}>
+                    <MaterialCommunityIcons name="email" size={20} color={theme.colors.primary} />
+                    <View style={styles.infoContent}>
+                      <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>Email</Text>
+                      <Text style={[styles.infoValue, { color: theme.colors.text }]}>{fieldWorker.email}</Text>
+                    </View>
+                  </View>
+                </>
+              )}
             </View>
+          </ModernCard>
+        </Animatable.View>
 
-            {editing && (
-              <View style={styles.buttonContainer}>
-                <Button
-                  mode="contained"
-                  onPress={handleSaveProfile}
-                  loading={loading}
-                  disabled={loading}
-                  style={styles.saveButton}
-                >
-                  Save Changes
-                </Button>
-              </View>
-            )}
-          </Card.Content>
-        </Card>
-
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title>Work Statistics</Title>
-            <Divider style={styles.divider} />
-            
-            <View style={styles.statsContainer}>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{fieldWorker.activeAssignments || 0}</Text>
-                <Text style={styles.statLabel}>Active Assignments</Text>
-              </View>
-              
-              <View style={styles.statDivider} />
-              
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{fieldWorker.profile?.totalReportsHandled || 0}</Text>
-                <Text style={styles.statLabel}>Reports Handled</Text>
-              </View>
+        {/* Quick Actions Card */}
+        <Animatable.View animation="fadeInUp" delay={500}>
+          <ModernCard style={styles.card}>
+            <View style={styles.cardTitleSection}>
+              <MaterialCommunityIcons 
+                name="lightning-bolt" 
+                size={24} 
+                color={theme.colors.primary} 
+              />
+              <Title style={[styles.cardTitle, { color: theme.colors.text }]}>
+                Quick Actions
+              </Title>
             </View>
-          </Card.Content>
-        </Card>
-
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title>Account Settings</Title>
+            
             <Divider style={styles.divider} />
-            
-            <TouchableOpacity 
-              style={styles.settingItem}
-              onPress={() => Alert.alert('Change Password', 'Contact administrator to change password')}
-            >
-              <Text style={styles.settingText}>Change Password</Text>
-              <IconButton icon="chevron-right" size={20} />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.settingItem}
-              onPress={() => Alert.alert('Notifications', 'Notification settings coming soon')}
-            >
-              <Text style={styles.settingText}>Notification Settings</Text>
-              <IconButton icon="chevron-right" size={20} />
-            </TouchableOpacity>
-          </Card.Content>
-        </Card>
 
-        <Button
-          mode="contained"
-          onPress={handleLogout}
-          style={styles.logoutButton}
-          buttonColor="#D32F2F"
-          icon="logout"
-        >
-          Logout
-        </Button>
-      </View>
-    </ScrollView>
+            <View style={styles.actionsGrid}>
+              <TouchableOpacity 
+                style={[styles.actionItem, { backgroundColor: theme.colors.surface }]}
+                onPress={() => navigation.navigate('Reports')}
+              >
+                <Surface style={[styles.actionIcon, { backgroundColor: theme.colors.primary + '20' }]}>
+                  <MaterialCommunityIcons name="file-document" size={24} color={theme.colors.primary} />
+                </Surface>
+                <Text style={[styles.actionText, { color: theme.colors.text }]}>My Reports</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.actionItem, { backgroundColor: theme.colors.surface }]}
+                onPress={() => navigation.navigate('Tasks')}
+              >
+                <Surface style={[styles.actionIcon, { backgroundColor: theme.colors.warning + '20' }]}>
+                  <MaterialCommunityIcons name="clipboard-list" size={24} color={theme.colors.warning} />
+                </Surface>
+                <Text style={[styles.actionText, { color: theme.colors.text }]}>Tasks</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.actionItem, { backgroundColor: theme.colors.surface }]}
+                onPress={() => navigation.navigate('Camera')}
+              >
+                <Surface style={[styles.actionIcon, { backgroundColor: theme.colors.success + '20' }]}>
+                  <MaterialCommunityIcons name="camera" size={24} color={theme.colors.success} />
+                </Surface>
+                <Text style={[styles.actionText, { color: theme.colors.text }]}>New Report</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.actionItem, { backgroundColor: theme.colors.surface }]}
+                onPress={() => navigation.navigate('Settings')}
+              >
+                <Surface style={[styles.actionIcon, { backgroundColor: theme.colors.info + '20' }]}>
+                  <MaterialCommunityIcons name="cog" size={24} color={theme.colors.info} />
+                </Surface>
+                <Text style={[styles.actionText, { color: theme.colors.text }]}>Settings</Text>
+              </TouchableOpacity>
+            </View>
+          </ModernCard>
+        </Animatable.View>
+
+        {/* Logout Section */}
+        <Animatable.View animation="fadeInUp" delay={600}>
+          <View style={styles.logoutSection}>
+            <Button
+              mode="outlined"
+              onPress={handleLogout}
+              icon="logout"
+              textColor={theme.colors.error}
+              style={[styles.logoutButton, { borderColor: theme.colors.error }]}
+              contentStyle={styles.buttonContent}
+            >
+              Logout
+            </Button>
+          </View>
+        </Animatable.View>
+
+        <View style={styles.bottomSpacing} />
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
-  loadingContainer: {
-    flex: 1,
+  centered: {
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
   },
   headerGradient: {
     paddingBottom: 30,
@@ -285,111 +394,133 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   avatar: {
-    backgroundColor: '#ffffff',
     marginBottom: 15,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   name: {
-    color: '#ffffff',
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 5,
+    marginBottom: 8,
+    textAlign: 'center',
   },
   email: {
-    color: '#E3F2FD',
     fontSize: 16,
-    marginBottom: 5,
+    marginBottom: 8,
+    textAlign: 'center',
   },
-  workerId: {
-    color: '#B3E5FC',
-    fontSize: 14,
-    fontWeight: '500',
+  workerIdChip: {
+    marginTop: 8,
   },
   content: {
-    padding: 20,
-    marginTop: -15,
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingTop: 8,
   },
   card: {
-    marginBottom: 20,
-    elevation: 2,
+    marginBottom: 16,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    padding: 20,
+    paddingBottom: 0,
   },
-  editButton: {
-    margin: 0,
-  },
-  divider: {
-    marginBottom: 20,
-  },
-  infoContainer: {
-    gap: 15,
-  },
-  infoItem: {
-    marginBottom: 15,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: 5,
-  },
-  value: {
-    fontSize: 16,
-    color: '#333',
-  },
-  input: {
-    backgroundColor: '#ffffff',
-  },
-  buttonContainer: {
-    marginTop: 20,
-  },
-  saveButton: {
-    backgroundColor: '#003366',
-  },
-  statsContainer: {
+  cardTitleSection: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  statItem: {
     alignItems: 'center',
     flex: 1,
   },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: '#E0E0E0',
-  },
-  statNumber: {
-    fontSize: 28,
+  cardTitle: {
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#003366',
-    marginBottom: 5,
+    marginLeft: 12,
   },
-  statLabel: {
+  editButton: {
+    borderRadius: 12,
+  },
+  divider: {
+    marginHorizontal: 20,
+    marginVertical: 16,
+  },
+  infoSection: {
+    padding: 20,
+    paddingTop: 0,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  infoContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  infoLabel: {
     fontSize: 14,
-    color: '#666',
+    marginBottom: 4,
+  },
+  infoValue: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  input: {
+    marginBottom: 16,
+    backgroundColor: 'transparent',
+  },
+  buttonContainer: {
+    marginTop: 8,
+  },
+  saveButton: {
+    borderRadius: 12,
+  },
+  buttonContent: {
+    paddingVertical: 8,
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    padding: 20,
+    paddingTop: 0,
+  },
+  actionItem: {
+    width: '48%',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    elevation: 1,
+  },
+  actionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  actionText: {
+    fontSize: 14,
+    fontWeight: '500',
     textAlign: 'center',
   },
-  settingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  settingText: {
-    fontSize: 16,
-    color: '#333',
+  logoutSection: {
+    marginTop: 16,
+    paddingHorizontal: 16,
   },
   logoutButton: {
-    marginTop: 20,
-    marginBottom: 40,
+    borderRadius: 12,
+    borderWidth: 2,
+  },
+  bottomSpacing: {
+    height: 32,
   },
 });
 

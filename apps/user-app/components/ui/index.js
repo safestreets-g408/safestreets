@@ -4,6 +4,7 @@ import ModernCard from './ModernCard';
 import GradientButton from './GradientButton';
 import StatusCard from './StatusCard';
 import ModernHeader from './ModernHeader';
+import ConsistentHeader from './ConsistentHeader';
 import EmptyState from './EmptyState';
 
 export {
@@ -13,5 +14,6 @@ export {
   GradientButton,
   StatusCard,
   ModernHeader,
+  ConsistentHeader,
   EmptyState
 };

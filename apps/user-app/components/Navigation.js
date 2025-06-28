@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from 'react-native-paper';
 import { useAuth } from '../context/AuthContext';
 
 // Import screens
@@ -13,14 +14,15 @@ const Stack = createStackNavigator();
 
 const Navigation = ({ MainTabs }) => {
   const { isAuthenticated, isLoading } = useAuth();
+  const theme = useTheme();
 
   if (isLoading) {
-    return <ActivityIndicator size="large" color="#003366" />;
+    return <ActivityIndicator size="large" color={theme.colors.primary} />;
   }
 
   return (
     <NavigationContainer
-      fallback={<ActivityIndicator size="large" color="#003366" />}
+      fallback={<ActivityIndicator size="large" color={theme.colors.primary} />}
     >
       <Stack.Navigator
         screenOptions={{

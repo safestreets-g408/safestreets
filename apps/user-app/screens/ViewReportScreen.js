@@ -1,984 +1,603 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  Image, 
-  ScrollView, 
-  TouchableOpacity,
-  Alert,
-  Linking,
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Image,
   StatusBar,
-  Platform,
-  ImageBackground
+  Dimensions,
+  Alert,
+  Share,
+  RefreshControl,
+  Platform
 } from 'react-native';
-import { Card, Title, Paragraph, Chip, Button, ActivityIndicator, 
-  Divider, Surface, Avatar, Badge, IconButton, Menu, Portal, Modal } from 'react-native-paper';
-import { MaterialIcons, Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import {
+  useTheme,
+  Button,
+  Chip,
+  IconButton,
+  ActivityIndicator,
+  Divider,
+  Snackbar,
+  Surface
+} from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getReportImageUrlSync, preloadImageToken } from '../utils/imageUtils';
-import { API_BASE_URL } from '../config';
-import { getReportById } from '../utils/reportAPI';
-import { useAuth } from '../context/AuthContext';
+import * as Animatable from 'react-native-animatable';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { ModernCard, ConsistentHeader } from '../components/ui';
+import { getReportImageUrlSync } from '../utils/imageUtils';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-const ViewReportScreen = ({ route = {}, navigation }) => {
-  const { reportId } = route.params || {}; 
-  const { fieldWorker } = useAuth();
+const { width: screenWidth } = Dimensions.get('window');
+
+const ViewReportScreen = ({ route, navigation }) => {
+  const theme = useTheme();
+  const { reportId } = route.params || {};
+  
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [imageModalVisible, setImageModalVisible] = useState(false);
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [imageUrl, setImageUrl] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
-  // Fetch report details
-  const fetchReportDetails = useCallback(async () => {
-    if (!reportId) {
-      Alert.alert('Error', 'No report ID provided');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      console.log('Fetching report details for ID:', reportId);
-      
-      // Ensure we have a fresh token before making the API call
-      await preloadImageToken();
-      
-      // Fetch report data with better error handling
-      const reportData = await getReportById(reportId);
-      
-      if (!reportData) {
-        throw new Error('Failed to fetch report details - empty response');
-      }
-      
-      console.log('Report data fetched successfully:', 
-        JSON.stringify({
-          id: reportData._id || reportData.id,
-          damageType: reportData.damageType,
-          status: reportData.status,
-          hasImages: Boolean(reportData.images && reportData.images.length)
-        })
-      );
-      
-      // Ensure ID consistency
-      if (!reportData.id && reportData._id) {
-        reportData.id = reportData._id;
-      } else if (!reportData._id && reportData.id) {
-        reportData._id = reportData.id;
-      }
-      
-      setReport(reportData);
-      
-      // Generate image URL with better error handling
-      let url = null;
-      
-      // First check if report has direct image URLs
-      if (reportData.imageUrl && reportData.imageUrl.startsWith('http')) {
-        url = reportData.imageUrl;
-        console.log('Using direct imageUrl from report:', url);
-      } 
-      // Then check if report has images array
-      else if (reportData.images && reportData.images.length > 0) {
-        const firstImage = reportData.images[0];
-        if (typeof firstImage === 'string' && firstImage.startsWith('http')) {
-          url = firstImage;
-          console.log('Using URL from images array:', url);
-        } else if (firstImage.url && firstImage.url.startsWith('http')) {
-          url = firstImage.url;
-          console.log('Using nested URL from images array:', url);
-        }
-      }
-      
-      // If no direct URLs found, try to construct based on ID and type
-      if (!url || url.includes('placeholder')) {
-        console.log('No direct image URLs found, trying to construct URL with types');
-        
-        // Try different image types in order of preference
-        const imageTypes = ['before', 'main', 'thumbnail', 'default'];
-        
-        for (const type of imageTypes) {
-          const constructedUrl = getReportImageUrlSync(reportData, type);
-          console.log(`Trying image type '${type}':`, constructedUrl);
-          
-          // If we have a valid URL that's not a placeholder, use it
-          if (constructedUrl && !constructedUrl.includes('placeholder')) {
-            url = constructedUrl;
-            console.log('Using constructed URL with type:', type);
-            break;
-          }
-        }
-      }
-      
-      // Set the image URL or use placeholder if nothing worked
-      if (!url || url.includes('placeholder')) {
-        console.log('No valid image URL found, using placeholder');
-        url = 'https://via.placeholder.com/300?text=No+Image+Available';
-      }
-      
-      setImageUrl(url);
-      console.log('Final image URL set to:', url);
-    } catch (error) {
-      console.error('Error fetching report details:', error);
-      Alert.alert('Error', 'Failed to load report details. Please try again.');
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (reportId) {
+      loadReport();
+    } else {
+      // Load mock data if no reportId provided
+      loadMockReport();
     }
   }, [reportId]);
 
-  useEffect(() => {
-    // Preload image token first, then fetch report details
-    const loadData = async () => {
-      try {
-        await preloadImageToken();
-        console.log('Image token preloaded in ViewReportScreen');
-        await fetchReportDetails();
-      } catch (err) {
-        console.error('Error in ViewReportScreen setup:', err);
-        fetchReportDetails(); // Still try to fetch report details even if token loading fails
-      }
-    };
-    
-    loadData();
-  }, [fetchReportDetails]);
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'pending':
-        return '#f39c12'; // Orange
-      case 'in_progress':
-        return '#3498db'; // Blue
-      case 'resolved':
-        return '#2ecc71'; // Green
-      default:
-        return '#95a5a6'; // Gray
+  const loadReport = async () => {
+    try {
+      setLoading(true);
+      // TODO: Replace with actual API call
+      // const response = await getDamageReport(reportId);
+      // setReport(response.data);
+      
+      // Mock data for now
+      loadMockReport();
+    } catch (error) {
+      console.error('Error loading report:', error);
+      setSnackbarMessage('Failed to load report');
+      setSnackbarVisible(true);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'pending':
-        return 'clock-outline';
-      case 'in_progress': 
-        return 'progress-wrench';
-      case 'resolved':
-        return 'check-circle';
-      default:
-        return 'help-circle';
+  const loadMockReport = () => {
+    // Get real-looking data based on report ID
+    setReport({
+      id: reportId || '12345',
+      title: 'Pothole on 5th Avenue',
+      description: 'A large pothole approximately 2 feet in diameter and 6 inches deep. The edges are jagged and there is water accumulation. This poses a serious hazard to vehicles and could cause tire damage or accidents.',
+      location: {
+        address: '1234 5th Avenue, Downtown',
+        coordinates: { latitude: 40.7128, longitude: -74.0060 }
+      },
+      status: 'In Progress',
+      priority: 'High',
+      assignedTo: 'James Wilson',
+      reportedBy: 'Current User',
+      reportedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      images: [
+        'https://images.unsplash.com/photo-1597044647800-6a7a3981930c?w=500&auto=format',
+        'https://images.unsplash.com/photo-1499667401015-6485f5123128?w=500&auto=format'
+      ],
+      category: 'Road Damage',
+      estimatedCost: '$850',
+      expectedCompletion: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      notes: [
+        {
+          id: 1,
+          author: 'John Smith',
+          content: 'Assessment completed. Materials ordered.',
+          timestamp: '2024-01-16T09:15:00Z'
+        },
+        {
+          id: 2,
+          author: 'Admin',
+          content: 'Priority level increased due to traffic volume.',
+          timestamp: '2024-01-15T15:45:00Z'
+        }
+      ]
+    });
+    setLoading(false);
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadReport().finally(() => setRefreshing(false));
+  };
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `Report: ${report.title}\nLocation: ${report.location.address}\nStatus: ${report.status}`,
+        title: 'Damage Report'
+      });
+    } catch (error) {
+      console.error('Error sharing report:', error);
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'completed': return theme.colors.success;
+      case 'in progress': return theme.colors.warning;
+      case 'pending': return theme.colors.error;
+      default: return theme.colors.secondary;
+    }
+  };
+
+  const getPriorityColor = (priority) => {
+    switch (priority?.toLowerCase()) {
+      case 'high': return theme.colors.error;
+      case 'medium': return theme.colors.warning;
+      case 'low': return theme.colors.success;
+      default: return theme.colors.secondary;
     }
   };
 
   const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
-  };
-
-  const openMap = () => {
-    if (report && report.latitude && report.longitude) {
-      const url = `https://maps.google.com/?q=${report.latitude},${report.longitude}`;
-      Linking.openURL(url).catch(err => {
-        Alert.alert('Error', 'Could not open maps application');
-      });
-    }
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
-        <Surface style={styles.loadingCard}>
-          <ActivityIndicator size="large" color="#3498db" />
-          <Text style={styles.loadingText}>Loading report details...</Text>
-          <Text style={styles.loadingSubText}>Please wait while we fetch the report information</Text>
-        </Surface>
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+          Loading report...
+        </Text>
       </View>
     );
   }
 
   if (!report) {
     return (
-      <View style={styles.errorContainer}>
-        <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
-        <Surface style={styles.errorCard}>
-          <View style={styles.errorIconContainer}>
-            <Ionicons name="alert-circle-outline" size={60} color="#e74c3c" />
-          </View>
-          <Text style={styles.errorText}>Report Not Found</Text>
-          <Text style={styles.errorSubText}>We couldn't find the report you're looking for.</Text>
-          <Button 
-            mode="contained" 
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-            labelStyle={styles.backButtonLabel}
-            icon="arrow-left"
-            uppercase={false}
-          >
-            Back to Reports
-          </Button>
-        </Surface>
+      <View style={[styles.container, styles.centered]}>
+        <MaterialCommunityIcons 
+          name="file-document-outline" 
+          size={64} 
+          color={theme.colors.outline} 
+        />
+        <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+          Report not found
+        </Text>
+        <Button 
+          mode="contained" 
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
+          Go Back
+        </Button>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
-      
-      {/* Modern Header with Action Buttons */}
-      <Surface style={styles.headerSurface}>
-        <View style={styles.headerContent}>
-          <View style={styles.backButtonContainer}>
-            <IconButton
-              icon="arrow-left"
-              size={24}
-              color="#0f172a"
-              style={{ backgroundColor: 'rgba(0,0,0,0.03)', borderRadius: 12 }}
-              onPress={() => navigation.goBack()}
-            />
-          </View>
-          <Title style={styles.title}>Report Details</Title>
-          <Menu
-            visible={menuVisible}
-            onDismiss={() => setMenuVisible(false)}
-            anchor={
-              <IconButton
-                icon="dots-vertical"
-                size={24}
-                color="#0f172a"
-                style={{ backgroundColor: 'rgba(0,0,0,0.03)', borderRadius: 12 }}
-                onPress={() => setMenuVisible(true)}
-              />
-            }
-            contentStyle={styles.menuContent}
-          >
-            <Menu.Item 
-              onPress={() => {
-                setMenuVisible(false);
-                Alert.alert('Share Report', 'Sharing functionality would be implemented here');
-              }} 
-              title="Share Report" 
-              icon="share-variant"
-            />
-            <Menu.Item 
-              onPress={() => {
-                setMenuVisible(false);
-                Alert.alert('Download Report', 'Download functionality would be implemented here');
-              }} 
-              title="Download PDF" 
-              icon="file-pdf-box"
-            />
-            <Menu.Item 
-              onPress={() => {
-                setMenuVisible(false);
-                Alert.alert('Report Issue', 'Report issue functionality would be implemented here');
-              }} 
-              title="Report an Issue" 
-              icon="flag"
-            />
-          </Menu>
-        </View>
-      </Surface>
+    <SafeAreaView 
+      style={[styles.container, { backgroundColor: theme.colors.background }]} 
+      edges={['right', 'left']} // Don't include top edge as ConsistentHeader handles that
+    >
+      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
+    
 
-      <ScrollView style={styles.scrollContent}>
-        {/* Image Hero Section with Overlay */}
-        <Card style={styles.imageCard} elevation={4}>
-          <ImageBackground 
-            source={{ 
-              uri: imageUrl || 'https://via.placeholder.com/600?text=Report+Image',
-              headers: {
-                'Cache-Control': 'no-store, no-cache',
-                'Pragma': 'no-cache'
-              }
-            }} 
-            style={styles.imageBackground}
-            imageStyle={{ opacity: 0.95 }}
-            resizeMode="cover"
-            defaultSource={require('../assets/icon.png')}
-            onError={(e) => {
-              console.error('Image loading error:', e.nativeEvent?.error);
-              // Force reload on error
-              if (imageUrl && !imageUrl.includes('placeholder')) {
-                setTimeout(() => {
-                  setImageUrl(imageUrl + '&reload=' + Date.now());
-                }, 1000);
-              }
-              console.log('Image failed to load:', e.nativeEvent.error);
-              // If image fails, try to generate a new URL with a different param
-              if (report) {
-                const newUrl = getReportImageUrlSync(report, 'main');
-                if (newUrl !== imageUrl) {
-                  setImageUrl(newUrl);
-                }
-              }
-            }}
-          >
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.8)']}
-              style={styles.imageGradient}
-            >
-              <View style={styles.imageOverlayContent}>
-                <View style={styles.reportIdContainer}>
-                  <Text style={styles.reportIdLabel}>REPORT ID</Text>
-                  <Text style={styles.reportIdValue}>#{report.id || report._id || 'Unknown'}</Text>
-                </View>
-                
-                <TouchableOpacity 
-                  style={styles.viewImageButton}
-                  onPress={() => setImageModalVisible(true)}
+      <ScrollView
+        style={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Report Title and Status */}
+        <Animatable.View animation="fadeInUp" delay={100}>
+          <ModernCard style={styles.titleCard}>
+            <View style={styles.titleSection}>
+              <Text style={[styles.reportTitle, { color: theme.colors.text }]}>
+                {report.title}
+              </Text>
+              <View style={styles.statusRow}>
+                <Chip
+                  mode="flat"
+                  style={[styles.statusChip, { backgroundColor: getStatusColor(report.status) + '20' }]}
+                  textStyle={{ color: getStatusColor(report.status), fontWeight: '600' }}
                 >
-                  <MaterialIcons name="fullscreen" size={20} color="white" />
-                </TouchableOpacity>
+                  {report.status}
+                </Chip>
+                <Chip
+                  mode="flat"
+                  style={[styles.priorityChip, { backgroundColor: getPriorityColor(report.priority) + '20' }]}
+                  textStyle={{ color: getPriorityColor(report.priority), fontWeight: '600' }}
+                >
+                  {report.priority} Priority
+                </Chip>
               </View>
-            </LinearGradient>
-          </ImageBackground>
-        </Card>
-        
-        {/* Status and Date Info Bar */}
-        <Surface style={styles.statusSurface}>
-          <View style={styles.statusContainer}>
-            <View style={[styles.statusIndicator, { backgroundColor: getStatusColor(report.status) }]} />
-            <View>
-              <Text style={styles.statusLabel}>STATUS</Text>
-              <Text style={styles.statusValue}>{report.status.replace('_', ' ').toUpperCase()}</Text>
             </View>
-          </View>
-          <View style={styles.dateContainer}>
-            <Text style={styles.dateLabel}>REPORTED</Text>
-            <Text style={styles.dateValue}>{formatDate(report.createdAt)}</Text>
-          </View>
-        </Surface>
-        
-        {/* Description Card */}
-        <Card style={styles.detailsCard} elevation={3}>
-          <Card.Content>
-            <View style={styles.sectionHeader}>
-              <MaterialCommunityIcons name="text-box-outline" size={22} color="#3498db" />
-              <Title style={styles.sectionTitle}>Description</Title>
-            </View>
-            <Paragraph style={styles.description}>
-              {report.description || 'No detailed description available for this report.'}
-            </Paragraph>
-          </Card.Content>
-        </Card>
-        
-        {/* Location Card */}
-        <Card style={styles.detailsCard} elevation={3}>
-          <Card.Content>
-            <View style={styles.sectionHeader}>
-              <MaterialCommunityIcons name="map-marker-radius" size={22} color="#3498db" />
-              <Title style={styles.sectionTitle}>Location</Title>
-            </View>
-            <Paragraph style={styles.locationText}>
-              {report.address || report.location || 'Location information not available'}
-            </Paragraph>
-            
-            {/* Map Preview Placeholder */}
-            <View style={styles.mapPreviewContainer}>
-              <View style={styles.mapPlaceholder}>
-                <MaterialCommunityIcons name="map-marker-radius" size={40} color="#3498db" />
-                <Text style={styles.mapPlaceholderText}>Map Preview</Text>
-              </View>
-              <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.6)']}
-                style={styles.mapPreviewGradient}
-              >
-                <TouchableOpacity style={styles.mapButton} onPress={openMap}>
-                  <MaterialIcons name="directions" size={18} color="white" />
-                  <Text style={styles.mapButtonText}>Get Directions</Text>
-                </TouchableOpacity>
-              </LinearGradient>
-            </View>
-          </Card.Content>
-        </Card>
-        
-        {/* Activity Timeline */}
-        {report.comments && report.comments.length > 0 && (
-          <Card style={styles.commentsCard} elevation={3}>
-            <Card.Content>
-              <View style={styles.sectionHeader}>
-                <MaterialCommunityIcons name="timeline-clock-outline" size={22} color="#3498db" />
-                <Title style={styles.sectionTitle}>Activity Timeline</Title>
-              </View>
-              
-              <View style={styles.timelineContainer}>
-                {report.comments.map((comment, index) => (
-                  <View key={comment.id} style={styles.timelineItem}>
-                    <View style={styles.timelineLine} />
-                    <View style={[styles.timelineDot, { backgroundColor: index === 0 ? '#3498db' : '#bdc3c7' }]}>
-                      <MaterialCommunityIcons 
-                        name={index === 0 ? "comment-text-outline" : "clock-outline"} 
-                        size={16} 
-                        color="white" 
-                      />
+          </ModernCard>
+        </Animatable.View>
+
+        {/* Images */}
+        {report.images && report.images.length > 0 && (
+          <Animatable.View animation="fadeInUp" delay={200}>
+            <ModernCard style={styles.imagesCard}>
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+                Images
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imagesScroll}>
+                {report.images.map((imageUrl, index) => (
+                  <Surface key={index} style={styles.imageContainer} elevation={2}>
+                    <Image
+                      source={{ uri: imageUrl }}
+                      style={styles.reportImage}
+                      resizeMode="cover"
+                      onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
+                    />
+                    <View style={styles.imageOverlay}>
+                      <Text style={styles.imageLabel}>Image {index + 1}</Text>
                     </View>
-                    <View style={styles.timelineContent}>
-                      <Surface style={styles.timelineCard}>
-                        <Text style={styles.commentText}>{comment.text}</Text>
-                        <View style={styles.commentFooter}>
-                          <MaterialCommunityIcons name="clock-outline" size={14} color="#7f8c8d" />
-                          <Text style={styles.commentDate}>{formatDate(comment.timestamp)}</Text>
-                        </View>
-                      </Surface>
-                    </View>
-                  </View>
+                  </Surface>
                 ))}
-              </View>
-            </Card.Content>
-          </Card>
+              </ScrollView>
+            </ModernCard>
+          </Animatable.View>
         )}
-        
-        <View style={styles.buttonContainer}>
-          <Button 
-            mode="contained" 
-            onPress={() => navigation.goBack()}
-            style={styles.button}
-            labelStyle={styles.buttonLabel}
-            icon="arrow-left"
-            uppercase={false}
-          >
-            Back to Reports
-          </Button>
-        </View>
+
+        {/* Description */}
+        <Animatable.View animation="fadeInUp" delay={300}>
+          <ModernCard style={styles.descriptionCard}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+              Description
+            </Text>
+            <Text style={[styles.description, { color: theme.colors.textSecondary }]}>
+              {report.description}
+            </Text>
+          </ModernCard>
+        </Animatable.View>
+
+        {/* Details */}
+        <Animatable.View animation="fadeInUp" delay={400}>
+          <ModernCard style={styles.detailsCard}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+              Details
+            </Text>
+            
+            <View style={styles.detailRow}>
+              <MaterialCommunityIcons name="map-marker" size={20} color={theme.colors.primary} />
+              <View style={styles.detailContent}>
+                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Location</Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>{report.location.address}</Text>
+              </View>
+            </View>
+
+            <Divider style={styles.divider} />
+
+            <View style={styles.detailRow}>
+              <MaterialCommunityIcons name="account" size={20} color={theme.colors.primary} />
+              <View style={styles.detailContent}>
+                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Reported By</Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>{report.reportedBy}</Text>
+              </View>
+            </View>
+
+            <Divider style={styles.divider} />
+
+            <View style={styles.detailRow}>
+              <MaterialCommunityIcons name="account-hard-hat" size={20} color={theme.colors.primary} />
+              <View style={styles.detailContent}>
+                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Assigned To</Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>{report.assignedTo}</Text>
+              </View>
+            </View>
+
+            <Divider style={styles.divider} />
+
+            <View style={styles.detailRow}>
+              <MaterialCommunityIcons name="calendar" size={20} color={theme.colors.primary} />
+              <View style={styles.detailContent}>
+                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Reported At</Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>{formatDate(report.reportedAt)}</Text>
+              </View>
+            </View>
+
+            <Divider style={styles.divider} />
+
+            <View style={styles.detailRow}>
+              <MaterialCommunityIcons name="tag" size={20} color={theme.colors.primary} />
+              <View style={styles.detailContent}>
+                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Category</Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>{report.category}</Text>
+              </View>
+            </View>
+
+            <Divider style={styles.divider} />
+
+            <View style={styles.detailRow}>
+              <MaterialCommunityIcons name="currency-usd" size={20} color={theme.colors.primary} />
+              <View style={styles.detailContent}>
+                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Estimated Cost</Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>{report.estimatedCost}</Text>
+              </View>
+            </View>
+
+            <Divider style={styles.divider} />
+
+            <View style={styles.detailRow}>
+              <MaterialCommunityIcons name="clock-outline" size={20} color={theme.colors.primary} />
+              <View style={styles.detailContent}>
+                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Expected Completion</Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>{formatDate(report.expectedCompletion)}</Text>
+              </View>
+            </View>
+          </ModernCard>
+        </Animatable.View>
+
+        {/* Notes */}
+        {report.notes && report.notes.length > 0 && (
+          <Animatable.View animation="fadeInUp" delay={500}>
+            <ModernCard style={styles.notesCard}>
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+                Progress Notes
+              </Text>
+              {report.notes.map((note, index) => (
+                <View key={note.id}>
+                  <View style={styles.noteItem}>
+                    <View style={styles.noteHeader}>
+                      <Text style={[styles.noteAuthor, { color: theme.colors.primary }]}>
+                        {note.author}
+                      </Text>
+                      <Text style={[styles.noteTimestamp, { color: theme.colors.textSecondary }]}>
+                        {formatDate(note.timestamp)}
+                      </Text>
+                    </View>
+                    <Text style={[styles.noteContent, { color: theme.colors.text }]}>
+                      {note.content}
+                    </Text>
+                  </View>
+                  {index < report.notes.length - 1 && <Divider style={styles.noteDivider} />}
+                </View>
+              ))}
+            </ModernCard>
+          </Animatable.View>
+        )}
+
+        {/* Action Buttons */}
+        <Animatable.View animation="fadeInUp" delay={600}>
+          <View style={styles.actionButtons}>
+            <Button
+              mode="contained"
+              icon="pencil"
+              onPress={() => {
+                // TODO: Navigate to edit screen
+                setSnackbarMessage('Edit functionality coming soon');
+                setSnackbarVisible(true);
+              }}
+              style={[styles.actionButton, { backgroundColor: theme.colors.primary }]}
+              contentStyle={styles.buttonContent}
+            >
+              Edit Report
+            </Button>
+            <Button
+              mode="outlined"
+              icon="map"
+              onPress={() => {
+                // TODO: Navigate to map view
+                setSnackbarMessage('Map view coming soon');
+                setSnackbarVisible(true);
+              }}
+              style={[styles.actionButton, { borderColor: theme.colors.primary }]}
+              contentStyle={styles.buttonContent}
+              textColor={theme.colors.primary}
+            >
+              View on Map
+            </Button>
+          </View>
+        </Animatable.View>
+
+        <View style={styles.bottomSpacing} />
       </ScrollView>
-      
-      {/* Image Fullscreen Modal */}
-      <Portal>
-        <Modal
-          visible={imageModalVisible}
-          onDismiss={() => setImageModalVisible(false)}
-          contentContainerStyle={styles.imageModal}
-        >
-          <IconButton
-            icon="close"
-            size={24}
-            color="white"
-            style={styles.closeModalButton}
-            onPress={() => setImageModalVisible(false)}
-          />
-          <Image
-            source={{ 
-              uri: imageUrl || 'https://via.placeholder.com/300?text=No+Image+Available',
-              headers: {
-                'Cache-Control': 'no-store, no-cache',
-                'Pragma': 'no-cache'
-              }
-            }}
-            style={styles.fullScreenImage}
-            resizeMode="contain"
-            defaultSource={require('../assets/icon.png')}
-            onError={(e) => {
-              console.log('Modal image failed to load:', e.nativeEvent.error);
-              Alert.alert('Image Error', 'Could not load the full image. The image may be unavailable.');
-            }}
-          />
-          <Text style={styles.imageHintText}>Report ID: {report && (report.id || report._id || 'Unknown')}</Text>
-        </Modal>
-      </Portal>
-    </View>
+
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={3000}
+        style={{ backgroundColor: theme.colors.surface }}
+      >
+        <Text style={{ color: theme.colors.text }}>{snackbarMessage}</Text>
+      </Snackbar>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9f9fb',
   },
-  scrollContent: {
-    flex: 1,
-    backgroundColor: '#f9f9fb',
-    paddingBottom: 8,
-  },
-  // Loading State Styles
-  loadingContainer: {
-    flex: 1,
+  centered: {
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#f9f9fb',
-  },
-  loadingCard: {
-    padding: 28,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 3,
-    width: '85%',
-    backgroundColor: 'white',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
   },
   loadingText: {
-    marginTop: 20,
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1e293b',
-    letterSpacing: 0.2,
-  },
-  loadingSubText: {
-    marginTop: 10,
-    fontSize: 14,
-    textAlign: 'center',
-    color: '#64748b',
-    paddingHorizontal: 20,
-    lineHeight: 20,
-  },
-  // Error State Styles
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-    backgroundColor: '#f9f9fb',
-  },
-  errorCard: {
-    padding: 28,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 3,
-    width: '88%',
-    backgroundColor: 'white',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
-  },
-  errorIconContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  errorText: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#ef4444',
-    marginBottom: 10,
-    letterSpacing: 0.2,
-  },
-  errorSubText: {
+    marginTop: 16,
     fontSize: 16,
-    textAlign: 'center',
-    color: '#64748b',
-    marginBottom: 26,
-    paddingHorizontal: 10,
-    lineHeight: 22,
   },
-  // Header Styles
-  headerSurface: {
-    backgroundColor: '#fff',
-    paddingTop: Platform.OS === 'ios' ? 50 : 10,
-    paddingBottom: 14,
-    paddingHorizontal: 16,
-    elevation: 0,
+  emptyText: {
+    marginTop: 16,
+    fontSize: 18,
+    textAlign: 'center',
+  },
+  backButton: {
+    marginTop: 24,
+  },
+  header: {
+    paddingTop: 50,
+    paddingBottom: 16,
+    elevation: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    zIndex: 100,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
-    borderBottomWidth: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   headerContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 6,
-  },
-  backButtonContainer: {
-    marginRight: 8,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    flex: 1,
-    textAlign: 'center',
-    color: '#1a1a2e',
-    letterSpacing: 0.2,
-  },
-  menuContent: {
-    borderRadius: 8,
-    marginTop: 40,
-  },
-  // Image Styles
-  imageCard: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
-    borderRadius: 16,
-    overflow: 'hidden',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    backgroundColor: 'transparent',
-  },
-  imageBackground: {
-    height: 280,
-    width: '100%',
-    justifyContent: 'flex-end',
-  },
-  imageGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: '60%',
-    justifyContent: 'flex-end',
-    padding: 20,
-  },
-  imageOverlayContent: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    paddingHorizontal: 4,
   },
-  reportIdContainer: {
-    padding: 8,
-  },
-  reportIdLabel: {
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: 11,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    marginBottom: 2,
-  },
-  reportIdValue: {
-    color: 'white',
+  headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  viewImageButton: {
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.4)',
-  },
-  // Status Styles
-  statusSurface: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flex: 1,
+    textAlign: 'center',
     marginHorizontal: 16,
-    marginTop: 12,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  titleCard: {
     marginBottom: 16,
-    padding: 18,
-    borderRadius: 16,
-    backgroundColor: 'white',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
   },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  titleSection: {
+    padding: 20,
   },
-  statusIndicator: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-  },
-  statusLabel: {
-    fontSize: 10,
-    color: '#94a3b8',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 3,
-  },
-  statusValue: {
-    fontSize: 16,
+  reportTitle: {
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#334155',
+    marginBottom: 12,
+    lineHeight: 32,
   },
-  dateContainer: {
-    alignItems: 'flex-end',
-  },
-  dateLabel: {
-    fontSize: 10,
-    color: '#94a3b8',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 3,
-  },
-  dateValue: {
-    fontSize: 15,
-    color: '#334155',
-    fontWeight: '500',
-  },
-  // Card Styles
-  detailsCard: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 16,
-    backgroundColor: 'white',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.02)',
-  },
-  sectionHeader: {
+  statusRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    gap: 8,
+  },
+  statusChip: {
+    borderRadius: 16,
+  },
+  priorityChip: {
+    borderRadius: 16,
+  },
+  imagesCard: {
+    marginBottom: 16,
+  },
+  imagesScroll: {
+    paddingHorizontal: 4,
+  },
+  imageContainer: {
+    marginRight: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  reportImage: {
+    width: 200,
+    height: 150,
+    borderRadius: 12,
+  },
+  imageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 6,
+  },
+  imageLabel: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  descriptionCard: {
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    marginLeft: 10,
-    color: '#1e293b',
-    letterSpacing: 0.2,
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
   description: {
-    fontSize: 15,
+    fontSize: 16,
     lineHeight: 24,
-    color: '#475569',
-    paddingHorizontal: 4,
-    letterSpacing: 0.1,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
-  locationText: {
-    fontSize: 15,
-    color: '#475569',
+  detailsCard: {
     marginBottom: 16,
-    paddingHorizontal: 4,
-    letterSpacing: 0.1,
   },
-  // Map Styles
-  mapPreviewContainer: {
-    height: 180,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.04)',
-  },
-  mapPreviewImage: {
-    width: '100%',
-    height: '100%',
-  },
-  mapPlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#f1f5f9',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  mapPlaceholderText: {
-    color: '#94a3b8',
-    fontSize: 15,
-    marginTop: 8,
-    fontWeight: '500',
-  },
-  mapPreviewGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: '50%',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    padding: 14,
-  },
-  mapButton: {
+  detailRow: {
     flexDirection: 'row',
-    backgroundColor: '#0284c7',
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 25,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 2,
+    alignItems: 'flex-start',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
-  mapButtonText: {
-    color: 'white',
-    fontWeight: '600',
-    marginLeft: 6,
+  detailContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  detailLabel: {
     fontSize: 14,
+    marginBottom: 4,
   },
-  // Comments / Timeline Styles
-  commentsCard: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 16,
-    backgroundColor: 'white',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.02)',
-  },
-  timelineContainer: {
-    marginTop: 12,
-    paddingLeft: 12,
-  },
-  timelineItem: {
-    flexDirection: 'row',
-    marginBottom: 24,
-    position: 'relative',
-  },
-  timelineLine: {
-    position: 'absolute',
-    left: 16,
-    top: 26,
-    bottom: -14,
-    width: 2,
-    backgroundColor: '#e2e8f0',
-  },
-  timelineDot: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#0ea5e9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-    zIndex: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-    borderWidth: 2,
-    borderColor: 'white',
-  },
-  timelineContent: {
-    flex: 1,
-    paddingBottom: 6,
-  },
-  timelineCard: {
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: '#f8fafc',
-    elevation: 1,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  commentText: {
-    fontSize: 15,
-    color: '#334155',
-    lineHeight: 22,
-    letterSpacing: 0.1,
-  },
-  commentFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  commentDate: {
-    fontSize: 12,
-    color: '#64748b',
-    marginLeft: 6,
+  detailValue: {
+    fontSize: 16,
     fontWeight: '500',
   },
-  // Button Styles
-  buttonContainer: {
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 28,
+  divider: {
+    marginHorizontal: 20,
   },
-  button: {
-    paddingVertical: 8,
-    backgroundColor: '#0284c7',
-    borderRadius: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+  notesCard: {
+    marginBottom: 16,
   },
-  buttonLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    padding: 4,
-    letterSpacing: 0.2,
+  noteItem: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
-  backButton: {
-    backgroundColor: '#0284c7',
-    borderRadius: 12,
-    paddingVertical: 8,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-  },
-  backButtonLabel: {
-    fontSize: 15,
-    letterSpacing: 0.5,
-    fontWeight: '600',
-  },
-  // Modal Styles
-  imageModal: {
-    backgroundColor: 'rgba(0, 0, 0, 0.95)',
-    flex: 1,
-    margin: 0,
-    padding: 0,
-    justifyContent: 'center',
+  noteHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
   },
-  closeModalButton: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 20,
-    right: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 24,
-    zIndex: 10,
-    padding: 4,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.3)',
+  noteAuthor: {
+    fontSize: 14,
+    fontWeight: '600',
   },
-  fullScreenImage: {
-    width: '100%',
-    height: '85%',
+  noteTimestamp: {
+    fontSize: 12,
   },
-  imageHintText: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 13,
-    position: 'absolute',
-    bottom: 30,
-    alignSelf: 'center',
-    padding: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    letterSpacing: 0.5,
-    overflow: 'hidden',
-  }
+  noteContent: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  noteDivider: {
+    marginHorizontal: 20,
+  },
+  actionButtons: {
+    gap: 12,
+    marginTop: 8,
+  },
+  actionButton: {
+    borderRadius: 12,
+  },
+  buttonContent: {
+    paddingVertical: 8,
+  },
+  bottomSpacing: {
+    height: 32,
+  },
 });
 
 export default ViewReportScreen;

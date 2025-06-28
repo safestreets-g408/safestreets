@@ -1,0 +1,590 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  FlatList,
+  TouchableOpacity,
+  Alert,
+  RefreshControl,
+  StatusBar,
+  Dimensions,
+  Platform
+} from 'react-native';
+import {
+  useTheme,
+  Button,
+  Chip,
+  ActivityIndicator,
+  Searchbar,
+  FAB,
+  Snackbar,
+  IconButton
+} from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Animatable from 'react-native-animatable';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { ModernCard, ConsistentHeader } from '../components/ui';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+const { width: screenWidth } = Dimensions.get('window');
+
+const TaskManagementScreen = ({ navigation }) => {
+  const theme = useTheme();
+  
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
+  const loadTasks = async () => {
+    try {
+      setLoading(true);
+      // Mock data - replace with actual API call
+      const mockTasks = [
+        {
+          id: 1,
+          title: 'Repair pothole on Main Street',
+          description: 'Large pothole causing vehicle damage',
+          status: 'pending',
+          priority: 'high',
+          location: 'Main Street & 5th Ave',
+          dueDate: '2025-01-02',
+          estimatedDuration: '2 hours',
+          reportId: 'DR-001'
+        },
+        {
+          id: 2,
+          title: 'Fix sidewalk crack',
+          description: 'Sidewalk crack near school',
+          status: 'in_progress',
+          priority: 'medium',
+          location: 'Lincoln Elementary School',
+          dueDate: '2025-01-03',
+          estimatedDuration: '1 hour',
+          reportId: 'DR-002'
+        },
+        {
+          id: 3,
+          title: 'Road surface repair',
+          description: 'Uneven road surface',
+          status: 'completed',
+          priority: 'low',
+          location: 'Oak Street',
+          dueDate: '2024-12-28',
+          estimatedDuration: '3 hours',
+          reportId: 'DR-003'
+        }
+      ];
+      setTasks(mockTasks);
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+      Alert.alert('Error', 'Failed to load tasks');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadTasks();
+    setRefreshing(false);
+  };
+
+  const updateTaskStatus = async (taskId, newStatus) => {
+    try {
+      // Mock status update - replace with actual API call
+      setTasks(prevTasks => 
+        prevTasks.map(task => 
+          task.id === taskId ? { ...task, status: newStatus } : task
+        )
+      );
+      setSnackbarMessage(`Task status updated to ${newStatus.replace('_', ' ')}`);
+      setSnackbarVisible(true);
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      Alert.alert('Error', 'Failed to update task status');
+    }
+  };
+
+  const getStatusConfig = (status) => {
+    const configs = {
+      pending: {
+        color: theme.colors.warning,
+        backgroundColor: theme.colors.warning + '20',
+        icon: 'clock-outline',
+        label: 'Pending'
+      },
+      in_progress: {
+        color: theme.colors.primary,
+        backgroundColor: theme.colors.primary + '20',
+        icon: 'progress-clock',
+        label: 'In Progress'
+      },
+      completed: {
+        color: theme.colors.success,
+        backgroundColor: theme.colors.success + '20',
+        icon: 'check-circle',
+        label: 'Completed'
+      },
+      on_hold: {
+        color: theme.colors.error,
+        backgroundColor: theme.colors.error + '20',
+        icon: 'pause-circle',
+        label: 'On Hold'
+      }
+    };
+    return configs[status] || configs.pending;
+  };
+
+  const getPriorityConfig = (priority) => {
+    const configs = {
+      low: { color: theme.colors.success, label: 'Low' },
+      medium: { color: theme.colors.warning, label: 'Medium' },
+      high: { color: theme.colors.error, label: 'High' },
+      urgent: { color: theme.colors.error, label: 'Urgent' }
+    };
+    return configs[priority?.toLowerCase()] || configs.low;
+  };
+
+  const filteredTasks = tasks.filter(task => {
+    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         task.location.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = selectedFilter === 'all' || task.status === selectedFilter;
+    return matchesSearch && matchesFilter;
+  });
+
+  const getTaskCounts = () => {
+    return {
+      all: tasks.length,
+      pending: tasks.filter(t => t.status === 'pending').length,
+      in_progress: tasks.filter(t => t.status === 'in_progress').length,
+      completed: tasks.filter(t => t.status === 'completed').length
+    };
+  };
+
+  const taskCounts = getTaskCounts();
+
+  const renderTaskItem = ({ item, index }) => {
+    const statusConfig = getStatusConfig(item.status);
+    const priorityConfig = getPriorityConfig(item.priority);
+    
+    return (
+      <Animatable.View 
+        animation="fadeInUp" 
+        duration={600} 
+        delay={index * 100}
+        style={styles.taskItemContainer}
+      >
+        <ModernCard 
+          style={styles.taskCard}
+          onPress={() => navigation.navigate('ViewReport', { reportId: item.reportId })}
+        >
+          <View style={styles.taskHeader}>
+            <View style={styles.taskTitleContainer}>
+              <Text style={[styles.taskTitle, { color: theme.colors.text }]}>
+                {item.title}
+              </Text>
+              <View style={styles.taskMeta}>
+                <MaterialCommunityIcons 
+                  name="map-marker" 
+                  size={14} 
+                  color={theme.colors.textSecondary} 
+                />
+                <Text style={[styles.taskLocation, { color: theme.colors.textSecondary }]}>
+                  {item.location}
+                </Text>
+              </View>
+            </View>
+            
+            <View style={styles.statusContainer}>
+              <View style={[styles.statusBadge, { backgroundColor: statusConfig.backgroundColor }]}>
+                <MaterialCommunityIcons 
+                  name={statusConfig.icon} 
+                  size={16} 
+                  color={statusConfig.color} 
+                />
+                <Text style={[styles.statusText, { color: statusConfig.color }]}>
+                  {statusConfig.label}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <Text style={[styles.taskDescription, { color: theme.colors.textSecondary }]}>
+            {item.description}
+          </Text>
+
+          <View style={styles.taskFooter}>
+            <View style={styles.taskInfo}>
+              <View style={styles.infoItem}>
+                <MaterialCommunityIcons 
+                  name="flag" 
+                  size={14} 
+                  color={priorityConfig.color} 
+                />
+                <Text style={[styles.infoText, { color: priorityConfig.color }]}>
+                  {priorityConfig.label}
+                </Text>
+              </View>
+              
+              <View style={styles.infoItem}>
+                <MaterialCommunityIcons 
+                  name="clock-outline" 
+                  size={14} 
+                  color={theme.colors.textSecondary} 
+                />
+                <Text style={[styles.infoText, { color: theme.colors.textSecondary }]}>
+                  {item.estimatedDuration}
+                </Text>
+              </View>
+              
+              <View style={styles.infoItem}>
+                <MaterialCommunityIcons 
+                  name="calendar" 
+                  size={14} 
+                  color={theme.colors.textSecondary} 
+                />
+                <Text style={[styles.infoText, { color: theme.colors.textSecondary }]}>
+                  {new Date(item.dueDate).toLocaleDateString()}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.taskActions}>
+              {item.status === 'pending' && (
+                <Button
+                  mode="contained"
+                  compact
+                  onPress={() => updateTaskStatus(item.id, 'in_progress')}
+                  style={[styles.actionButton, { backgroundColor: theme.colors.primary }]}
+                  labelStyle={styles.actionButtonLabel}
+                >
+                  Start
+                </Button>
+              )}
+              
+              {item.status === 'in_progress' && (
+                <Button
+                  mode="contained"
+                  compact
+                  onPress={() => updateTaskStatus(item.id, 'completed')}
+                  style={[styles.actionButton, { backgroundColor: theme.colors.success }]}
+                  labelStyle={styles.actionButtonLabel}
+                >
+                  Complete
+                </Button>
+              )}
+            </View>
+          </View>
+        </ModernCard>
+      </Animatable.View>
+    );
+  };
+
+  const FilterChip = ({ status, label, count }) => (
+    <TouchableOpacity onPress={() => setSelectedFilter(status)}>
+      <Chip
+        mode={selectedFilter === status ? 'flat' : 'outlined'}
+        selected={selectedFilter === status}
+        style={[
+          styles.filterChip,
+          selectedFilter === status && { backgroundColor: theme.colors.primary }
+        ]}
+        textStyle={[
+          styles.filterChipText,
+          selectedFilter === status && { color: '#ffffff' }
+        ]}
+      >
+        {label} ({count})
+      </Chip>
+    </TouchableOpacity>
+  );
+
+  if (loading) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+          Loading tasks...
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
+      
+      {/* Header - with iOS optimizations */}
+      <ConsistentHeader
+        title="Task Management"
+        subtitle={`${taskCounts.all} tasks assigned`}
+        useGradient={true}
+        elevated={true}
+        back={{
+          visible: true,
+          onPress: () => navigation.goBack()
+        }}
+        blurEffect={Platform.OS === 'ios'}
+        actions={[
+          {
+            icon: 'refresh',
+            onPress: onRefresh
+          }
+        ]}
+      />
+
+      {/* Search and Filters */}
+      <View style={styles.searchContainer}>
+        <Searchbar
+          placeholder="Search tasks..."
+          onChangeText={setSearchQuery}
+          value={searchQuery}
+          style={styles.searchBar}
+          inputStyle={styles.searchInput}
+        />
+        
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={styles.filtersContainer}
+          contentContainerStyle={styles.filtersContent}
+        >
+          <FilterChip status="all" label="All" count={taskCounts.all} />
+          <FilterChip status="pending" label="Pending" count={taskCounts.pending} />
+          <FilterChip status="in_progress" label="In Progress" count={taskCounts.in_progress} />
+          <FilterChip status="completed" label="Completed" count={taskCounts.completed} />
+        </ScrollView>
+      </View>
+
+      {/* Task List */}
+      <FlatList
+        data={filteredTasks}
+        renderItem={renderTaskItem}
+        keyExtractor={(item) => item.id.toString()}
+        style={styles.taskList}
+        contentContainerStyle={styles.taskListContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <MaterialCommunityIcons 
+              name="clipboard-check-outline" 
+              size={64} 
+              color={theme.colors.textSecondary} 
+            />
+            <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+              No tasks found
+            </Text>
+            <Text style={[styles.emptySubText, { color: theme.colors.textSecondary }]}>
+              {selectedFilter === 'all' 
+                ? 'You have no assigned tasks at the moment'
+                : `No ${selectedFilter.replace('_', ' ')} tasks found`
+              }
+            </Text>
+          </View>
+        }
+      />
+
+      {/* Floating Action Button */}
+      <FAB
+        icon="plus"
+        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+        onPress={() => navigation.navigate('Camera')}
+        label="New Report"
+      />
+
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={3000}
+        style={{ backgroundColor: theme.colors.success }}
+      >
+        {snackbarMessage}
+      </Snackbar>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+  },
+  header: {
+    paddingTop: StatusBar.currentHeight || 44,
+    paddingBottom: 16,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  headerTitle: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  headerTitleText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
+  },
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  searchBar: {
+    marginBottom: 12,
+    elevation: 2,
+  },
+  searchInput: {
+    fontSize: 16,
+  },
+  filtersContainer: {
+    marginHorizontal: -16,
+    paddingHorizontal: 16,
+  },
+  filtersContent: {
+    paddingRight: 16,
+  },
+  filterChip: {
+    marginRight: 8,
+  },
+  filterChipText: {
+    fontSize: 12,
+  },
+  taskList: {
+    flex: 1,
+  },
+  taskListContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 80,
+  },
+  taskItemContainer: {
+    marginBottom: 12,
+  },
+  taskCard: {
+    padding: 16,
+  },
+  taskHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  taskTitleContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
+  taskTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  taskMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  taskLocation: {
+    fontSize: 12,
+    marginLeft: 4,
+  },
+  statusContainer: {
+    alignItems: 'flex-end',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    marginLeft: 4,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  taskDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  taskFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  taskInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  infoText: {
+    marginLeft: 4,
+    fontSize: 12,
+  },
+  taskActions: {
+    flexDirection: 'row',
+  },
+  actionButton: {
+    marginLeft: 8,
+  },
+  actionButtonLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 60,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubText: {
+    fontSize: 14,
+    textAlign: 'center',
+    paddingHorizontal: 32,
+  },
+  fab: {
+    position: 'absolute',
+    margin: 16,
+    right: 0,
+    bottom: 0,
+  },
+});
+
+export default TaskManagementScreen;

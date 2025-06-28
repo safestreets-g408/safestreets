@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,56 +6,137 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  Switch,
+  StatusBar,
+  Dimensions,
+  Platform,
+  ActivityIndicator as RNActivityIndicator,
 } from 'react-native';
-import { Card, List, Divider, Avatar } from 'react-native-paper';
+import { 
+  Divider, 
+  Avatar,
+  useTheme,
+  Title,
+  Switch as PaperSwitch,
+  Button,
+  RadioButton,
+  Portal,
+  ActivityIndicator
+} from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Animatable from 'react-native-animatable';
 import { useAuth } from '../context/AuthContext';
-import { theme } from '../theme';
+import { useThemeContext, THEME_MODE } from '../context/ThemeContext';
+import { ModernCard, ConsistentHeader } from '../components/ui';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+const { width: screenWidth } = Dimensions.get('window');
+
+// Default theme colors to use when theme context is not yet available
+const defaultColors = {
+  background: '#f9fafb',
+  surface: '#ffffff',
+  text: '#111827',
+  textSecondary: '#6b7280',
+  primary: '#2563eb',
+  primaryDark: '#1d4ed8',
+  error: '#dc2626',
+  outline: '#d1d5db',
+  surfaceVariant: '#f3f4f6',
+};
+
+// Separate ThemeSafeWrapper into its own component file (for future refactoring)
+// For now, keep it here but make it more robust
+const ThemeSafeWrapper = ({ children }) => {
+  // Always provide default fallback without depending on theme context
+  return (
+    <View style={{ flex: 1, backgroundColor: defaultColors.background }}>
+      {children}
+    </View>
+  );
+};
 
 const SettingsScreen = ({ navigation }) => {
+  // Access auth context
   const { fieldWorker, logout } = useAuth();
+  
+  // Safely get theme values with fallbacks
+  const paperTheme = useTheme();
+  
+  // Safely destructure theme context with fallbacks for everything
+  const themeContext = useThemeContext();
+  const { 
+    themeMode = THEME_MODE.SYSTEM, 
+    isDarkMode = false, 
+    changeThemeMode = () => {}, 
+    theme: contextTheme = {}, 
+    systemTheme = 'light',
+    getEffectiveThemeMode = () => THEME_MODE.LIGHT
+  } = themeContext || {};
+  
+  // Create a stable theme object that combines both sources safely
+  const theme = React.useMemo(() => {
+    const baseTheme = {
+      roundness: 12,
+      colors: {
+        ...defaultColors,
+        ...(paperTheme?.colors || {}),
+        ...(contextTheme?.colors || {})
+      }
+    };
+    return baseTheme;
+  }, [paperTheme, contextTheme]);
+  
   const [notifications, setNotifications] = useState(true);
   const [locationServices, setLocationServices] = useState(true);
   const [autoSync, setAutoSync] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
+  
+  // Theme selection state - keep it simple
+  const [selectedTheme, setSelectedTheme] = useState(themeMode);
+  
+  // Update selectedTheme when themeMode changes from context
+  React.useEffect(() => {
+    if (selectedTheme !== themeMode) {
+      setSelectedTheme(themeMode);
+    }
+  }, [themeMode]);
+  
+  // Handle theme change - debounced to prevent rapid state changes
+  const handleThemeChange = React.useCallback((newMode) => {
+    console.log('Theme change requested:', newMode);
+    setSelectedTheme(newMode);
+    // Use a timeout to debounce rapid changes
+    setTimeout(() => {
+      changeThemeMode(newMode);
+    }, 100);
+  }, [changeThemeMode]);
+
+  // Theme options
+  const themeOptions = React.useMemo(() => [
+    { 
+      value: THEME_MODE.SYSTEM, 
+      label: `Use System Settings (${systemTheme === 'dark' ? 'Dark' : 'Light'})`, 
+      icon: systemTheme === 'dark' ? 'moon-waning-crescent' : 'white-balance-sunny' 
+    },
+    { value: THEME_MODE.LIGHT, label: 'Light Mode', icon: 'white-balance-sunny' },
+    { value: THEME_MODE.DARK, label: 'Dark Mode', icon: 'moon-waning-crescent' }
+  ], [systemTheme]);
 
   const settingsSections = [
-    {
-      title: 'Account',
-      icon: 'account-cog',
-      items: [
-        {
-          title: 'Personal Information',
-          subtitle: 'Update your profile details',
-          icon: 'account-edit',
-          onPress: () => navigation.navigate('Profile'),
-        },
-        {
-          title: 'Change Password',
-          subtitle: 'Update your account password',
-          icon: 'lock-reset',
-          onPress: () => Alert.alert('Change Password', 'Contact administrator to change password'),
-        },
-        {
-          title: 'Work Preferences',
-          subtitle: 'Set your work schedule and availability',
-          icon: 'briefcase-clock',
-          onPress: () => Alert.alert('Work Preferences', 'Feature coming soon'),
-        },
-      ],
-    },
     {
       title: 'App Settings',
       icon: 'cog',
       items: [
         {
+          title: 'Theme',
+          subtitle: 'Choose your preferred app theme',
+          icon: 'theme-light-dark',
+          type: 'theme-selector',
+        },
+        {
           title: 'Push Notifications',
           subtitle: 'Receive alerts for new tasks and updates',
           icon: 'bell',
-          toggle: true,
+          type: 'toggle',
           value: notifications,
           onToggle: setNotifications,
         },
@@ -63,7 +144,7 @@ const SettingsScreen = ({ navigation }) => {
           title: 'Location Services',
           subtitle: 'Allow app to access your location',
           icon: 'map-marker',
-          toggle: true,
+          type: 'toggle',
           value: locationServices,
           onToggle: setLocationServices,
         },
@@ -71,17 +152,9 @@ const SettingsScreen = ({ navigation }) => {
           title: 'Auto Sync',
           subtitle: 'Automatically sync data when connected',
           icon: 'sync',
-          toggle: true,
+          type: 'toggle',
           value: autoSync,
           onToggle: setAutoSync,
-        },
-        {
-          title: 'Dark Mode',
-          subtitle: 'Switch to dark theme',
-          icon: 'theme-light-dark',
-          toggle: true,
-          value: darkMode,
-          onToggle: setDarkMode,
         },
       ],
     },
@@ -93,18 +166,21 @@ const SettingsScreen = ({ navigation }) => {
           title: 'Cache Management',
           subtitle: 'Clear app cache to free up space',
           icon: 'delete-sweep',
+          type: 'action',
           onPress: () => Alert.alert('Clear Cache', 'Are you sure you want to clear the app cache?'),
         },
         {
           title: 'Data Usage',
           subtitle: 'View data consumption statistics',
           icon: 'chart-donut',
+          type: 'action',
           onPress: () => Alert.alert('Data Usage', 'Feature coming soon'),
         },
         {
           title: 'Offline Mode',
           subtitle: 'Manage offline data and sync settings',
           icon: 'cloud-off',
+          type: 'action',
           onPress: () => Alert.alert('Offline Mode', 'Feature coming soon'),
         },
       ],
@@ -117,49 +193,29 @@ const SettingsScreen = ({ navigation }) => {
           title: 'Help Center',
           subtitle: 'Get help and find answers',
           icon: 'help-circle-outline',
+          type: 'action',
           onPress: () => Alert.alert('Help Center', 'Visit our help center for assistance'),
         },
         {
           title: 'Send Feedback',
           subtitle: 'Share your thoughts and suggestions',
           icon: 'message-text',
+          type: 'action',
           onPress: () => Alert.alert('Send Feedback', 'Thank you for your feedback!'),
         },
         {
           title: 'Report a Bug',
           subtitle: 'Report issues or bugs',
           icon: 'bug',
+          type: 'action',
           onPress: () => Alert.alert('Report Bug', 'Bug reporting feature coming soon'),
         },
         {
           title: 'Rate the App',
           subtitle: 'Rate us on the app store',
           icon: 'star',
+          type: 'action',
           onPress: () => Alert.alert('Rate App', 'Thank you for rating our app!'),
-        },
-      ],
-    },
-    {
-      title: 'Legal & Privacy',
-      icon: 'shield-check',
-      items: [
-        {
-          title: 'Privacy Policy',
-          subtitle: 'Read our privacy policy',
-          icon: 'shield-account',
-          onPress: () => Alert.alert('Privacy Policy', 'Opening privacy policy...'),
-        },
-        {
-          title: 'Terms of Service',
-          subtitle: 'Read our terms of service',
-          icon: 'file-document',
-          onPress: () => Alert.alert('Terms of Service', 'Opening terms of service...'),
-        },
-        {
-          title: 'Data Protection',
-          subtitle: 'Learn about data protection',
-          icon: 'security',
-          onPress: () => Alert.alert('Data Protection', 'Your data is protected with us'),
         },
       ],
     },
@@ -186,227 +242,269 @@ const SettingsScreen = ({ navigation }) => {
     );
   };
 
-  return (
-    <ScrollView style={styles.container}>
-      {/* Header */}
-      <LinearGradient
-        colors={theme.gradients.primary}
-        style={styles.header}
-      >
-        <Animatable.View 
-          animation="fadeInDown" 
-          duration={800}
-          style={styles.headerContent}
-        >
-          <Avatar.Text
-            size={80}
-            label={fieldWorker?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'FW'}
-            style={styles.avatar}
-            labelStyle={styles.avatarLabel}
+  // Wrap render in try/catch for safety
+  try {
+    return (
+      <ThemeSafeWrapper>
+        <SafeAreaView style={[styles.container, { backgroundColor: theme?.colors?.background || defaultColors.background }]} edges={['top']}>
+          <StatusBar 
+            barStyle={isDarkMode ? "light-content" : "dark-content"} 
+            backgroundColor={isDarkMode ? theme?.colors?.surface || defaultColors.surface : theme?.colors?.background || defaultColors.background} 
+            translucent={false}
+            animated={true}
           />
-          <Text style={styles.userName}>{fieldWorker?.name || 'Field Worker'}</Text>
-          <Text style={styles.userEmail}>{fieldWorker?.email || 'field@worker.com'}</Text>
-          <View style={styles.userBadge}>
-            <MaterialCommunityIcons 
-              name="shield-check" 
-              size={16} 
-              color={theme.colors.surface} 
-            />
-            <Text style={styles.userBadgeText}>Verified Worker</Text>
-          </View>
-        </Animatable.View>
-      </LinearGradient>
+      
+      {/* Header */}
+      <ConsistentHeader
+        title="Settings"
+        subtitle="Manage your preferences"
+        useGradient={true}
+        elevated={true}
+        user={fieldWorker}
+        showAvatar={true}
+      />
 
-      {/* Settings Sections */}
-      <View style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Settings Sections */}
         {settingsSections.map((section, sectionIndex) => (
           <Animatable.View
             key={section.title}
             animation="fadeInUp"
             duration={600}
             delay={sectionIndex * 100}
+            style={styles.sectionWrapper}
           >
-            <Card style={styles.sectionCard}>
+            <ModernCard style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
                 <MaterialCommunityIcons
                   name={section.icon}
                   size={24}
-                  color={theme.colors.primary}
+                  color={theme?.colors?.primary || defaultColors.primary}
                 />
-                <Text style={styles.sectionTitle}>{section.title}</Text>
+                <Title style={[styles.sectionTitle, { color: theme?.colors?.text || defaultColors.text }]}>
+                  {section.title}
+                </Title>
               </View>
               
               <Divider style={styles.sectionDivider} />
               
               {section.items.map((item, itemIndex) => (
-                <TouchableOpacity
-                  key={item.title}
-                  style={styles.settingItem}
-                  onPress={item.onPress}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.settingLeft}>
-                    <View style={styles.settingIconContainer}>
-                      <MaterialCommunityIcons
-                        name={item.icon}
-                        size={20}
-                        color={theme.colors.primary}
-                      />
-                    </View>
-                    <View style={styles.settingText}>
-                      <Text style={styles.settingTitle}>{item.title}</Text>
-                      <Text style={styles.settingSubtitle}>{item.subtitle}</Text>
-                    </View>
-                  </View>
-                  
-                  <View style={styles.settingRight}>
-                    {item.toggle ? (
-                      <Switch
+                <View key={item.title}>
+                  {item.type === 'theme-selector' ? (
+                    <>
+                      <View style={styles.settingItem}>
+                        <View style={styles.settingItemContent}>
+                          <MaterialCommunityIcons
+                            name={item.icon}
+                            size={20}
+                            color={theme?.colors?.primary || defaultColors.primary}
+                            style={styles.itemIcon}
+                          />
+                          <View style={styles.settingTextContainer}>
+                            <Text style={[styles.itemTitle, { color: theme?.colors?.text || defaultColors.text }]}>
+                              {item.title}
+                            </Text>
+                            <Text style={[styles.itemSubtitle, { color: theme?.colors?.textSecondary || defaultColors.textSecondary }]}>
+                              {item.subtitle}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                      <View style={styles.themeSelectorContainer}>
+                        <RadioButton.Group 
+                          onValueChange={value => setSelectedTheme(value)} 
+                          value={selectedTheme}
+                        >
+                          {themeOptions.map((option) => (
+                            <View key={option.value} style={{ overflow: 'hidden' }}>
+                              <TouchableOpacity
+                                style={[
+                                  styles.themeOption,
+                                  selectedTheme === option.value && {
+                                    backgroundColor: theme?.colors?.surfaceVariant || defaultColors.surfaceVariant,
+                                    borderRadius: 8,
+                                    borderWidth: 1,
+                                    borderColor: theme?.colors?.primary || defaultColors.primary,
+                                  }
+                                ]}
+                                onPress={() => setSelectedTheme(option.value)}
+                              >
+                                <View style={styles.themeOptionContent}>
+                                  <MaterialCommunityIcons
+                                    name={option.icon}
+                                    size={24}
+                                    color={selectedTheme === option.value 
+                                      ? theme?.colors?.primary || defaultColors.primary
+                                      : theme?.colors?.secondary || defaultColors.textSecondary}
+                                    style={styles.themeOptionIcon}
+                                  />
+                                  <View>
+                                    <Text style={[
+                                      styles.themeOptionLabel, 
+                                      { 
+                                        color: selectedTheme === option.value 
+                                          ? theme?.colors?.primary || defaultColors.primary
+                                          : theme?.colors?.text || defaultColors.text,
+                                        fontWeight: selectedTheme === option.value ? '600' : '400'
+                                      }
+                                    ]}>
+                                      {option.label}
+                                    </Text>
+                                    
+                                    {option.value === THEME_MODE.SYSTEM && (
+                                      <Text style={{ 
+                                        fontSize: 12, 
+                                        color: theme?.colors?.textSecondary || defaultColors.textSecondary,
+                                        marginTop: 2
+                                      }}>
+                                        Using {systemTheme === 'dark' ? 'dark' : 'light'} theme from your device settings
+                                      </Text>
+                                    )}
+                                  </View>
+                                </View>
+                                <RadioButton 
+                                  value={option.value} 
+                                  color={theme?.colors?.primary || defaultColors.primary}
+                                  status={selectedTheme === option.value ? 'checked' : 'unchecked'}
+                                />
+                              </TouchableOpacity>
+                            </View>
+                          ))}
+                        </RadioButton.Group>
+                      </View>
+                    </>
+                  ) : item.type === 'toggle' ? (
+                    <View style={styles.toggleItem}>
+                      <View style={styles.toggleItemContent}>
+                        <MaterialCommunityIcons
+                          name={item.icon}
+                          size={20}
+                          color={theme?.colors?.primary || defaultColors.primary}
+                          style={styles.itemIcon}
+                        />
+                        <View style={styles.toggleTextContainer}>
+                          <Text style={[styles.itemTitle, { color: theme?.colors?.text || defaultColors.text }]}>
+                            {item.title}
+                          </Text>
+                          <Text style={[styles.itemSubtitle, { color: theme?.colors?.textSecondary || defaultColors.textSecondary }]}>
+                            {item.subtitle}
+                          </Text>
+                        </View>
+                      </View>
+                      <PaperSwitch
                         value={item.value}
                         onValueChange={item.onToggle}
-                        trackColor={{
-                          false: theme.colors.surfaceVariant,
-                          true: theme.colors.primaryContainer,
-                        }}
-                        thumbColor={item.value ? theme.colors.primary : theme.colors.outline}
+                        color={theme?.colors?.primary || defaultColors.primary}
                       />
-                    ) : (
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.settingItem}
+                      onPress={item.onPress}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.settingItemContent}>
+                        <MaterialCommunityIcons
+                          name={item.icon}
+                          size={20}
+                          color={theme?.colors?.primary || defaultColors.primary}
+                          style={styles.itemIcon}
+                        />
+                        <View style={styles.settingTextContainer}>
+                          <Text style={[styles.itemTitle, { color: theme?.colors?.text || defaultColors.text }]}>
+                            {item.title}
+                          </Text>
+                          <Text style={[styles.itemSubtitle, { color: theme?.colors?.textSecondary || defaultColors.textSecondary }]}>
+                            {item.subtitle}
+                          </Text>
+                        </View>
+                      </View>
                       <MaterialCommunityIcons
                         name="chevron-right"
                         size={20}
-                        color={theme.colors.onSurfaceVariant}
+                        color={theme?.colors?.outline || defaultColors.outline}
                       />
-                    )}
-                  </View>
-                </TouchableOpacity>
+                    </TouchableOpacity>
+                  )}
+                  {itemIndex < section.items.length - 1 && (
+                    <Divider style={styles.itemDivider} />
+                  )}
+                </View>
               ))}
-            </Card>
+            </ModernCard>
           </Animatable.View>
         ))}
 
-        {/* App Info */}
+        {/* Logout Section */}
         <Animatable.View
           animation="fadeInUp"
           duration={600}
-          delay={600}
+          delay={settingsSections.length * 100}
+          style={styles.logoutSection}
         >
-          <Card style={styles.appInfoCard}>
-            <View style={styles.appInfo}>
-              <MaterialCommunityIcons
-                name="information"
-                size={20}
-                color={theme.colors.onSurfaceVariant}
-              />
-              <Text style={styles.appInfoText}>
-                Safe Streets v1.0.0 • Build 2024.1
-              </Text>
-            </View>
-          </Card>
+          <Button
+            mode="outlined"
+            onPress={handleLogout}
+            icon="logout"
+            textColor={theme?.colors?.error || defaultColors.error}
+            style={[styles.logoutButton, { borderColor: theme?.colors?.error || defaultColors.error }]}
+            contentStyle={styles.logoutButtonContent}
+          >
+            Logout
+          </Button>
         </Animatable.View>
 
-        {/* Logout Button */}
-        <Animatable.View
-          animation="fadeInUp"
-          duration={600}
-          delay={700}
-        >
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <LinearGradient
-              colors={[theme.colors.error, '#d32f2f']}
-              style={styles.logoutGradient}
-            >
-              <MaterialCommunityIcons
-                name="logout"
-                size={20}
-                color={theme.colors.surface}
-              />
-              <Text style={styles.logoutText}>Logout</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </Animatable.View>
+        <View style={styles.bottomSpacing} />
+      </ScrollView>
+    </SafeAreaView>
+    </ThemeSafeWrapper>
+    );
+  } catch (error) {
+    console.error('Error rendering SettingsScreen:', error);
+    // Return a simple fallback UI
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: defaultColors.background }}>
+        <Text style={{ color: defaultColors.text, fontSize: 16, textAlign: 'center', marginHorizontal: 20 }}>
+          There was a problem loading the settings. Please try again.
+        </Text>
       </View>
-    </ScrollView>
-  );
+    );
+  }
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  header: {
-    paddingTop: 60,
-    paddingBottom: 40,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-  },
-  headerContent: {
-    alignItems: 'center',
-  },
-  avatar: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginBottom: 16,
-    ...theme.shadows.medium,
-  },
-  avatarLabel: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: theme.colors.primary,
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: theme.colors.surface,
-    marginBottom: 4,
-    ...theme.typography.headlineMedium,
-  },
-  userEmail: {
-    fontSize: 16,
-    color: theme.colors.surfaceVariant,
-    opacity: 0.9,
-    marginBottom: 12,
-  },
-  userBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: theme.borderRadius.medium,
-    gap: 6,
-  },
-  userBadgeText: {
-    color: theme.colors.surface,
-    fontSize: 12,
-    fontWeight: '600',
   },
   content: {
+    flex: 1,
+  },
+  scrollContent: {
     padding: 16,
-    marginTop: -20,
+    paddingBottom: 100,
+  },
+  sectionWrapper: {
+    marginBottom: 16,
   },
   sectionCard: {
-    marginBottom: 16,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.large,
-    ...theme.shadows.small,
+    overflow: 'hidden',
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 20,
-    paddingBottom: 12,
     gap: 12,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: theme.colors.onSurface,
-    ...theme.typography.titleMedium,
+    fontWeight: 'bold',
   },
   sectionDivider: {
     marginHorizontal: 20,
-    marginBottom: 8,
-    backgroundColor: theme.colors.outline,
   },
   settingItem: {
     flexDirection: 'row',
@@ -414,76 +512,83 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.surfaceVariant,
-    borderBottomOpacity: 0.3,
   },
-  settingLeft: {
+  settingItemContent: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
-  settingIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.primaryContainer,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
+  itemIcon: {
+    marginRight: 12,
   },
-  settingText: {
+  settingTextContainer: {
     flex: 1,
   },
-  settingTitle: {
+  itemTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.onSurface,
+    fontWeight: '500',
     marginBottom: 2,
   },
-  settingSubtitle: {
-    fontSize: 13,
-    color: theme.colors.onSurfaceVariant,
-    lineHeight: 16,
+  itemSubtitle: {
+    fontSize: 14,
   },
-  settingRight: {
-    marginLeft: 16,
-  },
-  appInfoCard: {
-    marginBottom: 16,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.large,
-    ...theme.shadows.small,
-  },
-  appInfo: {
+  toggleItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-    gap: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
-  appInfoText: {
-    fontSize: 14,
-    color: theme.colors.onSurfaceVariant,
+  toggleItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  toggleTextContainer: {
+    flex: 1,
+  },
+  itemDivider: {
+    marginHorizontal: 20,
+  },
+  // Theme selector styles
+  themeSelectorContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+  themeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    marginVertical: 4,
+    overflow: 'hidden',
+  },
+  themeOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  themeOptionIcon: {
+    marginRight: 16,
+  },
+  themeOptionLabel: {
+    fontSize: 16,
     fontWeight: '500',
   },
+  // Logout section
+  logoutSection: {
+    marginTop: 24,
+    paddingHorizontal: 16,
+  },
   logoutButton: {
-    marginBottom: 32,
-    borderRadius: theme.borderRadius.large,
-    overflow: 'hidden',
-    ...theme.shadows.small,
+    borderRadius: 12,
   },
-  logoutGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 8,
+  logoutButtonContent: {
+    paddingVertical: 8,
   },
-  logoutText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.surface,
+  bottomSpacing: {
+    height: 32,
   },
 });
 

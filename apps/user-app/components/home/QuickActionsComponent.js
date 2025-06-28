@@ -30,7 +30,7 @@ const QuickActionsComponent = ({ actions, navigation }) => {
             >
               <ModernCard style={styles.quickAction} elevation="medium">
                 <LinearGradient
-                  colors={[theme.colors.primary, theme.colors.primaryDark]}
+                  colors={action.gradientColors || [theme.colors.primary, theme.colors.primaryDark]}
                   style={styles.quickActionGradient}
                   start={{x: 0, y: 0}}
                   end={{x: 1, y: 1}}

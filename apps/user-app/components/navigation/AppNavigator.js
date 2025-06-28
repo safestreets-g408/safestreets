@@ -2,26 +2,29 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { ActivityIndicator } from 'react-native';
+import { useTheme } from 'react-native-paper';
 import { useAuth } from '../../context/AuthContext';
 
 // Import screens
 import LoginScreen from '../../screens/LoginScreen';
 import MainTabs from './MainTabs';
 import ViewReportScreen from '../../screens/ViewReportScreen';
+import SettingsScreen from '../../screens/SettingsScreen';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const Stack = createStackNavigator();
 
 const AppNavigator = () => {
   const { isAuthenticated, isLoading } = useAuth();
+  const theme = useTheme();
 
   if (isLoading) {
-    return <ActivityIndicator size="large" color="#003366" />;
+    return <ActivityIndicator size="large" color={theme.colors.primary} />;
   }
 
   return (
     <NavigationContainer
-      fallback={<ActivityIndicator size="large" color="#003366" />}
+      fallback={<ActivityIndicator size="large" color={theme.colors.primary} />}
     >
       <Stack.Navigator
         screenOptions={{
@@ -60,6 +63,13 @@ const AppNavigator = () => {
                 ),
                 headerTintColor: '#ffffff',
                 headerBackTitleVisible: false,
+              }}
+            />
+            <Stack.Screen
+              name="Settings"
+              component={SettingsScreen}
+              options={{ 
+                headerShown: false,
               }}
             />
           </>
