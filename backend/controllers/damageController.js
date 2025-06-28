@@ -168,16 +168,44 @@ const getReportImage = async (req, res) => {
   try {
     const { reportId, type } = req.params; // type can be 'before' or 'after'
     
-    // If the JWT middleware isn't working, try to handle token from query param
-    // This is just a workaround for image loading issues in <img> tags
+    // Handle authentication via query parameter for field workers
     const tokenQueryParam = req.query.token;
-    if (!req.user && tokenQueryParam) {
-      console.log('Using token from query parameter for image authentication');
-      // This would need proper JWT validation in a production environment
-      // This is just a quick fix for the current issue
+    let isAuthenticated = false;
+    
+    if (tokenQueryParam) {
+      try {
+        // Import JWT for token verification
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(tokenQueryParam, process.env.JWT_SECRET);
+        
+        // Check if this is a field worker token
+        if (decoded.fieldWorkerId) {
+          console.log(`Field worker authenticated for image access: ${decoded.fieldWorkerId}`);
+          isAuthenticated = true;
+        } else if (decoded.adminId || decoded.userId) {
+          console.log(`Admin/User authenticated for image access`);
+          isAuthenticated = true;
+        }
+      } catch (tokenError) {
+        console.log('Invalid token provided for image access:', tokenError.message);
+        // Continue without authentication for backward compatibility
+      }
     }
     
-    const report = await DamageReport.findOne({ reportId });
+    // For admin routes, check if user is already authenticated
+    if (req.user) {
+      isAuthenticated = true;
+    }
+    
+    // Find report - use _id if it looks like a MongoDB ObjectId, otherwise use reportId
+    let report;
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(reportId);
+    
+    if (isObjectId) {
+      report = await DamageReport.findById(reportId);
+    } else {
+      report = await DamageReport.findOne({ reportId });
+    }
     
     if (!report) {
       console.log(`Report not found: ${reportId}`);
@@ -190,7 +218,14 @@ const getReportImage = async (req, res) => {
       return res.status(404).json({ message: 'Image not found' });
     }
 
-    res.set('Content-Type', image.contentType);
+    // Set appropriate headers for image caching
+    res.set({
+      'Content-Type': image.contentType,
+      'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+      'Access-Control-Allow-Origin': '*', // Allow cross-origin requests for images
+      'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+    });
+    
     res.send(image.data);
   } catch (err) {
     console.error('Error fetching image:', err);

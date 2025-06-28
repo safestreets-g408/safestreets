@@ -162,12 +162,15 @@ export const getReportById = async (reportId) => {
       throw new Error('No valid auth token found');
     }
 
+    console.log('Fetching report with token:', token.substring(0, 20) + '...');
+    
     // Try first endpoint format
     let response = await fetch(`${API_BASE_URL}/fieldworker/damage/report/${reportId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
       }
     });
 
@@ -177,19 +180,44 @@ export const getReportById = async (reportId) => {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         }
       });
     }
 
-    // Handle error response
+    // Check if the response is OK
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to fetch report details');
+      // Try to parse error as JSON, but handle non-JSON responses
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Server error: ${response.status}`);
+      } else {
+        // For non-JSON responses (like HTML error pages)
+        const errorText = await response.text();
+        console.error('Non-JSON error response:', errorText.substring(0, 200));
+        throw new Error(`Server returned non-JSON response: ${response.status}`);
+      }
     }
 
-    // Parse and return successful response
-    const data = await response.json();
+    // Check content type before parsing
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const textResponse = await response.text();
+      console.error('Expected JSON but got:', contentType, textResponse.substring(0, 200));
+      throw new Error('Server returned non-JSON content');
+    }
+
+    // Parse response as JSON with error handling
+    let data;
+    try {
+      const text = await response.text();
+      data = JSON.parse(text);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      throw new Error('Failed to parse server response as JSON');
+    }
     
     // Ensure consistency in ID fields
     if (data && !data.id && data._id) {

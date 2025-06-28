@@ -40,13 +40,25 @@ const ViewReportScreen = ({ route = {}, navigation }) => {
 
     try {
       console.log('Fetching report details for ID:', reportId);
+      
+      // Ensure we have a fresh token before making the API call
+      await preloadImageToken();
+      
+      // Fetch report data with better error handling
       const reportData = await getReportById(reportId);
       
       if (!reportData) {
-        throw new Error('Failed to fetch report details');
+        throw new Error('Failed to fetch report details - empty response');
       }
       
-      console.log('Report data fetched:', reportData);
+      console.log('Report data fetched successfully:', 
+        JSON.stringify({
+          id: reportData._id || reportData.id,
+          damageType: reportData.damageType,
+          status: reportData.status,
+          hasImages: Boolean(reportData.images && reportData.images.length)
+        })
+      );
       
       // Ensure ID consistency
       if (!reportData.id && reportData._id) {
@@ -57,35 +69,54 @@ const ViewReportScreen = ({ route = {}, navigation }) => {
       
       setReport(reportData);
       
-      // Try to refresh token before loading images
-      await preloadImageToken();
-      
-      // Pre-generate image URL - try multiple image types in case the API structure varies
+      // Generate image URL with better error handling
       let url = null;
       
-      // Try different image types in order of preference
-      const imageTypes = ['before', 'main', 'thumbnail', 'default'];
-      
-      for (const type of imageTypes) {
-        url = getReportImageUrlSync(reportData, type);
-        // If we have a valid URL that's not a placeholder, use it
-        if (url && !url.includes('placeholder')) {
-          break;
-        }
-      }
-      
-      // If we still don't have a valid URL, check if there are images in the report object
-      if ((!url || url.includes('placeholder')) && reportData.images && reportData.images.length > 0) {
+      // First check if report has direct image URLs
+      if (reportData.imageUrl && reportData.imageUrl.startsWith('http')) {
+        url = reportData.imageUrl;
+        console.log('Using direct imageUrl from report:', url);
+      } 
+      // Then check if report has images array
+      else if (reportData.images && reportData.images.length > 0) {
         const firstImage = reportData.images[0];
         if (typeof firstImage === 'string' && firstImage.startsWith('http')) {
           url = firstImage;
+          console.log('Using URL from images array:', url);
         } else if (firstImage.url && firstImage.url.startsWith('http')) {
           url = firstImage.url;
+          console.log('Using nested URL from images array:', url);
         }
       }
       
+      // If no direct URLs found, try to construct based on ID and type
+      if (!url || url.includes('placeholder')) {
+        console.log('No direct image URLs found, trying to construct URL with types');
+        
+        // Try different image types in order of preference
+        const imageTypes = ['before', 'main', 'thumbnail', 'default'];
+        
+        for (const type of imageTypes) {
+          const constructedUrl = getReportImageUrlSync(reportData, type);
+          console.log(`Trying image type '${type}':`, constructedUrl);
+          
+          // If we have a valid URL that's not a placeholder, use it
+          if (constructedUrl && !constructedUrl.includes('placeholder')) {
+            url = constructedUrl;
+            console.log('Using constructed URL with type:', type);
+            break;
+          }
+        }
+      }
+      
+      // Set the image URL or use placeholder if nothing worked
+      if (!url || url.includes('placeholder')) {
+        console.log('No valid image URL found, using placeholder');
+        url = 'https://via.placeholder.com/300?text=No+Image+Available';
+      }
+      
       setImageUrl(url);
-      console.log('Image URL set to:', url);
+      console.log('Final image URL set to:', url);
     } catch (error) {
       console.error('Error fetching report details:', error);
       Alert.alert('Error', 'Failed to load report details. Please try again.');
@@ -251,12 +282,25 @@ const ViewReportScreen = ({ route = {}, navigation }) => {
         {/* Image Hero Section with Overlay */}
         <Card style={styles.imageCard} elevation={4}>
           <ImageBackground 
-            source={{ uri: imageUrl || 'https://via.placeholder.com/600?text=Report+Image' }} 
+            source={{ 
+              uri: imageUrl || 'https://via.placeholder.com/600?text=Report+Image',
+              headers: {
+                'Cache-Control': 'no-store, no-cache',
+                'Pragma': 'no-cache'
+              }
+            }} 
             style={styles.imageBackground}
             imageStyle={{ opacity: 0.95 }}
             resizeMode="cover"
             defaultSource={require('../assets/icon.png')}
             onError={(e) => {
+              console.error('Image loading error:', e.nativeEvent?.error);
+              // Force reload on error
+              if (imageUrl && !imageUrl.includes('placeholder')) {
+                setTimeout(() => {
+                  setImageUrl(imageUrl + '&reload=' + Date.now());
+                }, 1000);
+              }
               console.log('Image failed to load:', e.nativeEvent.error);
               // If image fails, try to generate a new URL with a different param
               if (report) {
@@ -411,7 +455,13 @@ const ViewReportScreen = ({ route = {}, navigation }) => {
             onPress={() => setImageModalVisible(false)}
           />
           <Image
-            source={{ uri: imageUrl || 'https://via.placeholder.com/300' }}
+            source={{ 
+              uri: imageUrl || 'https://via.placeholder.com/300?text=No+Image+Available',
+              headers: {
+                'Cache-Control': 'no-store, no-cache',
+                'Pragma': 'no-cache'
+              }
+            }}
             style={styles.fullScreenImage}
             resizeMode="contain"
             defaultSource={require('../assets/icon.png')}

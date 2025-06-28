@@ -54,10 +54,23 @@ const RecentReportsComponent = ({ reports, navigation, formatTimeAgo, handleQuic
         <View style={styles.reportImageContainer}>
           <Image 
             source={{ 
-              uri: getImageUrl(item)
+              uri: getImageUrl(item),
+              headers: {
+                'Cache-Control': 'no-store, no-cache',
+                'Pragma': 'no-cache'
+              }
             }}
             style={styles.recentReportImage}
             defaultSource={require('../../assets/icon.png')}
+            onError={(e) => {
+              console.log(`Image load error for report ${item._id || item.id}: ${e.nativeEvent?.error || 'Unknown error'}`);
+              // Try fallback URL if primary fails
+              const fallbackUrl = `https://via.placeholder.com/300x140/4285f4/ffffff?text=${encodeURIComponent(item.damageType || 'Road Damage')}`;
+              if (e.target && e.target.source && e.target.source.uri !== fallbackUrl) {
+                e.target.source = { uri: fallbackUrl };
+              }
+            }}
+            onLoad={() => console.log(`Image loaded successfully for report ${item._id || item.id}`)}
           />
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.7)']}

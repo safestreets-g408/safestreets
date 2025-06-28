@@ -487,15 +487,23 @@ export const refreshAuthToken = async () => {
   }
 };
 
-// Enhanced auth token getter with built-in refresh attempt
+// Enhanced auth token getter with built-in validation
 export const getValidAuthToken = async () => {
   try {
-    // Simply return stored token without pre-emptive refresh
     const token = await getAuthToken();
     if (!token) {
       console.log('No token found in storage');
       return null;
     }
+    
+    // Do a basic validation check - tokens should be long strings
+    if (token.length < 20) {
+      console.warn('Retrieved token appears to be invalid (too short)');
+      // Return it anyway as even an invalid token might be better than none
+    } else {
+      console.log('Valid auth token retrieved, length:', token.length);
+    }
+    
     return token;
   } catch (error) {
     console.error('Error getting valid auth token:', error);

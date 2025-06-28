@@ -10,6 +10,7 @@ const {
   getReportStatusSummary,
   getNearbyReports
 } = require('../controllers/fieldWorkerDamageController');
+const { getReportImage } = require('../controllers/damageController');
 const { protectFieldWorker } = require('../middleware/fieldWorkerAuthMiddleware');
 const router = express.Router();
 
@@ -27,5 +28,8 @@ router.get('/reports/filtered', protectFieldWorker, getFilteredReports);
 router.patch('/reports/:reportId/status', protectFieldWorker, updateRepairStatus);
 router.post('/reports/upload', protectFieldWorker, uploadDamageReportByFieldWorker);
 router.get('/nearby', protectFieldWorker, getNearbyReports);
+
+// Image access route for field workers
+router.get('/report/:reportId/image/:type', getReportImage);
 
 module.exports = router;
