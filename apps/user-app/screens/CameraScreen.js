@@ -61,15 +61,31 @@ const CameraScreen = ({ navigation }) => {
           await requestCameraPermission();
         }
         
-        const { status: locationStatus } = await Location.requestForegroundPermissionsAsync();
-        setHasLocationPermission(locationStatus === 'granted');
+        // Request foreground location permission first
+        const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
+        
+        if (foregroundStatus === 'granted') {
+          // Try to get background location permission for better accuracy
+          try {
+            const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
+            console.log('Background location status:', backgroundStatus);
+          } catch (bgError) {
+            console.log('Background location not available:', bgError);
+          }
+          
+          // Pre-fetch location for faster response when user takes photo
+          setHasLocationPermission(true);
+          getCurrentLocation();
+        } else {
+          setHasLocationPermission(false);
+        }
 
         if (!cameraPermission?.granted) {
           Alert.alert('Permission required', 'Camera permission is needed to take photos');
         }
 
-        if (locationStatus !== 'granted') {
-          Alert.alert('Permission required', 'Location permission is needed to tag your reports');
+        if (foregroundStatus !== 'granted') {
+          Alert.alert('Permission required', 'Location permission is needed to tag your reports with accurate location details');
         }
       } catch (error) {
         console.error('Error requesting permissions:', error);
@@ -84,29 +100,33 @@ const CameraScreen = ({ navigation }) => {
     if (hasLocationPermission) {
       try {
         setFetchingLocation(true);
-        const position = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High
-        });
+        
+        // First, try to get high accuracy location with timeout
+        let position;
+        try {
+          position = await Promise.race([
+            Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.BestForNavigation,
+              timeInterval: 5000,
+              distanceInterval: 1,
+            }),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('High accuracy timeout')), 8000)
+            )
+          ]);
+        } catch (highAccuracyError) {
+          console.log('High accuracy failed, trying balanced accuracy:', highAccuracyError.message);
+          // Fallback to balanced accuracy if high accuracy fails or times out
+          position = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+            timeInterval: 3000,
+          });
+        }
+        
         setLocation(position);
         
-        // Get address from coordinates
-        const addressResponse = await Location.reverseGeocodeAsync({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        });
-        
-        if (addressResponse && addressResponse.length > 0) {
-          const address = addressResponse[0];
-          const formattedAddress = [
-            address.street,
-            address.city,
-            address.region,
-          ].filter(Boolean).join(', ');
-          
-          setLocationAddress(formattedAddress);
-        } else {
-          setLocationAddress('Address not found');
-        }
+        // Get detailed address from coordinates with multiple attempts
+        await getDetailedAddress(position.coords.latitude, position.coords.longitude);
         
         setFetchingLocation(false);
       } catch (error) {
@@ -121,6 +141,102 @@ const CameraScreen = ({ navigation }) => {
     }
   };
 
+  const getDetailedAddress = async (latitude, longitude) => {
+    try {
+      // Get multiple address responses for better accuracy
+      const [primaryAddress, fallbackAddress] = await Promise.allSettled([
+        Location.reverseGeocodeAsync({
+          latitude,
+          longitude
+        }),
+        // Try with slightly offset coordinates for better results
+        Location.reverseGeocodeAsync({
+          latitude: latitude + 0.00001,
+          longitude: longitude + 0.00001
+        })
+      ]);
+
+      let bestAddress = null;
+      
+      // Use primary address if available
+      if (primaryAddress.status === 'fulfilled' && primaryAddress.value?.length > 0) {
+        bestAddress = primaryAddress.value[0];
+      } 
+      // Fallback to secondary address
+      else if (fallbackAddress.status === 'fulfilled' && fallbackAddress.value?.length > 0) {
+        bestAddress = fallbackAddress.value[0];
+      }
+
+      if (bestAddress) {
+        // Format detailed address with all available components
+        const addressComponents = [];
+        
+        // Door number and street
+        if (bestAddress.streetNumber) {
+          addressComponents.push(bestAddress.streetNumber);
+        }
+        if (bestAddress.street) {
+          addressComponents.push(bestAddress.street);
+        }
+        
+        // Area and locality
+        if (bestAddress.district) {
+          addressComponents.push(bestAddress.district);
+        }
+        if (bestAddress.subregion) {
+          addressComponents.push(bestAddress.subregion);
+        }
+        
+        // City and region
+        if (bestAddress.city) {
+          addressComponents.push(bestAddress.city);
+        }
+        if (bestAddress.region) {
+          addressComponents.push(bestAddress.region);
+        }
+        
+        // Postal code
+        if (bestAddress.postalCode) {
+          addressComponents.push(bestAddress.postalCode);
+        }
+        
+        // Country
+        if (bestAddress.country) {
+          addressComponents.push(bestAddress.country);
+        }
+
+        const formattedAddress = addressComponents
+          .filter(Boolean)
+          .filter((component, index, arr) => arr.indexOf(component) === index) // Remove duplicates
+          .join(', ');
+          
+        setLocationAddress(formattedAddress || 'Address not available');
+        
+        // Store detailed location info for submission
+        setLocation(prev => ({
+          ...prev,
+          addressDetails: {
+            streetNumber: bestAddress.streetNumber,
+            street: bestAddress.street,
+            district: bestAddress.district,
+            subregion: bestAddress.subregion,
+            city: bestAddress.city,
+            region: bestAddress.region,
+            postalCode: bestAddress.postalCode,
+            country: bestAddress.country,
+            formattedAddress: formattedAddress
+          }
+        }));
+      } else {
+        setLocationAddress('Detailed address not available');
+      }
+      
+    } catch (error) {
+      console.error('Error getting detailed address:', error);
+      setLocationAddress('Address lookup failed');
+    }
+  };
+
   const takePicture = async () => {
     if (!cameraRef.current) {
       Alert.alert('Error', 'Camera is not ready. Please wait or restart the app.');
@@ -128,14 +244,22 @@ const CameraScreen = ({ navigation }) => {
     }
 
     try {
+      // Start location fetching immediately when user starts taking picture
+      const locationPromise = hasLocationPermission ? getCurrentLocation() : null;
+      
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.7,
+        quality: 0.8,
         skipProcessing: false,
+        exif: true, // Include EXIF data which may contain GPS info
       });
 
       if (photo && photo.uri) {
         setCapturedImage(photo);
-        getCurrentLocation();
+        
+        // If location wasn't started above, start it now
+        if (!locationPromise && hasLocationPermission) {
+          getCurrentLocation();
+        }
       } else {
         throw new Error('Invalid photo data');
       }
@@ -292,26 +416,58 @@ const CameraScreen = ({ navigation }) => {
                   <View style={styles.locationContent}>
                     <PaperActivityIndicator size="small" color={theme.colors.primary} />
                     <Text style={[styles.locationText, { color: theme.colors.text }]}>
-                      Fetching location...
+                      Getting precise location...
                     </Text>
                   </View>
                 </Surface>
               ) : location ? (
                 <Surface style={[styles.locationCard, { backgroundColor: theme.colors.surface }]} elevation={2}>
-                  <View style={styles.locationContent}>
-                    <MaterialCommunityIcons name="map-marker" size={20} color={theme.colors.success} />
-                    <Text style={[styles.locationText, { color: theme.colors.text }]}>
-                      {locationAddress || 'Address not available'}
-                    </Text>
+                  <View style={styles.locationHeader}>
+                    <View style={styles.locationContent}>
+                      <MaterialCommunityIcons name="map-marker" size={20} color={theme.colors.success} />
+                      <Text style={[styles.locationText, { color: theme.colors.text }]}>
+                        {locationAddress || 'Address not available'}
+                      </Text>
+                    </View>
+                    <IconButton
+                      icon="refresh"
+                      size={20}
+                      iconColor={theme.colors.primary}
+                      onPress={getCurrentLocation}
+                      disabled={fetchingLocation}
+                    />
                   </View>
+                  {location.addressDetails && (
+                    <View style={styles.coordinatesContainer}>
+                      <Text style={[styles.coordinatesText, { color: theme.colors.outline }]}>
+                        {`${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)}`}
+                      </Text>
+                      <Chip 
+                        icon="crosshairs-gps" 
+                        textStyle={{ fontSize: 12 }}
+                        style={{ backgroundColor: theme.colors.primaryContainer }}
+                      >
+                        Accuracy: ±{Math.round(location.coords.accuracy)}m
+                      </Chip>
+                    </View>
+                  )}
                 </Surface>
               ) : (
                 <Surface style={[styles.locationCard, { backgroundColor: theme.colors.surface }]} elevation={2}>
-                  <View style={styles.locationContent}>
-                    <MaterialCommunityIcons name="alert-circle" size={20} color={theme.colors.error} />
-                    <Text style={[styles.locationText, { color: theme.colors.text }]}>
-                      Failed to get location
-                    </Text>
+                  <View style={styles.locationHeader}>
+                    <View style={styles.locationContent}>
+                      <MaterialCommunityIcons name="alert-circle" size={20} color={theme.colors.error} />
+                      <Text style={[styles.locationText, { color: theme.colors.text }]}>
+                        Failed to get location
+                      </Text>
+                    </View>
+                    <IconButton
+                      icon="refresh"
+                      size={20}
+                      iconColor={theme.colors.primary}
+                      onPress={getCurrentLocation}
+                      disabled={fetchingLocation}
+                    />
                   </View>
                 </Surface>
               )}
@@ -480,14 +636,30 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
   },
+  locationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   locationContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
   },
   locationText: {
     fontSize: 14,
     flex: 1,
+  },
+  coordinatesContainer: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  coordinatesText: {
+    fontSize: 12,
+    fontFamily: 'monospace',
   },
   buttonRow: {
     flexDirection: 'row',
