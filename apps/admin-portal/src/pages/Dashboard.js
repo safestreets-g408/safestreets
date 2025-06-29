@@ -221,7 +221,12 @@ const Dashboard = () => {
 
   const fetchFieldWorkers = async () => {
     try {
-      const workers = await api.get(`${API_ENDPOINTS.FIELD_WORKERS}`);
+      // Use appropriate endpoint based on user role
+      const endpoint = user?.role === 'super-admin' 
+        ? `${API_ENDPOINTS.ADMIN}/field-workers/all`
+        : `${API_ENDPOINTS.FIELD_WORKERS}`;
+      
+      const workers = await api.get(endpoint);
       const workersData = Array.isArray(workers) ? workers : 
                          (workers.fieldWorkers || workers.workers || []);
       

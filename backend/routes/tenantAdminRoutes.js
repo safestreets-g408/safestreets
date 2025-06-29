@@ -9,6 +9,34 @@ const router = express.Router();
 // Protect all routes
 router.use(protectAdmin);
 
+// Get all admins across all tenants (super-admin only)
+router.get('/all', restrictTo('super-admin'), async (req, res) => {
+  try {
+    const admins = await Admin.find()
+      .populate('tenant', 'name')
+      .select('-password')
+      .sort({ createdAt: -1 });
+    
+    res.status(200).json(admins);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Get all field workers across all tenants (super-admin only)
+router.get('/field-workers/all', restrictTo('super-admin'), async (req, res) => {
+  try {
+    const fieldWorkers = await FieldWorker.find()
+      .populate('tenant', 'name')
+      .select('-password')
+      .sort({ createdAt: -1 });
+    
+    res.status(200).json(fieldWorkers);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 // Get tenant admins
 router.get('/tenants/:tenantId/admins', restrictTo('super-admin', 'tenant-owner'), async (req, res) => {
   try {

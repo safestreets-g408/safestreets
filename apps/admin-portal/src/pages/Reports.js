@@ -13,10 +13,13 @@ import GridViewIcon from '@mui/icons-material/GridView';
 import TableRowsIcon from '@mui/icons-material/TableRows';
 import CloseIcon from '@mui/icons-material/Close';
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import BusinessIcon from '@mui/icons-material/Business';
 import ViewDamageReport from '../components/reports/ViewDamageReport';
 import ReportActions from '../components/reports/ReportActions';
 import AiReportsDialog from '../components/dashboard/AiReportsDialog';
 import CreateDamageReportDialog from '../components/dashboard/CreateDamageReportDialog';
+import { useAuth } from '../hooks/useAuth';
+import { useTenant } from '../context/TenantContext';
 import { api } from '../utils/api';
 import { API_BASE_URL, TOKEN_KEY, API_ENDPOINTS } from '../config/constants';
 
@@ -37,6 +40,14 @@ const colors = {
 };
 
 function Reports() {
+  const { user } = useAuth();
+  const { tenants } = useTenant();
+  const isSuperAdmin = user?.role === 'super-admin';
+  
+  // Tenant selection state for super admin
+  const [selectedTenant, setSelectedTenant] = useState('');
+  const [allTenantsReports, setAllTenantsReports] = useState(false);
+  
   const [filters, setFilters] = useState({
     dateFrom: null,
     dateTo: null,
@@ -105,16 +116,55 @@ function Reports() {
         setLoading(true);
         setFetchError(null);
 
-        const queryParams = new URLSearchParams();
-        if (filters.dateFrom) queryParams.append('startDate', filters.dateFrom);
-        if (filters.dateTo) queryParams.append('endDate', filters.dateTo);
-        if (filters.severity) queryParams.append('severity', filters.severity);
-        if (filters.region) queryParams.append('region', filters.region);
-        if (filters.priority) queryParams.append('priority', filters.priority);
-        
-        const query = queryParams.toString();
-        const endpoint = `/damage/reports${query ? `?${query}` : ''}`;
-        const data = await api.get(endpoint);
+        let endpoint = '/damage/reports';
+        let data = [];
+
+        // For super admin, fetch reports based on tenant selection
+        if (isSuperAdmin) {
+          if (selectedTenant) {
+            // Fetch reports for specific tenant
+            endpoint = `/admin/tenants/${selectedTenant}/reports`;
+            data = await api.get(endpoint);
+          } else if (allTenantsReports) {
+            // Fetch reports from all tenants
+            const tenantsData = tenants || [];
+            const reportPromises = tenantsData.map(async (tenant) => {
+              try {
+                const tenantReports = await api.get(`/admin/tenants/${tenant._id}/reports`);
+                return tenantReports.map(report => ({
+                  ...report,
+                  tenantInfo: {
+                    id: tenant._id,
+                    name: tenant.name,
+                    organizationName: tenant.organizationName
+                  }
+                }));
+              } catch (error) {
+                console.error(`Error fetching reports for tenant ${tenant.name}:`, error);
+                return [];
+              }
+            });
+            
+            const allReports = await Promise.all(reportPromises);
+            data = allReports.flat();
+          } else {
+            // No tenant selected, show empty or prompt to select
+            data = [];
+          }
+        } else {
+          // Regular admin - use existing endpoint with filters
+          const queryParams = new URLSearchParams();
+          if (filters.dateFrom) queryParams.append('startDate', filters.dateFrom);
+          if (filters.dateTo) queryParams.append('endDate', filters.dateTo);
+          if (filters.severity) queryParams.append('severity', filters.severity);
+          if (filters.region) queryParams.append('region', filters.region);
+          if (filters.priority) queryParams.append('priority', filters.priority);
+          
+          const query = queryParams.toString();
+          endpoint = `/damage/reports${query ? `?${query}` : ''}`;
+          data = await api.get(endpoint);
+        }
+
         setReports(data);
       } catch (err) {
         console.error('Error fetching reports:', err);
@@ -125,7 +175,7 @@ function Reports() {
     };
 
     fetchReports();
-  }, [filters]); 
+  }, [filters, isSuperAdmin, selectedTenant, allTenantsReports, tenants]); 
 
   // AI Reports functions
   const fetchAiReports = async () => {
@@ -456,6 +506,19 @@ function Reports() {
       damageType: '',
       priority: '',
     });
+    setPage(1);
+  };
+
+  // Tenant selection handlers for super admin
+  const handleTenantChange = (tenantId) => {
+    setSelectedTenant(tenantId);
+    setAllTenantsReports(false);
+    setPage(1);
+  };
+
+  const handleAllTenantsToggle = () => {
+    setAllTenantsReports(!allTenantsReports);
+    setSelectedTenant('');
     setPage(1);
   };
 
@@ -843,6 +906,9 @@ function Reports() {
           <thead>
             <tr>
               <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Report ID</th>
+              {isSuperAdmin && allTenantsReports && (
+                <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Tenant</th>
+              )}
               <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Date</th>
               <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Region</th>
               <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Type</th>
@@ -862,6 +928,16 @@ function Reports() {
                 <td style={{ padding: 8, fontWeight: 500, color: colors.primary }}>
                   {report.reportId}
                 </td>
+                {isSuperAdmin && allTenantsReports && (
+                  <td style={{ padding: 8 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <BusinessIcon fontSize="small" color="primary" />
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {report.tenantInfo?.organizationName || report.tenantInfo?.name || 'Unknown'}
+                      </Typography>
+                    </Box>
+                  </td>
+                )}
                 <td style={{ padding: 8 }}>
                   {new Date(report.createdAt).toLocaleDateString()}
                 </td>
@@ -903,8 +979,11 @@ function Reports() {
             ))}
             {paginatedReports().length === 0 && (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: 24, color: '#888' }}>
-                  No reports found.
+                <td colSpan={isSuperAdmin && allTenantsReports ? 8 : 7} style={{ textAlign: 'center', padding: 24, color: '#888' }}>
+                  {isSuperAdmin && !selectedTenant && !allTenantsReports ? 
+                    'Please select a tenant or choose "Show All Tenants" to view reports.' :
+                    'No reports found.'
+                  }
                 </td>
               </tr>
             )}
@@ -916,96 +995,127 @@ function Reports() {
 
   const renderGrid = () => (
     <Grid container spacing={3}>
-      {paginatedReports().map(report => (
-        <Grid item xs={12} sm={6} md={4} key={report.id}>
-          <Card 
-            sx={{ 
-              height: '100%',
-              borderRadius: 2,
-              transition: 'box-shadow 0.2s ease-in-out',
-              '&:hover': {
-                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.15)',
-              },
-              display: 'flex',
-              flexDirection: 'column',
-              position: 'relative',
-              overflow: 'visible',
-              border: `1px solid ${colors.border}`,
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: getSeverityBarColor(report.severity),
-                borderRadius: '8px 8px 0 0',
+      {paginatedReports().length === 0 ? (
+        <Grid item xs={12}>
+          <Paper sx={{ p: 4, textAlign: 'center', bgcolor: '#f8fafc' }}>
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              {isSuperAdmin && !selectedTenant && !allTenantsReports ? 
+                '🏢 Select a tenant to view reports' :
+                '📄 No reports found'
               }
-            }}
-          >
-            <CardContent sx={{ flex: 1 }}>
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="h6" component="div" gutterBottom>
-                  {report.id}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {new Date(report.createdAt).toLocaleDateString()}
-                </Typography>
-              </Box>
-              
-              <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-                <Chip 
-                  label={report.severity}
-                  color={getSeverityColor(report.severity)}
-                  size="small"
-                  sx={{ fontWeight: 600 }}
-                />
-                <Chip 
-                  label={report.status}
-                  color={getStatusColor(report.status)}
-                  size="small"
-                  sx={{ fontWeight: 600 }}
-                />
-              </Stack>
-
-              <Typography variant="body2" paragraph>
-                {report.description}
-              </Typography>
-
-              <Box sx={{ mt: 'auto' }}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  {report.region} • {report.damageType}
-                </Typography>
-              </Box>
-            </CardContent>
-
-            <Box 
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {isSuperAdmin && !selectedTenant && !allTenantsReports ? 
+                'Please select a tenant from the dropdown above or choose "Show All Tenants" to view reports.' :
+                'Try adjusting your filters or check back later.'
+              }
+            </Typography>
+          </Paper>
+        </Grid>
+      ) : (
+        paginatedReports().map(report => (
+          <Grid item xs={12} sm={6} md={4} key={report.id}>
+            <Card 
               sx={{ 
-                p: 2, 
-                pt: 0,
-                borderTop: `1px solid ${colors.border}`,
+                height: '100%',
+                borderRadius: 2,
+                transition: 'box-shadow 0.2s ease-in-out',
+                '&:hover': {
+                  boxShadow: '0 4px 8px rgba(0, 0, 0, 0.15)',
+                },
                 display: 'flex',
-                justifyContent: 'flex-end'
+                flexDirection: 'column',
+                position: 'relative',
+                overflow: 'visible',
+                border: `1px solid ${colors.border}`,
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: '4px',
+                  background: getSeverityBarColor(report.severity),
+                  borderRadius: '8px 8px 0 0',
+                }
               }}
             >
-              <Button
-                size="small"
-                variant="contained"
-                onClick={() => handleViewReport(report)}
-                sx={{
-                  bgcolor: colors.primary,
-                  color: 'white',
-                  '&:hover': {
-                    bgcolor: colors.primaryDark,
-                  },
+              <CardContent sx={{ flex: 1 }}>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="h6" component="div" gutterBottom>
+                    {report.id}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {new Date(report.createdAt).toLocaleDateString()}
+                  </Typography>
+                  
+                  {/* Show tenant info for super admin viewing all tenants */}
+                  {isSuperAdmin && allTenantsReports && report.tenantInfo && (
+                    <Box sx={{ mt: 1, p: 1, bgcolor: '#e3f2fd', borderRadius: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <BusinessIcon fontSize="small" color="primary" />
+                        <Typography variant="caption" color="primary" sx={{ fontWeight: 600 }}>
+                          {report.tenantInfo.organizationName || report.tenantInfo.name}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )}
+                </Box>
+                
+                <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+                  <Chip 
+                    label={report.severity}
+                    color={getSeverityColor(report.severity)}
+                    size="small"
+                    sx={{ fontWeight: 600 }}
+                  />
+                  <Chip 
+                    label={report.status}
+                    color={getStatusColor(report.status)}
+                    size="small"
+                    sx={{ fontWeight: 600 }}
+                  />
+                </Stack>
+
+                <Typography variant="body2" paragraph>
+                  {report.description}
+                </Typography>
+
+                <Box sx={{ mt: 'auto' }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    {report.region} • {report.damageType}
+                  </Typography>
+                </Box>
+              </CardContent>
+
+              <Box 
+                sx={{ 
+                  p: 2, 
+                  pt: 0,
+                  borderTop: `1px solid ${colors.border}`,
+                  display: 'flex',
+                  justifyContent: 'flex-end'
                 }}
               >
-                View Details
-              </Button>
-            </Box>
-          </Card>
-        </Grid>
-      ))}
+                <Button
+                  size="small"
+                  variant="contained"
+                  onClick={() => handleViewReport(report)}
+                  sx={{
+                    bgcolor: colors.primary,
+                    color: 'white',
+                    '&:hover': {
+                      bgcolor: colors.primaryDark,
+                    },
+                  }}
+                >
+                  View Details
+                </Button>
+              </Box>
+            </Card>
+          </Grid>
+        ))
+      )}
     </Grid>
   );
 
@@ -1256,7 +1366,78 @@ function Reports() {
             gap: 2,
           }}
         >
-      
+          {/* Super Admin Tenant Selection */}
+          {isSuperAdmin && (
+            <Box sx={{ mb: { xs: 2, md: 0 } }}>
+              <Typography variant="h6" sx={{ mb: 2, color: colors.primary, fontWeight: 600 }}>
+                🏢 Tenant Reports
+              </Typography>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <FormControl sx={{ minWidth: 200 }}>
+                  <InputLabel>Select Tenant</InputLabel>
+                  <Select
+                    value={selectedTenant}
+                    label="Select Tenant"
+                    onChange={(e) => handleTenantChange(e.target.value)}
+                    disabled={allTenantsReports}
+                  >
+                    <MenuItem value="">
+                      <em>Choose a tenant...</em>
+                    </MenuItem>
+                    {(tenants || []).map((tenant) => (
+                      <MenuItem key={tenant._id} value={tenant._id}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <BusinessIcon fontSize="small" />
+                          <Typography variant="body2">
+                            {tenant.organizationName || tenant.name}
+                          </Typography>
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                
+                <Button
+                  variant={allTenantsReports ? 'contained' : 'outlined'}
+                  onClick={handleAllTenantsToggle}
+                  sx={{
+                    px: 3,
+                    py: 1.5,
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    ...(allTenantsReports ? {
+                      bgcolor: colors.warning,
+                      color: 'white',
+                      '&:hover': {
+                        bgcolor: '#b45309',
+                      },
+                    } : {
+                      borderColor: colors.warning,
+                      color: colors.warning,
+                      '&:hover': {
+                        bgcolor: '#fef3c7',
+                      },
+                    })
+                  }}
+                >
+                  {allTenantsReports ? 'Showing All Tenants' : 'Show All Tenants'}
+                </Button>
+              </Stack>
+              
+              {/* Current Selection Info */}
+              {(selectedTenant || allTenantsReports) && (
+                <Box sx={{ mt: 2, p: 2, bgcolor: '#f0f9ff', borderRadius: 2, border: '1px solid #bfdbfe' }}>
+                  <Typography variant="body2" color="primary">
+                    {allTenantsReports 
+                      ? `📊 Showing reports from all ${(tenants || []).length} tenants`
+                      : `📋 Showing reports for: ${(tenants || []).find(t => t._id === selectedTenant)?.organizationName || 'Selected Tenant'}`
+                    }
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          )}
 
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
@@ -1351,6 +1532,59 @@ function Reports() {
           </Stack>
         </Box>
 
+        {/* Tenant Summary Stats for Super Admin */}
+        {isSuperAdmin && allTenantsReports && reports.length > 0 && (
+          <Box sx={{ mb: 3 }}>
+            <Paper sx={{ p: 3, borderRadius: 2, bgcolor: '#f8f9fa' }}>
+              <Typography variant="h6" sx={{ mb: 2, color: colors.primary, fontWeight: 600 }}>
+                📊 Tenant Summary
+              </Typography>
+              <Grid container spacing={3}>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: colors.primary }}>
+                      {(tenants || []).length}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Total Tenants
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: colors.success }}>
+                      {reports.length}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Total Reports
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: colors.error }}>
+                      {reports.filter(r => r.severity === 'HIGH' || r.severity === 'CRITICAL').length}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      High Priority
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: colors.warning }}>
+                      {reports.filter(r => r.status === 'Pending').length}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Pending
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+            </Paper>
+          </Box>
+        )}
+
         {/* Active Filters */}
         <Box sx={{ mb: 3 }}>
           <Stack
@@ -1386,12 +1620,22 @@ function Reports() {
             <Box
               sx={{
                 display: 'flex',
+                flexDirection: 'column',
                 justifyContent: 'center',
                 alignItems: 'center',
                 minHeight: '400px',
+                gap: 2
               }}
             >
-              <CircularProgress />
+              <CircularProgress size={60} />
+              <Typography variant="h6" color="text.secondary">
+                {isSuperAdmin && allTenantsReports 
+                  ? 'Loading reports from all tenants...' 
+                  : isSuperAdmin && selectedTenant 
+                    ? `Loading reports for ${(tenants || []).find(t => t._id === selectedTenant)?.organizationName || 'selected tenant'}...`
+                    : 'Loading reports...'
+                }
+              </Typography>
             </Box>
           ) : fetchError ? (
             <Paper
