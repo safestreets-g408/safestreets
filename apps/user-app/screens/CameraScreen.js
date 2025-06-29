@@ -1,4 +1,3 @@
-// screens/CameraScreen.js
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
@@ -11,6 +10,7 @@ import {
   SafeAreaView,
   StatusBar,
   Dimensions,
+  ScrollView,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -30,6 +30,9 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Animatable from 'react-native-animatable';
 import { ConsistentHeader } from '../components/ui';
+import { aiServices } from '../utils/aiServices';
+import { useAuth } from '../context/AuthContext';
+import { submitNewReport, submitAiReport } from '../utils/reports';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -37,12 +40,19 @@ const CameraScreen = ({ navigation }) => {
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [hasLocationPermission, setHasLocationPermission] = useState(null);
   const theme = useTheme();
+  const { fieldWorker } = useAuth();
   const [capturedImage, setCapturedImage] = useState(null);
   const [location, setLocation] = useState(null);
   const [locationAddress, setLocationAddress] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [cameraFacing, setCameraFacing] = useState('back');
   const [fetchingLocation, setFetchingLocation] = useState(false);
+  
+  // AI Analysis states
+  const [aiAnalysis, setAiAnalysis] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState(null);
+  const [showAnnotatedImage, setShowAnnotatedImage] = useState(false);
   
   const cameraRef = useRef(null);
 
@@ -237,6 +247,68 @@ const CameraScreen = ({ navigation }) => {
     }
   };
 
+  const analyzeImageWithAI = async (imageUri, locationDetails) => {
+    try {
+      setIsAnalyzing(true);
+      setAnalysisError(null);
+      
+      // Ensure a valid location string that isn't "Unknown location"
+      let formattedAddress = 'Unspecified road location';
+
+      // Try to get location from different sources in order of preference
+      if (locationDetails?.formattedAddress && 
+          locationDetails.formattedAddress !== 'Unknown location' &&
+          locationDetails.formattedAddress !== 'Address not available' &&
+          locationDetails.formattedAddress !== 'Address pending...') {
+        formattedAddress = locationDetails.formattedAddress;
+      } else if (locationAddress && 
+                locationAddress !== 'Unknown location' && 
+                locationAddress !== 'Address not available') {
+        formattedAddress = locationAddress;
+      } else if (location?.addressDetails?.city) {
+        // Construct a basic location from city/region if available
+        formattedAddress = [
+          location.addressDetails.city,
+          location.addressDetails.region,
+          location.addressDetails.country
+        ].filter(Boolean).join(', ');
+      }
+
+      console.log('Starting AI analysis with location:', formattedAddress);
+      
+      // Create a safe location object with fallbacks
+      const locationToUse = {
+        formattedAddress: formattedAddress,
+        coordinates: locationDetails?.coordinates || 
+          (location?.coords ? [location.coords.longitude, location.coords.latitude] : undefined)
+      };
+      
+      const analysis = await aiServices.analyzeRoadDamage(imageUri, locationToUse);
+      
+      setAiAnalysis(analysis);
+      console.log('AI analysis completed:', {
+        damageClass: analysis?.classification?.damageClass,
+        damageType: analysis?.classification?.damageType,
+        severity: analysis?.classification?.severity,
+        hasAnnotatedImage: !!analysis?.classification?.annotatedImage,
+        summary: analysis?.summary?.substring(0, 50) + '...'
+      });
+      
+    } catch (error) {
+      console.error('AI analysis failed:', error);
+      setAnalysisError(error.message);
+      
+      // Show error but don't block submission
+      Alert.alert(
+        'AI Analysis Failed',
+        'Could not analyze the image automatically. You can still submit the report manually.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const takePicture = async () => {
     if (!cameraRef.current) {
       Alert.alert('Error', 'Camera is not ready. Please wait or restart the app.');
@@ -244,8 +316,10 @@ const CameraScreen = ({ navigation }) => {
     }
 
     try {
-      // Start location fetching immediately when user starts taking picture
-      const locationPromise = hasLocationPermission ? getCurrentLocation() : null;
+      // Start location fetching immediately when user takes picture
+      if (hasLocationPermission && (!location || !locationAddress)) {
+        getCurrentLocation().catch(err => console.log('Location fetch error:', err));
+      }
       
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.8,
@@ -256,10 +330,52 @@ const CameraScreen = ({ navigation }) => {
       if (photo && photo.uri) {
         setCapturedImage(photo);
         
-        // If location wasn't started above, start it now
-        if (!locationPromise && hasLocationPermission) {
-          getCurrentLocation();
-        }
+        // Wait a short time to see if we have location data
+        setTimeout(async () => {
+          // If we have full location data already, use it immediately
+          if (location?.addressDetails && locationAddress) {
+            analyzeImageWithAI(photo.uri, location.addressDetails);
+            return;
+          }
+          
+          // If not, try to get location then analyze
+          try {
+            if (hasLocationPermission && (!location || !locationAddress)) {
+              await getCurrentLocation();
+            }
+            
+            // Now check if we got location data
+            if (location?.addressDetails) {
+              analyzeImageWithAI(photo.uri, location.addressDetails);
+            } else {
+              // Create a listener for when location becomes available
+              const locationInterval = setInterval(() => {
+                if (location?.addressDetails) {
+                  clearInterval(locationInterval);
+                  analyzeImageWithAI(photo.uri, location.addressDetails);
+                }
+              }, 1000);
+              
+              // Timeout after 8 seconds
+              setTimeout(() => {
+                clearInterval(locationInterval);
+                // Use whatever we have at this point
+                const bestLocationData = {
+                  formattedAddress: locationAddress || 'Address being determined...',
+                  coordinates: location?.coords ? 
+                    [location.coords.longitude, location.coords.latitude] : undefined
+                };
+                analyzeImageWithAI(photo.uri, bestLocationData);
+              }, 8000);
+            }
+          } catch (err) {
+            console.error('Error processing location for AI analysis:', err);
+            // Analyze with whatever location info we have
+            analyzeImageWithAI(photo.uri, { 
+              formattedAddress: locationAddress || 'Location services unavailable'
+            });
+          }
+        }, 300);
       } else {
         throw new Error('Invalid photo data');
       }
@@ -288,7 +404,56 @@ const CameraScreen = ({ navigation }) => {
 
       if (!result.canceled && result.assets && result.assets[0]) {
         setCapturedImage(result.assets[0]);
-        getCurrentLocation();
+        
+        // Start location fetch if needed
+        if (hasLocationPermission && (!location || !locationAddress)) {
+          getCurrentLocation().catch(err => console.log('Location fetch error:', err));
+        }
+
+        // Similar to takePicture - wait briefly to see if location is already available
+        setTimeout(async () => {
+          if (location?.addressDetails && locationAddress) {
+            analyzeImageWithAI(result.assets[0].uri, location.addressDetails);
+            return;
+          }
+          
+          try {
+            // Try again to get location if needed
+            if (hasLocationPermission && (!location || !locationAddress)) {
+              await getCurrentLocation();
+            }
+            
+            // Check if we have location now
+            if (location?.addressDetails) {
+              analyzeImageWithAI(result.assets[0].uri, location.addressDetails);
+            } else {
+              // Create a listener for when location becomes available
+              const locationInterval = setInterval(() => {
+                if (location?.addressDetails) {
+                  clearInterval(locationInterval);
+                  analyzeImageWithAI(result.assets[0].uri, location.addressDetails);
+                }
+              }, 1000);
+              
+              // Timeout after 8 seconds
+              setTimeout(() => {
+                clearInterval(locationInterval);
+                // Use whatever we have at this point
+                const bestLocationData = {
+                  formattedAddress: locationAddress || 'Address being determined...',
+                  coordinates: location?.coords ? 
+                    [location.coords.longitude, location.coords.latitude] : undefined
+                };
+                analyzeImageWithAI(result.assets[0].uri, bestLocationData);
+              }, 8000);
+            }
+          } catch (err) {
+            console.error('Error processing location for gallery image:', err);
+            analyzeImageWithAI(result.assets[0].uri, { 
+              formattedAddress: locationAddress || 'Location services unavailable'
+            });
+          }
+        }, 300);
       }
     } catch (error) {
       console.error('Error picking image:', error);
@@ -297,9 +462,21 @@ const CameraScreen = ({ navigation }) => {
   };
 
   const retakePicture = () => {
+    // Clear image and analysis data
     setCapturedImage(null);
-    setLocation(null);
-    setLocationAddress(null);
+    setAiAnalysis(null);
+    setIsAnalyzing(false);
+    setAnalysisError(null);
+    setShowAnnotatedImage(false);
+    
+    // Optionally clear location - only if user wants fresh location
+    // Could keep location data for faster re-submission
+    if (fetchingLocation) {
+      // If a location fetch is in progress, cancel it by resetting state
+      setFetchingLocation(false);
+      setLocation(null);
+      setLocationAddress(null);
+    }
   };
 
   const submitReport = async () => {
@@ -313,28 +490,276 @@ const CameraScreen = ({ navigation }) => {
       return;
     }
 
+    if (!fieldWorker) {
+      Alert.alert('Error', 'User authentication required');
+      return;
+    }
+
+    // If AI is still analyzing, ask user if they want to wait
+    if (isAnalyzing) {
+      Alert.alert(
+        'AI Analysis in Progress',
+        'AI is still analyzing your image. Would you like to wait for the analysis to complete?',
+        [
+          { text: 'Wait', style: 'cancel' },
+          { 
+            text: 'Submit Without AI', 
+            onPress: () => {
+              setIsAnalyzing(false); 
+              submitReportInternal();
+            } 
+          }
+        ]
+      );
+      return;
+    }
+
+    submitReportInternal();
+  };
+  
+  const submitReportInternal = async () => {
     setIsSubmitting(true);
 
     try {
-      setTimeout(() => {
-        Alert.alert(
-          'Success',
-          'Your report has been submitted',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                retakePicture();
-                navigation.navigate('Reports');
+      // Ensure we have the most up-to-date location data
+      let currentAddress = locationAddress || 'Address not available';
+      
+      // CRITICAL: Ensure currentAddress never contains AI analysis text
+      if (currentAddress && (currentAddress.includes('Road damage report') || 
+                           currentAddress.includes('observed on') || 
+                           currentAddress.includes('damage') ||
+                           currentAddress.length > 200)) {
+        console.warn('Detected AI analysis text in currentAddress, using fallback');
+        currentAddress = location?.addressDetails?.formattedAddress || 'Address lookup failed';
+      }
+      
+      const coordString = location?.coords ? 
+        `${location.coords.latitude},${location.coords.longitude}` : '';
+
+      console.log('Report submission debug:', {
+        locationAddress,
+        currentAddress,
+        locationAddressDetails: location?.addressDetails?.formattedAddress,
+        aiSummary: aiAnalysis?.summary?.substring(0, 50) + '...'
+      });
+
+      // Clean up AI data to ensure it's valid
+      let cleanAiData = null;
+      if (aiAnalysis) {
+        try {
+          // Create a clean version of the classification without the image
+          // The annotated image will be stored separately in the AI report
+          const cleanClassification = {
+            damageClass: aiAnalysis.classification.damageClass,
+            damageType: aiAnalysis.classification.damageType,
+            severity: aiAnalysis.classification.severity,
+            // Don't include the annotated image here to keep the JSON smaller
+          };
+          
+          cleanAiData = JSON.stringify({
+            classification: cleanClassification,
+            summary: aiAnalysis.summary,
+            analysisTimestamp: new Date().toISOString()
+          });
+        } catch (aiDataError) {
+          console.error('Error preparing AI data:', aiDataError);
+        }
+      }
+
+      // Prepare submission data with AI analysis results and tenant information
+      const reportData = {
+        // Send proper location object structure that backend expects
+        location: {
+          coordinates: location?.coords ? [location.coords.longitude, location.coords.latitude] : undefined,
+          address: currentAddress
+        },
+        damageType: aiAnalysis?.classification?.damageType || 'Road Damage',
+        severity: aiAnalysis?.classification?.severity || 'Medium',
+        priority: aiAnalysis?.classification?.severity === 'High' ? 'High' : 
+                 aiAnalysis?.classification?.severity === 'Medium' ? 'Medium' : 'Low',
+        description: aiAnalysis?.summary || 'Damage report submitted via mobile app',
+        // Include AI analysis metadata
+        aiGenerated: !!aiAnalysis,
+        aiData: cleanAiData
+      };
+
+      console.log('Submitting report with AI analysis and tenant context:', {
+        hasAiAnalysis: !!aiAnalysis,
+        damageType: aiAnalysis?.classification?.damageType,
+        severity: aiAnalysis?.classification?.severity, 
+        location: currentAddress,
+        tenantId: fieldWorker.tenant
+      });
+
+      // Submit the report to the database with retries if needed
+      let submittedReport = null;
+      let retryCount = 0;
+      const maxRetries = 2;
+      
+      while (retryCount <= maxRetries) {
+        try {
+          submittedReport = await submitNewReport(reportData, capturedImage.uri);
+          
+          if (submittedReport && submittedReport._id) {
+            console.log('Report submitted successfully with ID:', submittedReport._id);
+            break; // Success, exit the retry loop
+          } else {
+            throw new Error('Server returned empty response');
+          }
+        } catch (submitError) {
+          console.error(`Report submission attempt ${retryCount + 1} failed:`, submitError.message);
+          
+          if (retryCount === maxRetries) {
+            throw new Error(`Failed to submit report after ${maxRetries + 1} attempts: ${submitError.message}`);
+          }
+          
+          // Wait before retrying (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount)));
+          retryCount++;
+        }
+      }
+
+      // Save AI analysis data into AiReports collection
+      if (aiAnalysis) {
+        try {
+          // Validate that annotated image is a proper base64 string
+          let annotatedImage = null;
+          if (aiAnalysis?.classification?.annotatedImage) {
+            // Check if it's a valid base64 string (at least somewhat long and doesn't contain invalid chars)
+            const isValidBase64 = aiAnalysis.classification.annotatedImage.length > 100 && 
+                                  !/[^A-Za-z0-9+/=]/.test(aiAnalysis.classification.annotatedImage);
+            
+            if (isValidBase64) {
+              annotatedImage = aiAnalysis.classification.annotatedImage;
+              console.log('Valid annotated image detected, length:', annotatedImage.length);
+              
+              // Check if image is too large, log warning but still try to submit
+              if (annotatedImage.length > 900000) {
+                console.warn('Annotated image is large:', Math.round(annotatedImage.length/1024), 'KB, may cause issues');
               }
+            } else {
+              console.log('Invalid annotated image detected, not sending to server');
             }
-          ]
-        );
-        setIsSubmitting(false);
-      }, 1500);
+          }
+          
+          // Prepare location data carefully - use the actual address from location data
+          let locationData = {};
+          if (location?.coords) {
+            // Use the proper formatted address from location.addressDetails, not currentAddress which might be contaminated
+            let actualAddress = location?.addressDetails?.formattedAddress || locationAddress || 'Location data available without address';
+            
+            // Safety check: ensure the address doesn't contain AI analysis text
+            if (actualAddress && (actualAddress.includes('Road damage report') || actualAddress.includes('observed on') || actualAddress.length > 200)) {
+              console.warn('Detected AI analysis text in address, using fallback');
+              actualAddress = location?.addressDetails?.formattedAddress || 'Address data corrupted, using coordinates only';
+            }
+            
+            locationData = {
+              coordinates: location?.coords ? [location.coords.longitude, location.coords.latitude] : undefined, // MongoDB uses [longitude, latitude] order
+              address: actualAddress
+            };
+          } else {
+            // Fallback to locationAddress (the reverse geocoded address) not currentAddress
+            let fallbackAddress = locationAddress || 'Address not available';
+            
+            // Safety check for fallback address too
+            if (fallbackAddress && (fallbackAddress.includes('Road damage report') || fallbackAddress.includes('observed on') || fallbackAddress.length > 200)) {
+              console.warn('Detected AI analysis text in fallback address');
+              fallbackAddress = 'Address lookup failed';
+            }
+            
+            locationData = {
+              address: fallbackAddress
+            };
+          }
+          
+          console.log('AI Report location data:', {
+            locationAddress,
+            formattedAddress: location?.addressDetails?.formattedAddress,
+            finalAddress: locationData.address,
+            coordinates: locationData.coordinates
+          });
+          
+          // Create AI report object
+          const aiReport = {
+            imageId: submittedReport?._id || new Date().toISOString(), // Use the report ID or timestamp as reference
+            tenant: fieldWorker.tenant,
+            predictionClass: aiAnalysis?.classification?.damageClass || 'Unknown',
+            damageType: aiAnalysis?.classification?.damageType || 'Road Damage',
+            severity: aiAnalysis?.classification?.severity || 'Medium',
+            priority: aiAnalysis?.classification?.severity === 'High' ? 8 : aiAnalysis?.classification?.severity === 'Medium' ? 5 : 3,
+            annotatedImageBase64: annotatedImage,
+            location: locationData,
+            createdAt: new Date().toISOString()
+          };
+
+          console.log('AI Report data preparing to submit:', {
+            hasAnnotatedImage: !!annotatedImage,
+            imageSize: annotatedImage ? `${Math.round(annotatedImage.length / 1024)}KB` : 'N/A',
+            predictionClass: aiReport.predictionClass,
+            damageType: aiReport.damageType,
+            severity: aiReport.severity,
+            reportId: submittedReport?._id
+          });
+
+          // Submit the AI report immediately with retries
+          let aiRetryCount = 0;
+          const maxAiRetries = 2;
+          
+          const submitAiReportWithRetry = async () => {
+            try {
+              const savedAiReport = await submitAiReport(aiReport);
+              if (savedAiReport) {
+                console.log('AI report saved successfully:', savedAiReport?._id);
+                return true;
+              } else {
+                console.log('AI report submission returned no data');
+                return false;
+              }
+            } catch (aiError) {
+              console.error(`AI report submission attempt ${aiRetryCount + 1} failed:`, aiError.message);
+              return false;
+            }
+          };
+          
+          // Try to submit AI report with retries
+          while (aiRetryCount <= maxAiRetries) {
+            const success = await submitAiReportWithRetry();
+            if (success) break;
+            
+            aiRetryCount++;
+            if (aiRetryCount <= maxAiRetries) {
+              // Wait before retrying (exponential backoff)
+              const delay = 1000 * Math.pow(2, aiRetryCount - 1);
+              console.log(`Retrying AI report submission in ${delay/1000}s...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+            }
+          }
+        } catch (aiReportError) {
+          console.log('AI report submission failed but continuing:', aiReportError.message);
+          // Non-critical error, continue with user flow
+        }
+      }
+
+      Alert.alert(
+        'Success',
+        aiAnalysis 
+          ? `Your report has been submitted with AI analysis. Detected: ${aiAnalysis.classification.damageType} (${aiAnalysis.classification.severity} severity)`
+          : 'Your report has been submitted successfully',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              retakePicture();
+              navigation.navigate('Reports');
+            }
+          }
+        ]
+      );
     } catch (error) {
       console.error('Error submitting report:', error);
-      Alert.alert('Error', 'Network error while submitting report');
+      Alert.alert('Error', 'Network error while submitting report: ' + error.message);
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -399,13 +824,58 @@ const CameraScreen = ({ navigation }) => {
             }}
           />
 
-          <View style={styles.contentContainer}>
+          <ScrollView 
+            style={styles.contentContainer}
+            contentContainerStyle={styles.scrollContentContainer}
+            showsVerticalScrollIndicator={false}
+          >
             <Animatable.View animation="fadeInUp" delay={200}>
               <Surface style={[styles.imageCard, { backgroundColor: theme.colors.surface }]} elevation={4}>
+                {aiAnalysis?.classification?.annotatedImage && (
+                  <View style={styles.imageToggleContainer}>
+                    <Button
+                      mode="contained"
+                      compact
+                      onPress={() => setShowAnnotatedImage(!showAnnotatedImage)}
+                      style={styles.imageToggleButton}
+                      icon={showAnnotatedImage ? "image-outline" : "image-edit"}
+                    >
+                      {showAnnotatedImage ? 'Original Image' : 'AI Detection'}
+                    </Button>
+                  </View>
+                )}
+                {isAnalyzing && (
+                  <View style={styles.imageAnalyzingOverlay}>
+                    <PaperActivityIndicator size={40} color={theme.colors.primary} />
+                    <Text style={styles.imageAnalyzingText}>Analyzing damage...</Text>
+                  </View>
+                )}
                 <Image
-                  source={{ uri: capturedImage.uri }}
+                  source={{ 
+                    uri: showAnnotatedImage && aiAnalysis?.classification?.annotatedImage 
+                         ? `data:image/jpeg;base64,${aiAnalysis.classification.annotatedImage}`
+                         : capturedImage.uri 
+                  }}
                   style={styles.capturedImage}
                   resizeMode="cover"
+                  onError={(error) => {
+                    console.error('Image loading error:', error.nativeEvent?.error || 'Unknown image error');
+                    // Detect base64 issues that could break rendering
+                    const hasInvalidBase64 = showAnnotatedImage && 
+                      (!aiAnalysis?.classification?.annotatedImage || 
+                       aiAnalysis.classification.annotatedImage.length < 100);
+                       
+                    // If annotated image fails to load, fall back to original
+                    if (showAnnotatedImage) {
+                      setShowAnnotatedImage(false);
+                      Alert.alert(
+                        'Image Display Issue',
+                        hasInvalidBase64 
+                          ? 'The AI detection image data is incomplete or invalid. Showing original image instead.'
+                          : 'Could not load AI detection overlay. Showing original image instead.'
+                      );
+                    }
+                  }}
                 />
               </Surface>
             </Animatable.View>
@@ -473,6 +943,86 @@ const CameraScreen = ({ navigation }) => {
               )}
             </Animatable.View>
 
+            {/* AI Analysis Section */}
+            <Animatable.View animation="fadeInUp" delay={500}>
+              {isAnalyzing ? (
+                <Surface style={[styles.aiAnalysisCard, { backgroundColor: theme.colors.surface }]} elevation={2}>
+                  <View style={styles.aiAnalysisHeader}>
+                    <MaterialCommunityIcons name="brain" size={24} color={theme.colors.primary} />
+                    <Text style={[styles.aiAnalysisTitle, { color: theme.colors.text }]}>
+                      AI Analysis
+                    </Text>
+                  </View>
+                  <View style={styles.aiAnalysisContent}>
+                    <PaperActivityIndicator size="small" color={theme.colors.primary} />
+                    <Text style={[styles.aiAnalysisText, { color: theme.colors.text }]}>
+                      Analyzing damage...
+                    </Text>
+                  </View>
+                </Surface>
+              ) : aiAnalysis ? (
+                <Surface style={[styles.aiAnalysisCard, { backgroundColor: theme.colors.surface }]} elevation={2}>
+                  <View style={styles.aiAnalysisHeader}>
+                    <MaterialCommunityIcons name="brain" size={24} color={theme.colors.success} />
+                    <Text style={[styles.aiAnalysisTitle, { color: theme.colors.text }]}>
+                      AI Analysis Complete
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.aiResultsContainer}>
+                    <View style={styles.damageChipsContainer}>
+                      <Chip 
+                        icon="road-variant" 
+                        style={{ backgroundColor: theme.colors.primaryContainer }}
+                        textStyle={{ fontSize: 12 }}
+                      >
+                        {aiAnalysis.classification.damageType}
+                      </Chip>
+                      <Chip 
+                        icon="alert-circle" 
+                        style={{ 
+                          backgroundColor: aiAnalysis.classification.severity === 'High' 
+                            ? theme.colors.errorContainer 
+                            : aiAnalysis.classification.severity === 'Medium'
+                            ? theme.colors.onSurfaceVariant + '20'
+                            : theme.colors.tertiaryContainer 
+                        }}
+                        textStyle={{ fontSize: 12 }}
+                      >
+                        {aiAnalysis.classification.severity} Severity
+                      </Chip>
+                    </View>
+                    
+                    <Text style={[styles.aiSummaryText, { color: theme.colors.text }]}>
+                      {aiAnalysis.summary}
+                    </Text>
+                  </View>
+                </Surface>
+              ) : analysisError ? (
+                <Surface style={[styles.aiAnalysisCard, { backgroundColor: theme.colors.surface }]} elevation={2}>
+                  <View style={styles.aiAnalysisHeader}>
+                    <MaterialCommunityIcons name="brain" size={24} color={theme.colors.error} />
+                    <Text style={[styles.aiAnalysisTitle, { color: theme.colors.text }]}>
+                      AI Analysis Failed
+                    </Text>
+                  </View>
+                  <View style={styles.aiAnalysisContent}>
+                    <Text style={[styles.aiAnalysisText, { color: theme.colors.error }]}>
+                      {analysisError}
+                    </Text>
+                    <Button
+                      mode="outlined"
+                      onPress={() => analyzeImageWithAI(capturedImage.uri, location?.addressDetails || { formattedAddress: 'Unknown location' })}
+                      style={{ marginTop: 8 }}
+                      compact
+                    >
+                      Retry Analysis
+                    </Button>
+                  </View>
+                </Surface>
+              ) : null}
+            </Animatable.View>
+
             <Animatable.View animation="fadeInUp" delay={600}>
               <View style={styles.buttonRow}>
                 <Button
@@ -496,11 +1046,11 @@ const CameraScreen = ({ navigation }) => {
                   icon="send"
                   contentStyle={styles.buttonContent}
                 >
-                  Submit Report
+                  {isAnalyzing ? 'Analyzing...' : 'Submit Report'}
                 </Button>
               </View>
             </Animatable.View>
-          </View>
+          </ScrollView>
         </View>
       ) : (
         <View style={styles.cameraContainer}>
@@ -518,7 +1068,7 @@ const CameraScreen = ({ navigation }) => {
               <Surface style={[styles.instructionSurface, { backgroundColor: theme.colors.surface + 'E6' }]} elevation={2}>
                 <MaterialCommunityIcons name="camera" size={20} color={theme.colors.primary} />
                 <Text style={[styles.instructionText, { color: theme.colors.text }]}>
-                  Take a clear photo of the road damage
+                  Take a clear photo - AI will analyze the damage automatically
                 </Text>
               </Surface>
             </LinearGradient>
@@ -619,17 +1169,50 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
+  },
+  scrollContentContainer: {
     padding: 16,
+    paddingBottom: 32,
   },
   imageCard: {
     borderRadius: 12,
     overflow: 'hidden',
     marginBottom: 16,
+    position: 'relative',
   },
   capturedImage: {
     width: '100%',
     height: 300,
     borderRadius: 12,
+  },
+  imageToggleContainer: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    zIndex: 10,
+  },
+  imageToggleButton: {
+    borderRadius: 8,
+    opacity: 0.85,
+  },
+  imageAnalyzingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    zIndex: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageAnalyzingText: {
+    color: 'white',
+    marginTop: 10,
+    fontWeight: '600',
+    textShadowColor: 'rgba(0,0,0,0.75)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   locationCard: {
     marginBottom: 20,
@@ -660,6 +1243,43 @@ const styles = StyleSheet.create({
   coordinatesText: {
     fontSize: 12,
     fontFamily: 'monospace',
+  },
+  aiAnalysisCard: {
+    marginBottom: 20,
+    borderRadius: 12,
+    padding: 16,
+  },
+  aiAnalysisHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  aiAnalysisTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  aiAnalysisContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  aiAnalysisText: {
+    fontSize: 14,
+    flex: 1,
+  },
+  aiResultsContainer: {
+    gap: 12,
+  },
+  damageChipsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  aiSummaryText: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontStyle: 'italic',
   },
   buttonRow: {
     flexDirection: 'row',

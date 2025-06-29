@@ -3,24 +3,12 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-/**
- * API URL Configuration
- * 
- * This section determines the appropriate API URL to use based on:
- * 1. User-specified override (stored in AsyncStorage)
- * 2. Platform (iOS, Android)
- * 3. Running environment (Expo Go, simulator, physical device)
- */
-
-// You can manually override the server IP by updating this value
-// This will be used on your next app restart
-const MANUAL_OVERRIDE_IP = '192.168.23.177'; // Update this with your actual IP if needed
+const MANUAL_OVERRIDE_IP = '192.168.23.177'; 
 const API_PORT = '5030';
 
 // Function to get the appropriate base URL
 export const getBaseUrl = async () => {
   try {
-    // First check if there's a user-configured URL in AsyncStorage
     const storedUrl = await AsyncStorage.getItem('custom_api_url');
     if (storedUrl) {
       console.log('Using custom API URL from storage:', storedUrl);

@@ -26,6 +26,7 @@ router.get('/status-summary', protectFieldWorker, getReportStatusSummary);
 router.get('/reports', protectFieldWorker, getFieldWorkerReports);
 router.get('/reports/filtered', protectFieldWorker, getFilteredReports);
 router.patch('/reports/:reportId/status', protectFieldWorker, updateRepairStatus);
+router.post('/ai-reports/upload', protectFieldWorker, uploadDamageReportByFieldWorker);
 router.post('/reports/upload', protectFieldWorker, uploadDamageReportByFieldWorker);
 router.get('/nearby', protectFieldWorker, getNearbyReports);
 

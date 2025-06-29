@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const DamageReport = require('../models/DamageReport');
 const FieldWorker = require('../models/FieldWorker');
+const AiReport = require('../models/AiReport');
 
 // Get field worker's assigned reports
 const getFieldWorkerReports = async (req, res) => {
@@ -659,53 +660,144 @@ const getPeriodLabel = (period) => {
 const uploadDamageReportByFieldWorker = async (req, res) => {
   try {
     const fieldWorkerId = req.fieldWorker.id;
+    const tenantId = req.fieldWorker.tenant;
     const { 
       damageType, 
       severity, 
       priority, 
       location, 
       description,
-      coordinates 
+      predictionClass,
+      annotatedImageBase64,
+      imageData: frontendImageData // Frontend sends this instead of annotatedImageBase64
     } = req.body;
 
-    // Validate required fields
-    const requiredFields = ['damageType', 'severity', 'location'];
-    const missingFields = requiredFields.filter(field => !req.body[field]);
-    
-    if (missingFields.length > 0) {
+    console.log('Upload request received from field worker:', fieldWorkerId);
+    console.log('Tenant ID from auth:', tenantId);
+    console.log('Request body keys:', Object.keys(req.body));
+    console.log('Has frontendImageData:', !!frontendImageData);
+    console.log('Has annotatedImageBase64:', !!annotatedImageBase64);
+    console.log('Location data received:', JSON.stringify(location, null, 2));
+    console.log('Location type:', typeof location);
+    console.log('Description received:', description);
+
+    // Validate required fields for AiReport schema
+    if (!damageType || !severity) {
       return res.status(400).json({ 
-        message: 'Missing required fields', 
-        fields: missingFields 
+        message: 'Missing required fields: damageType and severity are required',
+        received: { 
+          damageType: damageType || 'missing', 
+          severity: severity || 'missing',
+          predictionClass: predictionClass || 'missing',
+          hasAnnotatedImageBase64: !!annotatedImageBase64,
+          hasFrontendImageData: !!frontendImageData,
+          annotatedImageBase64Length: annotatedImageBase64?.length || 0,
+          frontendImageDataLength: frontendImageData?.length || 0
+        }
       });
     }
 
-    const reportId = 'FW-' + Date.now();
+    // Use the correct image data field - frontend sends imageData, not annotatedImageBase64
+    const imageData = annotatedImageBase64 || frontendImageData || '';
+    const finalPredictionClass = predictionClass || damageType;
+
+    console.log('Using imageData length:', imageData.length);
+    console.log('Final predictionClass:', finalPredictionClass);
+
+    // Process location data properly - handle different possible structures
+    let locationData = {
+      coordinates: undefined,
+      address: 'Location not specified'
+    };
+
+    if (location) {
+      console.log('Location object structure:', JSON.stringify(location, null, 2));
+      
+      // Handle case where location is an object with coordinates and address
+      if (typeof location === 'object' && location.coordinates && Array.isArray(location.coordinates) && location.coordinates.length === 2) {
+        locationData.coordinates = location.coordinates;
+        locationData.address = location.address || 'Address not available';
+      }
+      // Handle case where location might be a string (old format)
+      else if (typeof location === 'string') {
+        console.log('Location is a string, trying to parse coordinates');
+        const coordMatch = location.match(/(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
+        if (coordMatch) {
+          const lat = parseFloat(coordMatch[1]);
+          const lng = parseFloat(coordMatch[2]);
+          if (!isNaN(lat) && !isNaN(lng)) {
+            locationData.coordinates = [lng, lat]; // MongoDB uses [longitude, latitude]
+          }
+        }
+        // For string location, check if we have separate address field
+        if (req.body.address) {
+          locationData.address = req.body.address;
+        }
+      }
+      // Handle case where location has an address but no coordinates
+      else if (typeof location === 'object' && location.address) {
+        locationData.address = location.address;
+      }
+    }
     
-    const newReport = new DamageReport({
-      reportId,
+    // Fallback to separate address field if location object doesn't have address
+    if (req.body.address && locationData.address === 'Location not specified') {
+      locationData.address = req.body.address;
+    }
+    
+    console.log('Processed location data:', JSON.stringify(locationData, null, 2));
+
+    // Create a temporary image record to satisfy the imageId requirement
+    const Image = require('../models/Image');
+    
+    // Convert base64 image to buffer if we have image data
+    let imageBuffer = null;
+    let contentType = 'image/jpeg'; // Default content type
+    
+    if (imageData && imageData.length > 0) {
+      try {
+        imageBuffer = Buffer.from(imageData, 'base64');
+      } catch (bufferError) {
+        console.warn('Failed to convert base64 to buffer:', bufferError);
+        // Continue with null buffer
+      }
+    }
+    
+    const tempImage = new Image({
+      tenant: tenantId,
+      data: imageBuffer, // Use the correct field name 'data' instead of 'imageData'
+      contentType: contentType,
+      result: 'Completed'
+    });
+    const savedImage = await tempImage.save();
+
+    // Create AI report with proper schema fields
+    const newAiReport = new AiReport({
+      imageId: savedImage._id,
+      tenant: tenantId,
+      predictionClass: finalPredictionClass,
       damageType,
-      severity,
-      priority: priority || 'Medium',
-      region: req.fieldWorker.region,
-      location,
-      description: description || '',
-      reporter: `${req.fieldWorker.name} (Field Worker)`,
-      reporterType: 'field_worker',
-      reportedBy: fieldWorkerId,
-      status: 'Reported by Field Worker',
-      coordinates: coordinates || null,
-      createdAt: new Date()
+      severity: severity.toUpperCase(),
+      priority: typeof priority === 'number' ? Math.max(1, Math.min(10, priority)) : 5, // Ensure priority is 1-10
+      location: locationData,
+      annotatedImageBase64: imageData
     });
 
-    await newReport.save();
+    const savedReport = await newAiReport.save();
+    
+    console.log('AI report saved successfully:', savedReport._id);
 
     res.status(201).json({
-      message: 'Damage report submitted successfully',
-      report: newReport
+      message: 'AI report submitted successfully',
+      report: savedReport
     });
   } catch (error) {
-    console.error('Error uploading damage report:', error);
-    res.status(500).json({ message: 'Error uploading report', error: error.message });
+    console.error('Error uploading AI report:', error);
+    res.status(500).json({ 
+      message: 'Error uploading report', 
+      error: error.message,
+      details: error.errors ? Object.keys(error.errors) : undefined
+    });
   }
 };
 
