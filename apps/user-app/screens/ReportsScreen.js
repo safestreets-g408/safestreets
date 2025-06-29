@@ -37,6 +37,7 @@ import { getUserReports, getFilteredUserReports } from '../utils/reportAPI';
 import { getReportImageUrlSync } from '../utils/imageUtils';
 import { ModernCard, EmptyState, ConsistentHeader } from '../components/ui';
 import { API_BASE_URL } from '../config';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -98,8 +99,21 @@ const ReportsScreen = ({ navigation }) => {
       // Update state with fetched data
       if (refresh || pageNum === 1) {
         setReports(newReports);
+        // Cache the reports for ViewReportScreen to use
+        try {
+          await AsyncStorage.setItem('cachedReports', JSON.stringify(newReports));
+        } catch (cacheError) {
+          console.log('Failed to cache reports:', cacheError);
+        }
       } else {
-        setReports(prev => [...prev, ...newReports]);
+        const allReports = [...reports, ...newReports];
+        setReports(allReports);
+        // Cache all reports
+        try {
+          await AsyncStorage.setItem('cachedReports', JSON.stringify(allReports));
+        } catch (cacheError) {
+          console.log('Failed to cache reports:', cacheError);
+        }
       }
 
       // Update pagination info

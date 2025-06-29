@@ -93,6 +93,7 @@ export const getReportDetails = async (reportId) => {
     }
 
     const url = `${API_BASE_URL}/fieldworker/damage/reports/${reportId}`;
+    console.log('Fetching report details from:', url);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -102,15 +103,56 @@ export const getReportDetails = async (reportId) => {
       },
     });
 
+    console.log('Response status:', response.status);
+    console.log('Response headers:', response.headers);
+
     // Handle error response
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to fetch report details');
+      let errorMessage = `HTTP Error: ${response.status}`;
+      
+      try {
+        // Try to parse error response as JSON
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } else {
+          // If not JSON, get text response
+          const errorText = await response.text();
+          console.error('Non-JSON error response:', errorText.substring(0, 200));
+          errorMessage = `Server returned ${response.status}: ${errorText.substring(0, 100)}`;
+        }
+      } catch (parseError) {
+        console.error('Error parsing error response:', parseError);
+        errorMessage = `Failed to parse error response (${response.status})`;
+      }
+      
+      throw new Error(errorMessage);
     }
 
-    // Parse and return successful response
-    const data = await response.json();
-    return data;
+    // Parse successful response
+    try {
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const textResponse = await response.text();
+        console.error('Expected JSON but got:', contentType, textResponse.substring(0, 200));
+        throw new Error('Server returned non-JSON content');
+      }
+
+      const data = await response.json();
+      console.log('Successfully parsed response data:', data);
+      return data;
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      // Try to get raw response for debugging
+      try {
+        const rawText = await response.text();
+        console.error('Raw response text:', rawText.substring(0, 500));
+      } catch (textError) {
+        console.error('Could not get raw response text:', textError);
+      }
+      throw new Error('Failed to parse server response as JSON');
+    }
   } catch (error) {
     console.error('Get report details error:', error);
     throw error;

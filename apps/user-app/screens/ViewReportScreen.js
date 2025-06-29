@@ -27,6 +27,8 @@ import * as Animatable from 'react-native-animatable';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ModernCard, ConsistentHeader } from '../components/ui';
 import { getReportImageUrlSync } from '../utils/imageUtils';
+import { getReportDetails, getReportById } from '../utils/reportAPI';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -45,68 +47,77 @@ const ViewReportScreen = ({ route, navigation }) => {
     if (reportId) {
       loadReport();
     } else {
-      // Load mock data if no reportId provided
-      loadMockReport();
+      console.error('No reportId provided to ViewReportScreen');
+      setSnackbarMessage('No report ID provided');
+      setSnackbarVisible(true);
+      setLoading(false);
     }
   }, [reportId]);
 
   const loadReport = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual API call
-      // const response = await getDamageReport(reportId);
-      // setReport(response.data);
+      console.log('Loading report with ID:', reportId);
       
-      // Mock data for now
-      loadMockReport();
+      // Try the field worker endpoint first (for assigned reports)
+      try {
+        const response = await getReportDetails(reportId);
+        console.log('Report API response (field worker):', response);
+        
+        if (response) {
+          setReport(response);
+          console.log('Report data loaded successfully from field worker endpoint:', response);
+          return;
+        }
+      } catch (fieldWorkerError) {
+        console.log('Field worker endpoint failed, trying alternative endpoint:', fieldWorkerError.message);
+        
+        // Try the alternative getReportById endpoint
+        try {
+          const response = await getReportById(reportId);
+          console.log('Report API response (alternative):', response);
+          
+          if (response) {
+            setReport(response);
+            console.log('Report data loaded successfully from alternative endpoint:', response);
+            return;
+          }
+        } catch (alternativeError) {
+          console.log('Alternative endpoint also failed:', alternativeError.message);
+          
+          // If both API endpoints fail, try to get from cache
+          try {
+            // Get the current list of reports and find this one
+            const reports = JSON.parse(await AsyncStorage.getItem('cachedReports') || '[]');
+            const cachedReport = reports.find(r => 
+              (r._id === reportId) || (r.id === reportId) || (r.reportId === reportId)
+            );
+            
+            if (cachedReport) {
+              setReport(cachedReport);
+              console.log('Using cached report data:', cachedReport);
+              return;
+            }
+          } catch (cacheError) {
+            console.log('Cache lookup failed:', cacheError.message);
+          }
+          
+          // If no cached data, throw the most relevant error
+          throw fieldWorkerError;
+        }
+      }
+      
+      throw new Error('No report data received from any source');
     } catch (error) {
       console.error('Error loading report:', error);
-      setSnackbarMessage('Failed to load report');
+      setSnackbarMessage(`Failed to load report: ${error.message}`);
       setSnackbarVisible(true);
+      
+      // Show error state
+      setReport(null);
     } finally {
       setLoading(false);
     }
-  };
-
-  const loadMockReport = () => {
-    // Get real-looking data based on report ID
-    setReport({
-      id: reportId || '12345',
-      title: 'Pothole on 5th Avenue',
-      description: 'A large pothole approximately 2 feet in diameter and 6 inches deep. The edges are jagged and there is water accumulation. This poses a serious hazard to vehicles and could cause tire damage or accidents.',
-      location: {
-        address: '1234 5th Avenue, Downtown',
-        coordinates: { latitude: 40.7128, longitude: -74.0060 }
-      },
-      status: 'In Progress',
-      priority: 'High',
-      assignedTo: 'James Wilson',
-      reportedBy: 'Current User',
-      reportedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      images: [
-        'https://images.unsplash.com/photo-1597044647800-6a7a3981930c?w=500&auto=format',
-        'https://images.unsplash.com/photo-1499667401015-6485f5123128?w=500&auto=format'
-      ],
-      category: 'Road Damage',
-      estimatedCost: '$850',
-      expectedCompletion: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      notes: [
-        {
-          id: 1,
-          author: 'John Smith',
-          content: 'Assessment completed. Materials ordered.',
-          timestamp: '2024-01-16T09:15:00Z'
-        },
-        {
-          id: 2,
-          author: 'Admin',
-          content: 'Priority level increased due to traffic volume.',
-          timestamp: '2024-01-15T15:45:00Z'
-        }
-      ]
-    });
-    setLoading(false);
   };
 
   const handleRefresh = () => {
@@ -116,8 +127,12 @@ const ViewReportScreen = ({ route, navigation }) => {
 
   const handleShare = async () => {
     try {
+      const title = report.title || `${report.damageType || 'Damage'} Report`;
+      const location = report.location || 'Unknown location';
+      const status = report.repairStatus || report.status || 'pending';
+      
       await Share.share({
-        message: `Report: ${report.title}\nLocation: ${report.location.address}\nStatus: ${report.status}`,
+        message: `Report: ${title}\nLocation: ${location}\nStatus: ${status}`,
         title: 'Damage Report'
       });
     } catch (error) {
@@ -127,19 +142,36 @@ const ViewReportScreen = ({ route, navigation }) => {
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
-      case 'completed': return theme.colors.success;
-      case 'in progress': return theme.colors.warning;
-      case 'pending': return theme.colors.error;
-      default: return theme.colors.secondary;
+      case 'completed': 
+      case 'resolved':
+        return theme.colors.success;
+      case 'in_progress': 
+      case 'in progress':
+        return theme.colors.warning;
+      case 'pending': 
+        return theme.colors.error;
+      case 'on_hold':
+      case 'on hold':
+        return '#FF9800'; // Orange
+      case 'cancelled':
+        return '#9E9E9E'; // Gray
+      default: 
+        return theme.colors.secondary;
     }
   };
 
   const getPriorityColor = (priority) => {
     switch (priority?.toLowerCase()) {
-      case 'high': return theme.colors.error;
-      case 'medium': return theme.colors.warning;
-      case 'low': return theme.colors.success;
-      default: return theme.colors.secondary;
+      case 'high': 
+      case 'critical':
+        return theme.colors.error;
+      case 'medium': 
+      case 'normal':
+        return theme.colors.warning;
+      case 'low': 
+        return theme.colors.success;
+      default: 
+        return theme.colors.secondary;
     }
   };
 
@@ -192,7 +224,6 @@ const ViewReportScreen = ({ route, navigation }) => {
       edges={['right', 'left']} // Don't include top edge as ConsistentHeader handles that
     >
       <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
-    
 
       <ScrollView
         style={styles.content}
@@ -206,22 +237,22 @@ const ViewReportScreen = ({ route, navigation }) => {
           <ModernCard style={styles.titleCard}>
             <View style={styles.titleSection}>
               <Text style={[styles.reportTitle, { color: theme.colors.text }]}>
-                {report.title}
+                {report.title || `${report.damageType || 'Damage'} Report`}
               </Text>
               <View style={styles.statusRow}>
                 <Chip
                   mode="flat"
-                  style={[styles.statusChip, { backgroundColor: getStatusColor(report.status) + '20' }]}
-                  textStyle={{ color: getStatusColor(report.status), fontWeight: '600' }}
+                  style={[styles.statusChip, { backgroundColor: getStatusColor(report.repairStatus || report.status) + '20' }]}
+                  textStyle={{ color: getStatusColor(report.repairStatus || report.status), fontWeight: '600' }}
                 >
-                  {report.status}
+                  {(report.repairStatus || report.status || 'pending').replace('_', ' ').toUpperCase()}
                 </Chip>
                 <Chip
                   mode="flat"
                   style={[styles.priorityChip, { backgroundColor: getPriorityColor(report.priority) + '20' }]}
                   textStyle={{ color: getPriorityColor(report.priority), fontWeight: '600' }}
                 >
-                  {report.priority} Priority
+                  {report.priority || 'Medium'} Priority
                 </Chip>
               </View>
             </View>
@@ -229,26 +260,61 @@ const ViewReportScreen = ({ route, navigation }) => {
         </Animatable.View>
 
         {/* Images */}
-        {report.images && report.images.length > 0 && (
+        {(report.images?.length > 0 || report._id || report.id) && (
           <Animatable.View animation="fadeInUp" delay={200}>
             <ModernCard style={styles.imagesCard}>
               <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
                 Images
               </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imagesScroll}>
-                {report.images.map((imageUrl, index) => (
-                  <Surface key={index} style={styles.imageContainer} elevation={2}>
-                    <Image
-                      source={{ uri: imageUrl }}
-                      style={styles.reportImage}
-                      resizeMode="cover"
-                      onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
-                    />
-                    <View style={styles.imageOverlay}>
-                      <Text style={styles.imageLabel}>Image {index + 1}</Text>
-                    </View>
-                  </Surface>
-                ))}
+                {report.images && report.images.length > 0 ? (
+                  // If report has images array, display them
+                  report.images.map((image, index) => {
+                    let imageUrl;
+                    if (typeof image === 'string' && image.startsWith('http')) {
+                      imageUrl = image;
+                    } else if (image?.url && image.url.startsWith('http')) {
+                      imageUrl = image.url;
+                    } else {
+                      // Use utility function to construct URL
+                      imageUrl = getReportImageUrlSync(report, index === 0 ? 'main' : 'thumbnail');
+                    }
+                    
+                    return (
+                      <Surface key={index} style={styles.imageContainer} elevation={2}>
+                        <Image
+                          source={{ uri: imageUrl }}
+                          style={styles.reportImage}
+                          resizeMode="cover"
+                          onError={(e) => console.log('Image load error:', e.nativeEvent.error, 'URL:', imageUrl)}
+                          onLoad={() => console.log('Image loaded successfully:', imageUrl)}
+                        />
+                        <View style={styles.imageOverlay}>
+                          <Text style={styles.imageLabel}>Image {index + 1}</Text>
+                        </View>
+                      </Surface>
+                    );
+                  })
+                ) : (
+                  // If no images array but we have a report ID, try to get default images
+                  ['main', 'before', 'after'].map((type, index) => {
+                    const imageUrl = getReportImageUrlSync(report, type);
+                    return (
+                      <Surface key={index} style={styles.imageContainer} elevation={2}>
+                        <Image
+                          source={{ uri: imageUrl }}
+                          style={styles.reportImage}
+                          resizeMode="cover"
+                          onError={(e) => console.log(`${type} image load error:`, e.nativeEvent.error)}
+                          onLoad={() => console.log(`${type} image loaded successfully`)}
+                        />
+                        <View style={styles.imageOverlay}>
+                          <Text style={styles.imageLabel}>{type.charAt(0).toUpperCase() + type.slice(1)}</Text>
+                        </View>
+                      </Surface>
+                    );
+                  })
+                )}
               </ScrollView>
             </ModernCard>
           </Animatable.View>
@@ -261,7 +327,7 @@ const ViewReportScreen = ({ route, navigation }) => {
               Description
             </Text>
             <Text style={[styles.description, { color: theme.colors.textSecondary }]}>
-              {report.description}
+              {report.description || 'No description provided'}
             </Text>
           </ModernCard>
         </Animatable.View>
@@ -277,7 +343,9 @@ const ViewReportScreen = ({ route, navigation }) => {
               <MaterialCommunityIcons name="map-marker" size={20} color={theme.colors.primary} />
               <View style={styles.detailContent}>
                 <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Location</Text>
-                <Text style={[styles.detailValue, { color: theme.colors.text }]}>{report.location.address}</Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                  {report.location || 'Unknown location'}
+                </Text>
               </View>
             </View>
 
@@ -287,17 +355,45 @@ const ViewReportScreen = ({ route, navigation }) => {
               <MaterialCommunityIcons name="account" size={20} color={theme.colors.primary} />
               <View style={styles.detailContent}>
                 <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Reported By</Text>
-                <Text style={[styles.detailValue, { color: theme.colors.text }]}>{report.reportedBy}</Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                  {report.reporter || report.reportedBy || 'Unknown'}
+                </Text>
               </View>
             </View>
 
             <Divider style={styles.divider} />
 
             <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="account-hard-hat" size={20} color={theme.colors.primary} />
+              <MaterialCommunityIcons name="hammer-wrench" size={20} color={theme.colors.primary} />
               <View style={styles.detailContent}>
-                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Assigned To</Text>
-                <Text style={[styles.detailValue, { color: theme.colors.text }]}>{report.assignedTo}</Text>
+                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Damage Type</Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                  {report.damageType || report.category || 'Unknown'}
+                </Text>
+              </View>
+            </View>
+
+            <Divider style={styles.divider} />
+
+            <View style={styles.detailRow}>
+              <MaterialCommunityIcons name="alert-circle" size={20} color={theme.colors.primary} />
+              <View style={styles.detailContent}>
+                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Severity</Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                  {report.severity || 'Not specified'}
+                </Text>
+              </View>
+            </View>
+
+            <Divider style={styles.divider} />
+
+            <View style={styles.detailRow}>
+              <MaterialCommunityIcons name="flag" size={20} color={theme.colors.primary} />
+              <View style={styles.detailContent}>
+                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Priority</Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                  {report.priority || 'Not set'}
+                </Text>
               </View>
             </View>
 
@@ -307,37 +403,67 @@ const ViewReportScreen = ({ route, navigation }) => {
               <MaterialCommunityIcons name="calendar" size={20} color={theme.colors.primary} />
               <View style={styles.detailContent}>
                 <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Reported At</Text>
-                <Text style={[styles.detailValue, { color: theme.colors.text }]}>{formatDate(report.reportedAt)}</Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                  {formatDate(report.createdAt || report.reportedAt)}
+                </Text>
               </View>
             </View>
 
             <Divider style={styles.divider} />
 
             <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="tag" size={20} color={theme.colors.primary} />
+              <MaterialCommunityIcons name="clipboard-list" size={20} color={theme.colors.primary} />
               <View style={styles.detailContent}>
-                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Category</Text>
-                <Text style={[styles.detailValue, { color: theme.colors.text }]}>{report.category}</Text>
+                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Action Required</Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                  {report.action || 'To be determined'}
+                </Text>
               </View>
             </View>
 
+            {/* Show assignment info if assigned */}
+            {report.assignedTo && (
+              <>
+                <Divider style={styles.divider} />
+                <View style={styles.detailRow}>
+                  <MaterialCommunityIcons name="account-hard-hat" size={20} color={theme.colors.primary} />
+                  <View style={styles.detailContent}>
+                    <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Assigned To</Text>
+                    <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                      {typeof report.assignedTo === 'object' 
+                        ? report.assignedTo.name || report.assignedTo.username 
+                        : report.assignedTo}
+                    </Text>
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* Show resolution date if resolved */}
+            {report.resolvedAt && (
+              <>
+                <Divider style={styles.divider} />
+                <View style={styles.detailRow}>
+                  <MaterialCommunityIcons name="check-circle" size={20} color={theme.colors.primary} />
+                  <View style={styles.detailContent}>
+                    <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Resolved At</Text>
+                    <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                      {formatDate(report.resolvedAt)}
+                    </Text>
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* Show report ID */}
             <Divider style={styles.divider} />
-
             <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="currency-usd" size={20} color={theme.colors.primary} />
+              <MaterialCommunityIcons name="identifier" size={20} color={theme.colors.primary} />
               <View style={styles.detailContent}>
-                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Estimated Cost</Text>
-                <Text style={[styles.detailValue, { color: theme.colors.text }]}>{report.estimatedCost}</Text>
-              </View>
-            </View>
-
-            <Divider style={styles.divider} />
-
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="clock-outline" size={20} color={theme.colors.primary} />
-              <View style={styles.detailContent}>
-                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Expected Completion</Text>
-                <Text style={[styles.detailValue, { color: theme.colors.text }]}>{formatDate(report.expectedCompletion)}</Text>
+                <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Report ID</Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                  {report.reportId || report._id || report.id}
+                </Text>
               </View>
             </View>
           </ModernCard>
