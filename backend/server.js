@@ -1,8 +1,11 @@
 const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
 const connectDB = require('./utils/db');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const { getRedisClient } = require('./utils/redisClient');
+const SocketManager = require('./utils/socketManager');
 const adminRoutes = require('./routes/adminRoutes');
 const adminProfileRoutes = require('./routes/adminProfileRoutes');
 const imageRoutes = require('./routes/ImageRoutes');
@@ -14,6 +17,7 @@ const weatherRoutes = require('./routes/weatherRoutes');
 const damageRoutes = require('./routes/damageRoutes');
 const tenantRoutes = require('./routes/tenantRoutes');
 const aiRoutes = require('./routes/aiRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 const path = require('path');
 
 dotenv.config();
@@ -26,6 +30,26 @@ getRedisClient().catch(err => {
 });
 
 const app = express();
+const server = http.createServer(app);
+
+// Setup Socket.IO with CORS
+const io = socketIo(server, {
+  cors: {
+    origin: ["http://localhost:3000", "http://localhost:3001"],
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
+
+// Initialize Socket Manager
+const socketManager = new SocketManager(io);
+
+// Middleware to attach io to requests
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
 app.use(cors());
 
 app.use(express.json({ limit: '50mb' }));
@@ -44,7 +68,8 @@ app.use('/api/admin/tenants', tenantRoutes);
 app.use('/api/admin', require('./routes/tenantAdminRoutes'));
 app.use('/api/images', imageRoutes);
 app.use('/api/damage', damageRoutes);
-app.use('/api/ai', aiRoutes); 
+app.use('/api/ai', aiRoutes);
+app.use('/api/chat', chatRoutes);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server running on port ${PORT}`));
+server.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server running on port ${PORT}`));

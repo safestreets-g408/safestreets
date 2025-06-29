@@ -25,6 +25,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import LogoutIcon from '@mui/icons-material/ExitToApp';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import BusinessIcon from '@mui/icons-material/Business';
+import ChatIcon from '@mui/icons-material/Chat';
 import { DRAWER_WIDTH } from '../../config/constants';
 
 // Super admin menu items
@@ -45,6 +46,12 @@ const superAdminMenuItems = [
     text: 'All Reports', 
     icon: <ReportIcon />, 
     path: '/reports', 
+    badge: null,
+  },
+  { 
+    text: 'Chat Support', 
+    icon: <ChatIcon />, 
+    path: '/chat', 
     badge: null,
   },
   { 
@@ -91,6 +98,12 @@ const regularMenuItems = [
     text: 'Historical Analysis', 
     icon: <HistoryIcon />, 
     path: '/historical', 
+    badge: null,
+  },
+  { 
+    text: 'Chat Support', 
+    icon: <ChatIcon />, 
+    path: '/chat', 
     badge: null,
   },
   { 

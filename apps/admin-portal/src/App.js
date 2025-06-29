@@ -6,6 +6,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { AuthProvider } from './hooks/useAuth';
 import { TenantProvider } from './context/TenantContext';
 import { SearchProvider } from './context/SearchContext';
+import { SocketProvider } from './context/SocketContext';
 
 // Theme
 import theme from './theme';
@@ -26,6 +27,7 @@ import AiAnalysis from './pages/AiAnalysis';
 import ManageTenants from './pages/ManageTenants';
 import TenantDetails from './pages/TenantDetails';
 import SearchResults from './pages/SearchResults';
+import Chat from './pages/Chat';
 
 function App() {
   return (
@@ -36,27 +38,30 @@ function App() {
           <AuthProvider>
             <TenantProvider>
               <SearchProvider>
-                <Routes>
-                  <Route path="/login" element={<Login />} />
-                  
-                  <Route element={<MainLayout />}>
-                    <Route index element={<Dashboard />} />
-                    <Route path="/reports" element={<Reports />} />
-                    <Route path="/map" element={<MapView />} />
-                    <Route path="/analytics" element={<Analytics />} />
-                    <Route path="/repairs" element={<Repair />} />
-                    <Route path="/historical" element={<Historical />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/ai-analysis" element={<AiAnalysis />} />
-                    <Route path="/search-results" element={<SearchResults />} />
-                    {/* Tenant Management */}
-                    <Route path="/tenants" element={<ManageTenants />} />
-                    <Route path="/tenants/:tenantId" element={<TenantDetails />} />
-                  </Route>
-    
-                  {/* Catch all route */}
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
+                <SocketProvider>
+                  <Routes>
+                    <Route path="/login" element={<Login />} />
+                    
+                    <Route element={<MainLayout />}>
+                      <Route index element={<Dashboard />} />
+                      <Route path="/reports" element={<Reports />} />
+                      <Route path="/map" element={<MapView />} />
+                      <Route path="/analytics" element={<Analytics />} />
+                      <Route path="/repairs" element={<Repair />} />
+                      <Route path="/historical" element={<Historical />} />
+                      <Route path="/profile" element={<Profile />} />
+                      <Route path="/ai-analysis" element={<AiAnalysis />} />
+                      <Route path="/search-results" element={<SearchResults />} />
+                      <Route path="/chat" element={<Chat />} />
+                      {/* Tenant Management */}
+                      <Route path="/tenants" element={<ManageTenants />} />
+                      <Route path="/tenants/:tenantId" element={<TenantDetails />} />
+                    </Route>
+      
+                    {/* Catch all route */}
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </SocketProvider>
               </SearchProvider>
             </TenantProvider>
           </AuthProvider>
