@@ -33,6 +33,7 @@ import { ConsistentHeader } from '../components/ui';
 import { aiServices } from '../utils/aiServices';
 import { useAuth } from '../context/AuthContext';
 import { submitNewReport, submitAiReport } from '../utils/reports';
+import { validateRoadImageAdvanced } from '../utils/advancedRoadClassifier';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -53,6 +54,11 @@ const CameraScreen = ({ navigation }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState(null);
   const [showAnnotatedImage, setShowAnnotatedImage] = useState(false);
+  
+  // Road classification states
+  const [roadValidation, setRoadValidation] = useState(null);
+  const [isValidatingRoad, setIsValidatingRoad] = useState(false);
+  const [roadValidationError, setRoadValidationError] = useState(null);
   
   const cameraRef = useRef(null);
 
@@ -247,11 +253,92 @@ const CameraScreen = ({ navigation }) => {
     }
   };
 
+  const validateRoadImage = async (imageUri) => {
+    try {
+      setIsValidatingRoad(true);
+      setRoadValidationError(null);
+      
+      console.log('Starting road validation for image:', imageUri);
+      
+      // Use advanced road classifier to validate the image
+      const validation = await validateRoadImageAdvanced(imageUri, 0.6); // 60% confidence threshold
+      
+      setRoadValidation(validation);
+      
+      console.log('Road validation result:', {
+        isValid: validation.isValid,
+        confidence: validation.confidence,
+        message: validation.message
+      });
+      
+      return validation;
+    } catch (error) {
+      console.error('Road validation failed:', error);
+      setRoadValidationError(error.message);
+      
+      // Return a permissive result to avoid blocking the user
+      const fallbackValidation = {
+        isValid: true,
+        confidence: 0.5,
+        message: 'Unable to validate image, proceeding with analysis',
+        classification: { error: error.message }
+      };
+      
+      setRoadValidation(fallbackValidation);
+      return fallbackValidation;
+    } finally {
+      setIsValidatingRoad(false);
+    }
+  };
+
   const analyzeImageWithAI = async (imageUri, locationDetails) => {
     try {
       setIsAnalyzing(true);
       setAnalysisError(null);
       
+      // Step 1: Validate that the image contains a road
+      console.log('Step 1: Validating if image contains a road...');
+      const roadValidationResult = await validateRoadImage(imageUri);
+      
+      // If road validation fails with low confidence, show warning but allow user to proceed
+      if (!roadValidationResult.isValid && roadValidationResult.confidence > 0.3) {
+        Alert.alert(
+          'Road Surface Not Detected',
+          roadValidationResult.message + '\n\nWould you like to proceed anyway or take a new photo?',
+          [
+            { text: 'Take New Photo', style: 'cancel', onPress: () => {
+              retakePicture();
+              return;
+            }},
+            { text: 'Proceed Anyway', onPress: () => {
+              // Continue with analysis
+              proceedWithDamageAnalysis(imageUri, locationDetails);
+            }}
+          ]
+        );
+        return;
+      }
+      
+      // Step 2: If road validation passes, proceed with damage analysis
+      await proceedWithDamageAnalysis(imageUri, locationDetails);
+      
+    } catch (error) {
+      console.error('Image analysis pipeline failed:', error);
+      setAnalysisError(error.message);
+      
+      // Show error but don't block submission
+      Alert.alert(
+        'Analysis Failed',
+        'Could not analyze the image automatically. You can still submit the report manually.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const proceedWithDamageAnalysis = async (imageUri, locationDetails) => {
+    try {
       // Ensure a valid location string that isn't "Unknown location"
       let formattedAddress = 'Unspecified road location';
 
@@ -295,17 +382,8 @@ const CameraScreen = ({ navigation }) => {
       });
       
     } catch (error) {
-      console.error('AI analysis failed:', error);
-      setAnalysisError(error.message);
-      
-      // Show error but don't block submission
-      Alert.alert(
-        'AI Analysis Failed',
-        'Could not analyze the image automatically. You can still submit the report manually.',
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setIsAnalyzing(false);
+      console.error('Damage analysis failed:', error);
+      throw error; // Re-throw to be handled by the calling function
     }
   };
 
@@ -468,6 +546,11 @@ const CameraScreen = ({ navigation }) => {
     setIsAnalyzing(false);
     setAnalysisError(null);
     setShowAnnotatedImage(false);
+    
+    // Clear road validation data
+    setRoadValidation(null);
+    setIsValidatingRoad(false);
+    setRoadValidationError(null);
     
     // Optionally clear location - only if user wants fresh location
     // Could keep location data for faster re-submission
@@ -943,6 +1026,68 @@ const CameraScreen = ({ navigation }) => {
               )}
             </Animatable.View>
 
+            {/* Road Validation Section */}
+            <Animatable.View animation="fadeInUp" delay={450}>
+              {isValidatingRoad ? (
+                <Surface style={[styles.roadValidationCard, { backgroundColor: theme.colors.surface }]} elevation={2}>
+                  <View style={styles.roadValidationHeader}>
+                    <MaterialCommunityIcons name="road" size={24} color={theme.colors.primary} />
+                    <Text style={[styles.roadValidationTitle, { color: theme.colors.text }]}>
+                      Road Detection
+                    </Text>
+                  </View>
+                  <View style={styles.roadValidationContent}>
+                    <PaperActivityIndicator size="small" color={theme.colors.primary} />
+                    <Text style={[styles.roadValidationText, { color: theme.colors.text }]}>
+                      Checking if image contains a road...
+                    </Text>
+                  </View>
+                </Surface>
+              ) : roadValidation ? (
+                <Surface style={[styles.roadValidationCard, { backgroundColor: theme.colors.surface }]} elevation={2}>
+                  <View style={styles.roadValidationHeader}>
+                    <MaterialCommunityIcons 
+                      name={roadValidation.isValid ? "road" : "road-variant"} 
+                      size={24} 
+                      color={roadValidation.isValid ? theme.colors.success : theme.colors.warning} 
+                    />
+                    <Text style={[styles.roadValidationTitle, { color: theme.colors.text }]}>
+                      Road Detection
+                    </Text>
+                    <Chip 
+                      icon={roadValidation.isValid ? "check-circle" : "alert-circle"}
+                      style={{ 
+                        backgroundColor: roadValidation.isValid 
+                          ? theme.colors.tertiaryContainer 
+                          : theme.colors.errorContainer 
+                      }}
+                      textStyle={{ fontSize: 10 }}
+                    >
+                      {(roadValidation.confidence * 100).toFixed(0)}% confidence
+                    </Chip>
+                  </View>
+                  
+                  <Text style={[styles.roadValidationMessage, { 
+                    color: roadValidation.isValid ? theme.colors.text : theme.colors.error 
+                  }]}>
+                    {roadValidation.message}
+                  </Text>
+                  
+                  {!roadValidation.isValid && (
+                    <Button
+                      mode="outlined"
+                      onPress={() => analyzeImageWithAI(capturedImage.uri, location?.addressDetails || { formattedAddress: 'Unknown location' })}
+                      style={{ marginTop: 8 }}
+                      compact
+                      icon="refresh"
+                    >
+                      Re-analyze
+                    </Button>
+                  )}
+                </Surface>
+              ) : null}
+            </Animatable.View>
+
             {/* AI Analysis Section */}
             <Animatable.View animation="fadeInUp" delay={500}>
               {isAnalyzing ? (
@@ -1042,11 +1187,11 @@ const CameraScreen = ({ navigation }) => {
                   onPress={submitReport}
                   style={[styles.submitButton, { backgroundColor: theme.colors.primary }]}
                   loading={isSubmitting}
-                  disabled={isSubmitting || fetchingLocation || !location}
+                  disabled={isSubmitting || fetchingLocation || !location || isValidatingRoad}
                   icon="send"
                   contentStyle={styles.buttonContent}
                 >
-                  {isAnalyzing ? 'Analyzing...' : 'Submit Report'}
+                  {isValidatingRoad ? 'Validating...' : isAnalyzing ? 'Analyzing...' : 'Submit Report'}
                 </Button>
               </View>
             </Animatable.View>
@@ -1280,6 +1425,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontStyle: 'italic',
+  },
+  roadValidationCard: {
+    marginBottom: 16,
+    borderRadius: 12,
+    padding: 16,
+  },
+  roadValidationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  roadValidationTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+  },
+  roadValidationContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  roadValidationText: {
+    fontSize: 14,
+    flex: 1,
+  },
+  roadValidationMessage: {
+    fontSize: 14,
+    lineHeight: 18,
+    marginBottom: 4,
   },
   buttonRow: {
     flexDirection: 'row',
