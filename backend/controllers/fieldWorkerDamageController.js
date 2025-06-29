@@ -474,188 +474,6 @@ const getNearbyReports = async (req, res) => {
   }
 };
 
-// Helper functions
-const calculateAverageCompletionTime = (reports) => {
-  const completedReports = reports.filter(report => {
-    // Find 'completed' status in history
-    const completedUpdate = report.statusHistory?.find(
-      update => update.status === 'completed'
-    );
-    
-    return completedUpdate && report.assignedAt;
-  });
-  
-  if (completedReports.length === 0) return 0;
-  
-  // Calculate average time to completion in hours
-  const totalHours = completedReports.reduce((sum, report) => {
-    const assignedAt = new Date(report.assignedAt);
-    
-    const completedUpdate = report.statusHistory.find(
-      update => update.status === 'completed'
-    );
-    
-    const completedAt = new Date(completedUpdate.updatedAt);
-    
-    const hoursToComplete = (completedAt - assignedAt) / (1000 * 60 * 60);
-    return sum + hoursToComplete;
-  }, 0);
-  
-  return totalHours / completedReports.length;
-};
-
-const calculateDamageTypeCounts = (reports) => {
-  const typeCounts = {};
-  
-  reports.forEach(report => {
-    const type = report.damageType || 'Unknown';
-    typeCounts[type] = (typeCounts[type] || 0) + 1;
-  });
-  
-  return typeCounts;
-};
-
-const calculateStatusCounts = (reports) => {
-  const statusCounts = {
-    pending: 0,
-    in_progress: 0,
-    completed: 0,
-    cancelled: 0
-  };
-  
-  reports.forEach(report => {
-    if (statusCounts.hasOwnProperty(report.repairStatus)) {
-      statusCounts[report.repairStatus]++;
-    }
-  });
-  
-  return statusCounts;
-};
-
-const calculatePerformanceOverTime = (reports) => {
-  // Group reports by month
-  const reportsByMonth = {};
-  
-  reports.forEach(report => {
-    const assignedDate = new Date(report.assignedAt);
-    const monthKey = `${assignedDate.getFullYear()}-${assignedDate.getMonth() + 1}`;
-    
-    if (!reportsByMonth[monthKey]) {
-      reportsByMonth[monthKey] = {
-        assigned: 0,
-        completed: 0,
-        month: assignedDate.toLocaleString('default', { month: 'short' }),
-        year: assignedDate.getFullYear()
-      };
-    }
-    
-    reportsByMonth[monthKey].assigned++;
-    
-    if (report.repairStatus === 'completed') {
-      reportsByMonth[monthKey].completed++;
-    }
-  });
-  
-  // Convert to array and sort by date
-  return Object.values(reportsByMonth)
-    .sort((a, b) => {
-      if (a.year !== b.year) return a.year - b.year;
-      return a.month.localeCompare(b.month);
-    })
-    .slice(-6); // Last 6 months
-};
-
-const calculateCompletionRateByType = (reports) => {
-  const reportsByType = {};
-  
-  reports.forEach(report => {
-    const type = report.damageType || 'Unknown';
-    
-    if (!reportsByType[type]) {
-      reportsByType[type] = { total: 0, completed: 0 };
-    }
-    
-    reportsByType[type].total++;
-    
-    if (report.repairStatus === 'completed') {
-      reportsByType[type].completed++;
-    }
-  });
-  
-  // Calculate completion rate for each type
-  Object.keys(reportsByType).forEach(type => {
-    const { total, completed } = reportsByType[type];
-    reportsByType[type].rate = total > 0 ? (completed / total) * 100 : 0;
-  });
-  
-  return reportsByType;
-};
-
-const calculateAvgTimeByPriority = (reports) => {
-  const reportsByPriority = {
-    Low: { total: 0, totalHours: 0 },
-    Medium: { total: 0, totalHours: 0 },
-    High: { total: 0, totalHours: 0 }
-  };
-  
-  reports.forEach(report => {
-    if (!report.assignedAt || report.repairStatus !== 'completed') return;
-    
-    const priority = report.priority || 'Medium';
-    if (!reportsByPriority[priority]) return;
-    
-    const completedUpdate = report.statusHistory?.find(
-      update => update.status === 'completed'
-    );
-    
-    if (!completedUpdate) return;
-    
-    const assignedAt = new Date(report.assignedAt);
-    const completedAt = new Date(completedUpdate.updatedAt);
-    const hoursToComplete = (completedAt - assignedAt) / (1000 * 60 * 60);
-    
-    reportsByPriority[priority].total++;
-    reportsByPriority[priority].totalHours += hoursToComplete;
-  });
-  
-  // Calculate average for each priority
-  Object.keys(reportsByPriority).forEach(priority => {
-    const { total, totalHours } = reportsByPriority[priority];
-    reportsByPriority[priority].avgHours = total > 0 ? totalHours / total : 0;
-  });
-  
-  return reportsByPriority;
-};
-
-const calculateTasksByTimeOfDay = (reports) => {
-  const hours = Array(24).fill(0);
-  
-  reports.forEach(report => {
-    if (!report.assignedAt) return;
-    
-    const assignedAt = new Date(report.assignedAt);
-    const hour = assignedAt.getHours();
-    
-    hours[hour]++;
-  });
-  
-  return hours.map((count, hour) => ({
-    hour,
-    count,
-    label: `${hour % 12 || 12} ${hour < 12 ? 'AM' : 'PM'}`
-  }));
-};
-
-const getPeriodLabel = (period) => {
-  switch (period) {
-    case 'day': return 'Today';
-    case 'week': return 'This Week';
-    case 'month': return 'This Month';
-    case 'year': return 'This Year';
-    default: return 'This Week';
-  }
-};
-
 // Upload damage report by field worker (for new discoveries)
 const uploadDamageReportByFieldWorker = async (req, res) => {
   try {
@@ -801,6 +619,54 @@ const uploadDamageReportByFieldWorker = async (req, res) => {
   }
 };
 
+// Upload after image for completed report
+const uploadAfterImage = async (req, res) => {
+  try {
+    const { reportId } = req.params;
+    const fieldWorkerId = req.fieldWorker.id;
+
+    // Check if file was uploaded
+    if (!req.file) {
+      return res.status(400).json({ message: 'No image file provided' });
+    }
+
+    // Find the report and verify it's assigned to this field worker
+    const report = await DamageReport.findOne({ 
+      _id: reportId, 
+      assignedTo: fieldWorkerId 
+    });
+
+    if (!report) {
+      return res.status(404).json({ 
+        message: 'Report not found or not assigned to you' 
+      });
+    }
+
+    // Verify the report is completed
+    if (report.repairStatus !== 'completed') {
+      return res.status(400).json({ 
+        message: 'Can only upload after images for completed reports' 
+      });
+    }
+
+    // Update the after image
+    report.afterImage = {
+      data: req.file.buffer,
+      contentType: req.file.mimetype
+    };
+
+    await report.save();
+
+    res.status(200).json({ 
+      message: 'After image uploaded successfully',
+      reportId: report._id
+    });
+  } catch (error) {
+    console.error('Error uploading after image:', error);
+    res.status(500).json({ message: 'Error uploading after image', error: error.message });
+  }
+};
+
 module.exports = {
   getFieldWorkerReports,
   updateRepairStatus,
@@ -810,5 +676,6 @@ module.exports = {
   getTaskAnalytics,
   getWeeklyReportStats,
   getReportStatusSummary,
-  getNearbyReports
+  getNearbyReports,
+  uploadAfterImage
 };

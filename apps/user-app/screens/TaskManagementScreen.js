@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,8 @@ import * as Animatable from 'react-native-animatable';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ModernCard, ConsistentHeader } from '../components/ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { getFieldWorkerTasks, updateTaskStatus as updateTaskStatusAPI, transformReportToTask } from '../utils/taskAPI';
+import { useFocusEffect } from '@react-navigation/native';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -45,49 +47,27 @@ const TaskManagementScreen = ({ navigation }) => {
     loadTasks();
   }, []);
 
+  // Reload tasks when screen comes into focus (e.g., returning from camera)
+  useFocusEffect(
+    useCallback(() => {
+      loadTasks();
+    }, [])
+  );
+
   const loadTasks = async () => {
     try {
       setLoading(true);
-      // Mock data - replace with actual API call
-      const mockTasks = [
-        {
-          id: 1,
-          title: 'Repair pothole on Main Street',
-          description: 'Large pothole causing vehicle damage',
-          status: 'pending',
-          priority: 'high',
-          location: 'Main Street & 5th Ave',
-          dueDate: '2025-01-02',
-          estimatedDuration: '2 hours',
-          reportId: 'DR-001'
-        },
-        {
-          id: 2,
-          title: 'Fix sidewalk crack',
-          description: 'Sidewalk crack near school',
-          status: 'in_progress',
-          priority: 'medium',
-          location: 'Lincoln Elementary School',
-          dueDate: '2025-01-03',
-          estimatedDuration: '1 hour',
-          reportId: 'DR-002'
-        },
-        {
-          id: 3,
-          title: 'Road surface repair',
-          description: 'Uneven road surface',
-          status: 'completed',
-          priority: 'low',
-          location: 'Oak Street',
-          dueDate: '2024-12-28',
-          estimatedDuration: '3 hours',
-          reportId: 'DR-003'
-        }
-      ];
-      setTasks(mockTasks);
+      
+      // Fetch tasks from API
+      const reports = await getFieldWorkerTasks();
+      
+      // Transform damage reports to task format
+      const transformedTasks = reports.map(transformReportToTask);
+      
+      setTasks(transformedTasks);
     } catch (error) {
       console.error('Error loading tasks:', error);
-      Alert.alert('Error', 'Failed to load tasks');
+      Alert.alert('Error', 'Failed to load tasks. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -101,17 +81,69 @@ const TaskManagementScreen = ({ navigation }) => {
 
   const updateTaskStatus = async (taskId, newStatus) => {
     try {
-      // Mock status update - replace with actual API call
+      // If completing a task, show confirmation and navigate to after image capture
+      if (newStatus === 'completed') {
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return;
+        
+        Alert.alert(
+          'Complete Task',
+          'To complete this task, you need to capture an after image showing the repaired area.',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel'
+            },
+            {
+              text: 'Capture Image',
+              onPress: () => {
+                navigation.navigate('AfterImageCamera', {
+                  reportId: task.id,
+                  taskTitle: task.title,
+                  onComplete: () => completeTaskWithAfterImage(task.id)
+                });
+              }
+            }
+          ]
+        );
+        return;
+      }
+      
+      // Update status via API
+      const updatedReport = await updateTaskStatusAPI(taskId, newStatus);
+      
+      // Update local state
       setTasks(prevTasks => 
         prevTasks.map(task => 
           task.id === taskId ? { ...task, status: newStatus } : task
         )
       );
+      
       setSnackbarMessage(`Task status updated to ${newStatus.replace('_', ' ')}`);
       setSnackbarVisible(true);
     } catch (error) {
       console.error('Error updating task status:', error);
-      Alert.alert('Error', 'Failed to update task status');
+      Alert.alert('Error', error.message || 'Failed to update task status');
+    }
+  };
+
+  const completeTaskWithAfterImage = async (taskId) => {
+    try {
+      // Update status to completed via API
+      const updatedReport = await updateTaskStatusAPI(taskId, 'completed');
+      
+      // Update local state
+      setTasks(prevTasks => 
+        prevTasks.map(task => 
+          task.id === taskId ? { ...task, status: 'completed', hasAfterImage: true } : task
+        )
+      );
+      
+      setSnackbarMessage('Task completed successfully!');
+      setSnackbarVisible(true);
+    } catch (error) {
+      console.error('Error completing task:', error);
+      Alert.alert('Error', error.message || 'Failed to complete task');
     }
   };
 
@@ -257,6 +289,19 @@ const TaskManagementScreen = ({ navigation }) => {
                   {new Date(item.dueDate).toLocaleDateString()}
                 </Text>
               </View>
+
+              {item.status === 'completed' && item.hasAfterImage && (
+                <View style={styles.infoItem}>
+                  <MaterialCommunityIcons 
+                    name="camera-check" 
+                    size={14} 
+                    color={theme.colors.success} 
+                  />
+                  <Text style={[styles.infoText, { color: theme.colors.success }]}>
+                    After Image
+                  </Text>
+                </View>
+              )}
             </View>
 
             <View style={styles.taskActions}>
@@ -281,6 +326,25 @@ const TaskManagementScreen = ({ navigation }) => {
                   labelStyle={styles.actionButtonLabel}
                 >
                   Complete
+                </Button>
+              )}
+
+              {item.status === 'completed' && !item.hasAfterImage && (
+                <Button
+                  mode="outlined"
+                  compact
+                  onPress={() => navigation.navigate('AfterImageCamera', {
+                    reportId: item.id,
+                    taskTitle: item.title,
+                    onComplete: () => {
+                      // Just refresh the tasks to show the updated after image status
+                      loadTasks();
+                    }
+                  })}
+                  style={[styles.actionButton, { borderColor: theme.colors.warning }]}
+                  labelStyle={{ color: theme.colors.warning }}
+                >
+                  Add Image
                 </Button>
               )}
             </View>

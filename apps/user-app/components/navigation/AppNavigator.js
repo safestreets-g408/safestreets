@@ -10,6 +10,7 @@ import LoginScreen from '../../screens/LoginScreen';
 import MainTabs from './MainTabs';
 import ViewReportScreen from '../../screens/ViewReportScreen';
 import SettingsScreen from '../../screens/SettingsScreen';
+import AfterImageCameraScreen from '../../screens/AfterImageCameraScreen';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const Stack = createStackNavigator();
@@ -68,6 +69,13 @@ const AppNavigator = () => {
             <Stack.Screen
               name="Settings"
               component={SettingsScreen}
+              options={{ 
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="AfterImageCamera"
+              component={AfterImageCameraScreen}
               options={{ 
                 headerShown: false,
               }}
