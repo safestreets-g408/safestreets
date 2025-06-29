@@ -188,6 +188,8 @@ const Dashboard = () => {
       setAiReportsError(null);
       const response = await api.get(`${API_ENDPOINTS.IMAGES}/reports`);
       
+      console.log('Raw API response for AI reports:', response);
+      
       let reportsData = [];
       if (Array.isArray(response)) {
         reportsData = response;
@@ -198,12 +200,13 @@ const Dashboard = () => {
         reportsData = Array.isArray(possibleReports) ? possibleReports : [];
       }
       
-      
+      console.log('Processed reports data:', reportsData);
       if (reportsData.length > 0) {
-        const sample = {...reportsData[0]};
-        if (sample.annotatedImageBase64) {
-          sample.annotatedImageBase64 = '[Base64 image data truncated]';
-        }
+        console.log('First report sample:', {
+          ...reportsData[0],
+          annotatedImageBase64: reportsData[0].annotatedImageBase64 ? 
+            `[${reportsData[0].annotatedImageBase64.length} chars]` : 'missing'
+        });
       }
       
       setAiReports(reportsData || []);

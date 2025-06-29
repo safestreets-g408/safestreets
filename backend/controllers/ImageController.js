@@ -324,7 +324,7 @@ const getReports = async (req, res) => {
                 severity: report.severity,
                 priority: report.priority,
                 predictionClass: report.predictionClass,
-                annotatedImage: report.annotatedImageBase64 ? `data:image/jpeg;base64,${report.annotatedImageBase64}` : null,
+                annotatedImageBase64: report.annotatedImageBase64,
                 createdAt: report.createdAt,
                 location: report.location // Include location information from the report
             }))

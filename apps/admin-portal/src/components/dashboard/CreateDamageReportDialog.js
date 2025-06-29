@@ -100,36 +100,97 @@ const CreateDamageReportDialog = ({
     <Dialog 
       open={open} 
       onClose={onClose}
-      maxWidth="sm"
+      maxWidth="md"
       fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          maxHeight: '90vh'
+        }
+      }}
     >
       <DialogTitle sx={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
-        borderBottom: '1px solid #e5e7eb'
+        borderBottom: '1px solid #e5e7eb',
+        backgroundColor: '#f8f9fa',
+        py: 2.5
       }}>
-        <Typography variant="h6">Create Damage Report</Typography>
-        <IconButton onClick={onClose} size="small">
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <AssignmentIcon color="primary" />
+          <Typography variant="h5" sx={{ fontWeight: 600, color: '#1976d2' }}>
+            Create Damage Report
+          </Typography>
+          {selectedAiReport && (
+            <Typography 
+              variant="caption" 
+              sx={{ 
+                backgroundColor: '#e3f2fd', 
+                color: '#1976d2', 
+                px: 1.5, 
+                py: 0.5, 
+                borderRadius: 1,
+                fontWeight: 500
+              }}
+            >
+              AI-Assisted
+            </Typography>
+          )}
+        </Box>
+        <IconButton 
+          onClick={onClose} 
+          size="small"
+          sx={{ 
+            backgroundColor: '#fff',
+            '&:hover': { backgroundColor: '#f5f5f5' }
+          }}
+        >
           <CloseIcon fontSize="small" />
         </IconButton>
       </DialogTitle>
       <DialogContent sx={{ py: 3 }}>
-        {selectedAiReport?.annotatedImageBase64 && (
-          <Box sx={{ mb: 3, textAlign: 'center' }}>
-            <Typography variant="subtitle2" gutterBottom>AI Detected Damage Image</Typography>
-            <img
-              src={`data:image/jpeg;base64,${selectedAiReport.annotatedImageBase64}`}
-              alt="Damage"
-              style={{ 
-                maxWidth: '100%', 
-                maxHeight: '200px',
-                objectFit: 'contain',
-                borderRadius: '4px',
-              }}
-            />
-            <Typography variant="caption" color="text.secondary">
-              This image will be saved as the "before" image in your damage report
+        {/* AI Detected Image Section */}
+        {((selectedAiReport?.annotatedImageBase64 && 
+           typeof selectedAiReport.annotatedImageBase64 === 'string' && 
+           selectedAiReport.annotatedImageBase64.length > 0) ||
+          (selectedAiReport?.annotatedImage && 
+           typeof selectedAiReport.annotatedImage === 'string' && 
+           selectedAiReport.annotatedImage.length > 0)) && (
+          <Box sx={{ 
+            mb: 3, 
+            p: 2, 
+            bgcolor: '#f8f9fa', 
+            borderRadius: 2,
+            border: '1px solid #e9ecef'
+          }}>
+            <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, color: '#1976d2' }}>
+              🤖 AI Detected Damage
+            </Typography>
+            <Box sx={{ textAlign: 'center', mb: 1 }}>
+              <img
+                src={selectedAiReport.annotatedImageBase64 ? 
+                  `data:image/jpeg;base64,${selectedAiReport.annotatedImageBase64}` :
+                  selectedAiReport.annotatedImage?.startsWith('data:') ? 
+                    selectedAiReport.annotatedImage :
+                    `data:image/jpeg;base64,${selectedAiReport.annotatedImage}`
+                }
+                alt="AI Detected Damage"
+                style={{ 
+                  maxWidth: '100%', 
+                  maxHeight: '200px',
+                  objectFit: 'contain',
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}
+              />
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ 
+              display: 'block', 
+              textAlign: 'center',
+              fontStyle: 'italic'
+            }}>
+              This image will be attached as the "before" image in your damage report
             </Typography>
           </Box>
         )}
@@ -139,177 +200,241 @@ const CreateDamageReportDialog = ({
             {error}
           </Alert>
         )}
-        
-        <Grid container spacing={3}>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Region"
-              name="region"
-              value={formData.region}
-              onChange={onFormChange}
-              fullWidth
-              required
-              error={isFieldEmpty('region')}
-              helperText={isFieldEmpty('region') ? 'Region is required' : ''}
-            />
-          </Grid>
+
+        {/* Form Section */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ mb: 2, color: '#1976d2', fontWeight: 600 }}>
+            📋 Report Details
+          </Typography>
           
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Location"
-              name="location"
-              value={formData.location}
-              onChange={onFormChange}
-              fullWidth
-              required
-              error={isFieldEmpty('location')}
-              helperText={isFieldEmpty('location') ? 'Location is required' : ''}
-            />
-          </Grid>
-          
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Damage Type"
-              name="damageType"
-              value={formData.damageType}
-              onChange={onFormChange}
-              fullWidth
-              required
-              disabled={!!selectedAiReport}
-              error={isFieldEmpty('damageType')}
-              helperText={isFieldEmpty('damageType') ? 'Damage type is required' : ''}
-            />
-          </Grid>
-          
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth required error={isFieldEmpty('severity')}>
-              <InputLabel>Severity</InputLabel>
-              <Select
-                label="Severity"
-                name="severity"
-                value={formData.severity}
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Region"
+                name="region"
+                value={formData.region}
                 onChange={onFormChange}
+                fullWidth
+                required
+                error={isFieldEmpty('region')}
+                helperText={isFieldEmpty('region') ? 'Region is required' : ''}
+                variant="outlined"
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+              />
+            </Grid>
+            
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Location"
+                name="location"
+                value={formData.location}
+                onChange={onFormChange}
+                fullWidth
+                required
+                error={isFieldEmpty('location')}
+                helperText={isFieldEmpty('location') ? 'Location is required' : ''}
+                variant="outlined"
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+              />
+            </Grid>
+            
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Damage Type"
+                name="damageType"
+                value={formData.damageType}
+                onChange={onFormChange}
+                fullWidth
+                required
                 disabled={!!selectedAiReport}
-              >
-                <MenuItem value="LOW">Low</MenuItem>
-                <MenuItem value="MEDIUM">Medium</MenuItem>
-                <MenuItem value="HIGH">High</MenuItem>
-              </Select>
-              {isFieldEmpty('severity') && (
-                <FormHelperText>Severity is required</FormHelperText>
-              )}
-            </FormControl>
-          </Grid>
-          
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Priority (1-10)"
-              name="priority"
-              value={formData.priority}
-              onChange={onFormChange}
-              fullWidth
-              required
-              type="number"
-              InputProps={{ inputProps: { min: 1, max: 10 } }}
-              disabled={!!selectedAiReport}
-              error={isFieldEmpty('priority')}
-              helperText={isFieldEmpty('priority') ? 'Priority is required' : ''}
-            />
-          </Grid>
-          
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
-              <InputLabel>Assign to Field Worker</InputLabel>
-              <Select
-                label="Assign to Field Worker"
-                value={selectedFieldWorker}
-                onChange={onFieldWorkerChange}
-              >
-                <MenuItem value="">
-                  <em>None (Unassigned)</em>
-                </MenuItem>
-                {fieldWorkers.map(worker => (
-                  <MenuItem key={worker._id} value={worker._id}>
-                    {worker.name} - {worker.specialization}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          
-          <Grid item xs={12}>
-            <Typography variant="subtitle2" gutterBottom>
-              Description
-              {aiLoading && <CircularProgress size={16} sx={{ ml: 1 }} />}
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {aiLoading ? (
-                <TextField
-                  value="Generating professional description..."
-                  disabled
-                  fullWidth
-                  multiline
-                  rows={3}
-                />
-              ) : (
-                <TextField
-                  name="description"
-                  value={formData.description}
+                error={isFieldEmpty('damageType')}
+                helperText={isFieldEmpty('damageType') ? 'Damage type is required' : (selectedAiReport ? 'Pre-filled by AI' : '')}
+                variant="outlined"
+                sx={{ 
+                  '& .MuiOutlinedInput-root': { borderRadius: 2 },
+                  '& .MuiInputBase-input:disabled': { 
+                    backgroundColor: '#f5f5f5',
+                    color: '#666'
+                  }
+                }}
+              />
+            </Grid>
+            
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth required error={isFieldEmpty('severity')}>
+                <InputLabel>Severity</InputLabel>
+                <Select
+                  label="Severity"
+                  name="severity"
+                  value={formData.severity}
                   onChange={onFormChange}
-                  fullWidth
-                  multiline
-                  rows={3}
-                  placeholder="Enter damage description or use the Enhance button to generate one"
-                />
-              )}
-              
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                <Button
-                  onClick={handleGenerateAiSummary}
-                  disabled={aiLoading || loading || !isFormValid}
-                  variant="outlined"
-                  color="primary"
-                  startIcon={<AutoAwesomeIcon />}
-                  size="small"
+                  disabled={!!selectedAiReport}
+                  sx={{ 
+                    borderRadius: 2,
+                    '& .MuiSelect-select:disabled': { 
+                      backgroundColor: '#f5f5f5'
+                    }
+                  }}
                 >
-                  Enhance with AI
-                </Button>
-              </Box>
-              {aiError && (
-                <Alert severity="error" sx={{ mt: 1 }}>
-                  {aiError}
-                </Alert>
-              )}
-            </Box>
+                  <MenuItem value="LOW">🟢 Low</MenuItem>
+                  <MenuItem value="MEDIUM">🟡 Medium</MenuItem>
+                  <MenuItem value="HIGH">🔴 High</MenuItem>
+                </Select>
+                {isFieldEmpty('severity') && (
+                  <FormHelperText>Severity is required</FormHelperText>
+                )}
+                {selectedAiReport && !isFieldEmpty('severity') && (
+                  <FormHelperText sx={{ color: '#666' }}>Pre-filled by AI</FormHelperText>
+                )}
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Priority (1-10)"
+                name="priority"
+                value={formData.priority}
+                onChange={onFormChange}
+                fullWidth
+                required
+                type="number"
+                InputProps={{ inputProps: { min: 1, max: 10 } }}
+                disabled={!!selectedAiReport}
+                error={isFieldEmpty('priority')}
+                helperText={isFieldEmpty('priority') ? 'Priority is required' : (selectedAiReport ? 'Pre-filled by AI' : '')}
+                variant="outlined"
+                sx={{ 
+                  '& .MuiOutlinedInput-root': { borderRadius: 2 },
+                  '& .MuiInputBase-input:disabled': { 
+                    backgroundColor: '#f5f5f5',
+                    color: '#666'
+                  }
+                }}
+              />
+            </Grid>
+            
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>👷 Assign to Field Worker</InputLabel>
+                <Select
+                  label="👷 Assign to Field Worker"
+                  value={selectedFieldWorker}
+                  onChange={onFieldWorkerChange}
+                  sx={{ borderRadius: 2 }}
+                >
+                  <MenuItem value="">
+                    <em>None (Unassigned)</em>
+                  </MenuItem>
+                  {fieldWorkers.map(worker => (
+                    <MenuItem key={worker._id} value={worker._id}>
+                      {worker.name} - {worker.specialization}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
           </Grid>
-        </Grid>
+        </Box>
+
+        {/* Description Section */}
+        <Box>
+          <Typography variant="h6" sx={{ mb: 2, color: '#1976d2', fontWeight: 600 }}>
+            📝 Description
+            {aiLoading && <CircularProgress size={16} sx={{ ml: 1 }} />}
+          </Typography>
+          
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {aiLoading ? (
+              <TextField
+                value="✨ Generating professional description..."
+                disabled
+                fullWidth
+                multiline
+                rows={4}
+                variant="outlined"
+                sx={{ 
+                  '& .MuiOutlinedInput-root': { borderRadius: 2 },
+                  '& .MuiInputBase-input': { fontStyle: 'italic' }
+                }}
+              />
+            ) : (
+              <TextField
+                name="description"
+                value={formData.description}
+                onChange={onFormChange}
+                fullWidth
+                multiline
+                rows={4}
+                placeholder="Enter a detailed description of the damage or use the AI enhancement button below..."
+                variant="outlined"
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+              />
+            )}
+            
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <Button
+                onClick={handleGenerateAiSummary}
+                disabled={aiLoading || loading || !isFormValid}
+                variant="outlined"
+                color="primary"
+                startIcon={<AutoAwesomeIcon />}
+                size="medium"
+                sx={{ 
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontWeight: 600
+                }}
+              >
+                ✨ Enhance with AI
+              </Button>
+            </Box>
+            
+            {aiError && (
+              <Alert severity="error" sx={{ borderRadius: 2 }}>
+                {aiError}
+              </Alert>
+            )}
+          </Box>
+        </Box>
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid #e5e7eb' }}>
+      <DialogActions sx={{ 
+        px: 3, 
+        py: 2.5, 
+        borderTop: '1px solid #e5e7eb',
+        backgroundColor: '#fafafa',
+        gap: 1
+      }}>
         <Button 
           onClick={onClose} 
           color="inherit"
+          size="large"
+          sx={{ 
+            borderRadius: 2,
+            textTransform: 'none',
+            fontWeight: 500,
+            px: 3
+          }}
         >
           Cancel
-        </Button>          <Button
-            onClick={(e) => {
-              // Prevent passing the entire event object to avoid circular references
-              e.preventDefault();
-              
-              console.log('Submitting form data:', {
-                ...formData,
-                aiReportId: formData.aiReportId,
-                hasAiReport: !!selectedAiReport,
-                aiReportHasImage: !!selectedAiReport?.annotatedImageBase64
-              });
-              
-              // Only pass the formData to the onSubmit handler
-              onSubmit(formData);
-            }}
-            variant="contained"
-            disabled={loading || !isFormValid}
-            startIcon={loading ? <CircularProgress size={20} /> : <AssignmentIcon />}
-          >
-            {loading ? 'Creating...' : 'Create Report'}
+        </Button>
+        <Button
+          onClick={(e) => {
+            e.preventDefault();
+            onSubmit(formData);
+          }}
+          variant="contained"
+          disabled={loading || !isFormValid}
+          startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <AssignmentIcon />}
+          size="large"
+          sx={{ 
+            borderRadius: 2,
+            textTransform: 'none',
+            fontWeight: 600,
+            px: 3,
+            minWidth: 140
+          }}
+        >
+          {loading ? 'Creating...' : 'Create Report'}
         </Button>
       </DialogActions>
     </Dialog>
