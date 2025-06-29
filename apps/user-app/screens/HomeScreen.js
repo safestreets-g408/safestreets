@@ -21,7 +21,8 @@ import {
   getReportStatusSummary,
   getNotifications,
   markNotificationAsRead,
-  getWeatherInfo
+  getWeatherInfo,
+  getAiReports
 } from '../utils/dashboardAPI';
 import { getReportImageUrlSync, preloadImageToken } from '../utils/imageUtils';
 import { API_BASE_URL } from '../config';
@@ -108,6 +109,7 @@ const HomeScreen = ({ navigation }) => {
   const [weeklyStats, setWeeklyStats] = useState([]);
   const [statusSummary, setStatusSummary] = useState(null);
   const [nearbyReports, setNearbyReports] = useState([]);
+  const [aiReports, setAiReports] = useState([]);
   const [loadingMore, setLoadingMore] = useState(false);
   const animationRef = useRef(null);
   const [authErrorShown, setAuthErrorShown] = useState(false);  // Track if auth error is shown
@@ -138,6 +140,30 @@ const HomeScreen = ({ navigation }) => {
     // Get field worker's reports
     fetchFieldWorkerReports();
   }, [fieldWorker]);
+
+  // Update notifications when reports change
+  useEffect(() => {
+    const updateNotifications = async () => {
+      try {
+        const notificationsData = await getNotifications();
+        // Generate notifications from reports (including both damage and AI reports)
+        const generatedNotifications = generateNotificationsFromReports();
+        // Merge backend notifications with generated notifications from reports
+        const allNotifications = [...generatedNotifications, ...notificationsData];
+        setNotifications(allNotifications);
+      } catch (notifError) {
+        console.error('Failed to load notifications:', notifError);
+        // Check if it's an auth error
+        handleAuthError(notifError);
+        // Continue with just the generated notifications
+        const generatedNotifications = generateNotificationsFromReports();
+        setNotifications(generatedNotifications);
+      }
+    };
+
+    // Update notifications whenever reports change (even if empty)
+    updateNotifications();
+  }, [nearbyReports, aiReports]);
 
   const getCurrentLocation = async () => {
     try {
@@ -234,18 +260,41 @@ const HomeScreen = ({ navigation }) => {
         return;
       }
       
-      // Instead of location-based, we'll use fieldWorker's reports
-      const data = await getFilteredReports({ fieldWorkerId: fieldWorker._id, limit: 5 });
+      // Fetch both damage reports and AI reports
+      const [damageReportsResponse, aiReportsResponse] = await Promise.allSettled([
+        getFilteredReports({ fieldWorkerId: fieldWorker._id, limit: 5 }),
+        getAiReports({ fieldWorkerId: fieldWorker._id, limit: 5 }).catch(err => {
+          console.log('AI reports not available:', err.message);
+          return { reports: [] }; // Return empty result if AI reports fail
+        })
+      ]);
       
-      // Extract reports array from the response
-      const reports = data?.reports || [];
-      setNearbyReports(reports); // Still using the same state variable for compatibility
+      // Handle damage reports
+      const damageReports = damageReportsResponse.status === 'fulfilled' 
+        ? damageReportsResponse.value?.reports || [] 
+        : [];
+      
+      // Handle AI reports (with fallback to empty array)
+      const aiReports = aiReportsResponse.status === 'fulfilled' 
+        ? aiReportsResponse.value?.reports || [] 
+        : [];
+      
+      // Set the reports in state
+      setNearbyReports(damageReports);
+      setAiReports(aiReports);
+
+      console.log('Fetched reports:', { 
+        damageReports: damageReports.length, 
+        aiReports: aiReports.length 
+      });
 
     } catch (error) {
       console.error('Error fetching field worker reports:', error);
       // Check if it's an auth error
       handleAuthError(error);
-      // Non-critical, just log the error if not auth related
+      // Set empty arrays as fallback
+      setNearbyReports([]);
+      setAiReports([]);
     }
   };
 
@@ -298,22 +347,6 @@ const HomeScreen = ({ navigation }) => {
         pendingIssues: 0,
         completionRate: 0
       });
-      
-      // Load notifications
-      try {
-        const notificationsData = await getNotifications();
-        // Merge backend notifications with generated notifications from reports
-        const generatedNotifications = generateNotificationsFromReports();
-        const allNotifications = [...generatedNotifications, ...notificationsData];
-        setNotifications(allNotifications);
-      } catch (notifError) {
-        console.error('Failed to load notifications:', notifError);
-        // Check if it's an auth error
-        handleAuthError(notifError);
-        // Continue with just the generated notifications
-        const generatedNotifications = generateNotificationsFromReports();
-        setNotifications(generatedNotifications);
-      }
       
       // Load task analytics
       loadTaskAnalytics();
@@ -422,9 +455,11 @@ const HomeScreen = ({ navigation }) => {
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
     try {
-      await loadDashboardData();
-      await getCurrentLocation(); // Get location for weather display
-      await fetchFieldWorkerReports(); // Get field worker's reports
+      await Promise.all([
+        loadDashboardData(),
+        getCurrentLocation(), // Get location for weather display
+        fetchFieldWorkerReports() // Get field worker's reports (both damage and AI)
+      ]);
     } catch (error) {
       console.error('Error refreshing data:', error);
     } finally {
@@ -436,9 +471,21 @@ const HomeScreen = ({ navigation }) => {
     // Mark notification as read when pressed
     handleMarkAsRead(notification);
     
-    // Navigate to the report details
+    // Navigate to the report details based on report type
     if (notification.reportId) {
-      navigation.navigate('ViewReport', { reportId: notification.reportId });
+      if (notification.reportType === 'ai') {
+        // Navigate to AI report view or generic report view
+        navigation.navigate('ViewReport', { 
+          reportId: notification.reportId, 
+          reportType: 'ai' 
+        });
+      } else {
+        // Navigate to damage report view
+        navigation.navigate('ViewReport', { 
+          reportId: notification.reportId, 
+          reportType: 'damage' 
+        });
+      }
     }
   };
 
@@ -503,26 +550,45 @@ const HomeScreen = ({ navigation }) => {
   const generateNotificationsFromReports = () => {
     const notificationArray = [];
     
-    // Add notifications for assigned reports
+    // Add notifications for assigned damage reports
     if (Array.isArray(nearbyReports) && nearbyReports.length > 0) {
       nearbyReports.forEach((report, index) => {
         notificationArray.push({
-          id: `report_${report._id}`,
+          id: `damage_report_${report._id}`,
           title: `Assigned: ${report.damageType}`,
           message: `You have been assigned to inspect a ${report.severity || 'medium'} severity ${report.damageType} damage at ${report.location}.`,
           time: formatTimeAgo(new Date(report.assignedAt || report.createdAt)),
           read: false,
           icon: 'clipboard-alert',
           type: report.severity === 'HIGH' ? 'warning' : 'info',
-          reportId: report._id
+          reportId: report._id,
+          reportType: 'damage'
         });
       });
     }
     
-    // Add notifications based on upcoming tasks
-    if (Array.isArray(nearbyReports) && nearbyReports.length > 0) {
+    // Add notifications for AI reports
+    if (Array.isArray(aiReports) && aiReports.length > 0) {
+      aiReports.forEach((report, index) => {
+        notificationArray.push({
+          id: `ai_report_${report._id}`,
+          title: `AI Detected: ${report.damageType || 'Infrastructure Issue'}`,
+          message: `AI has detected a ${report.severity || 'medium'} severity ${report.damageType || 'issue'} at ${report.location}. Please review and verify.`,
+          time: formatTimeAgo(new Date(report.createdAt)),
+          read: false,
+          icon: 'robot',
+          type: report.severity === 'HIGH' || report.priority > 7 ? 'warning' : 'info',
+          reportId: report._id,
+          reportType: 'ai'
+        });
+      });
+    }
+    
+    // Add notifications based on upcoming tasks (from both types)
+    const allReports = [...nearbyReports, ...aiReports];
+    if (allReports.length > 0) {
       // High priority reports notification
-      const highPriorityReports = nearbyReports.filter(report => 
+      const highPriorityReports = allReports.filter(report => 
         report.priority > 5 || report.severity === 'HIGH'
       );
       if (highPriorityReports.length > 0) {
@@ -536,7 +602,24 @@ const HomeScreen = ({ navigation }) => {
           type: 'warning'
         });
       }
+      
+      // AI reports needing verification
+      const unverifiedAiReports = aiReports.filter(report => 
+        !report.verified && !report.fieldWorkerVerified
+      );
+      if (unverifiedAiReports.length > 0) {
+        notificationArray.push({
+          id: `ai_verification_needed`,
+          title: 'AI Reports Need Verification',
+          message: `${unverifiedAiReports.length} AI-detected issues require field verification.`,
+          time: 'Now',
+          read: false,
+          icon: 'robot',
+          type: 'info'
+        });
+      }
     }
+    
     return notificationArray;
   };
 

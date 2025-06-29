@@ -712,6 +712,83 @@ const getDamageReportById = async (req, res) => {
   }
 };
 
+// Get AI reports assigned to field worker
+const getFieldWorkerAiReports = async (req, res) => {
+  try {
+    const fieldWorkerId = req.fieldWorker.id;
+    
+    // Get query parameters
+    const { 
+      status, 
+      priority, 
+      damageType, 
+      startDate, 
+      endDate,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      limit = 20,
+      offset = 0
+    } = req.query;
+    
+    // Build query - AI reports might be assigned or in field worker's region
+    const query = {
+      $or: [
+        { assignedTo: fieldWorkerId },
+        { 
+          // If no assignedTo field, check if it's in the field worker's region
+          assignedTo: { $exists: false },
+          // Assuming field worker has a region field
+          region: req.fieldWorker.region 
+        }
+      ]
+    };
+    
+    if (status) {
+      query.status = status;
+    }
+    
+    if (priority) {
+      query.priority = { $gte: parseInt(priority) };
+    }
+    
+    if (damageType) {
+      query.damageType = damageType;
+    }
+    
+    if (startDate && endDate) {
+      query.createdAt = { 
+        $gte: new Date(startDate), 
+        $lte: new Date(endDate) 
+      };
+    }
+    
+    // Determine sort direction
+    const sortDirection = sortOrder === 'asc' ? 1 : -1;
+    
+    // Execute query with pagination
+    const reports = await AiReport.find(query)
+      .sort({ [sortBy]: sortDirection })
+      .skip(parseInt(offset))
+      .limit(parseInt(limit));
+    
+    // Get total count for pagination
+    const total = await AiReport.countDocuments(query);
+    
+    res.status(200).json({
+      reports,
+      pagination: {
+        total,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        hasMore: parseInt(offset) + reports.length < total
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching AI reports:', error);
+    res.status(500).json({ message: 'Error fetching AI reports', error: error.message });
+  }
+};
+
 module.exports = {
   getFieldWorkerReports,
   updateRepairStatus,
@@ -723,5 +800,6 @@ module.exports = {
   getReportStatusSummary,
   getNearbyReports,
   uploadAfterImage,
-  getDamageReportById
+  getDamageReportById,
+  getFieldWorkerAiReports
 };

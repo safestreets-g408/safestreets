@@ -344,6 +344,59 @@ export const getFieldWorkerReportsByID = async (fieldWorkerId) => {
   }
 };
 
+// New function to get AI reports
+export const getAiReports = async (filters = {}) => {
+  try {
+    const token = await getValidAuthToken();
+    
+    if (!token) {
+      throw new Error('No valid auth token found');
+    }
+
+    // Convert filters to query string
+    const queryParams = new URLSearchParams();
+    Object.keys(filters).forEach(key => {
+      if (filters[key]) {
+        queryParams.append(key, filters[key]);
+      }
+    });
+
+    // Try to fetch from AI reports endpoint first
+    let url = `${API_BASE_URL}/fieldworker/damage/ai-reports${
+      queryParams.toString() ? `?${queryParams.toString()}` : ''
+    }`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      // If AI reports endpoint doesn't exist, return empty result
+      if (response.status === 404) {
+        console.log('AI reports endpoint not available, returning empty result');
+        return { reports: [], pagination: { total: 0, hasMore: false } };
+      }
+      throw new Error(data.message || 'Failed to get AI reports');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Get AI reports error:', error);
+    // Return empty result instead of throwing to avoid breaking the app
+    if (error.message.includes('404') || error.message.includes('Not Found')) {
+      console.log('AI reports endpoint not implemented yet, returning empty result');
+      return { reports: [], pagination: { total: 0, hasMore: false } };
+    }
+    throw error;
+  }
+};
+
 // Mock weather data function for fallback
 const getMockWeatherData = (coordinates) => {
   // Generate semi-realistic weather data
