@@ -21,7 +21,7 @@ const DamageReportSchema = new mongoose.Schema({
   action: { type: String, required: true },
   description: { type: String },
   status: { type: String, default: 'Pending' },
-  repairStatus: { type: String, default: 'pending', enum: ['pending', 'in_progress', 'completed', 'cancelled'] },
+  repairStatus: { type: String, default: 'pending', enum: ['pending', 'in_progress', 'completed', 'on_hold', 'cancelled'] },
   assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'FieldWorker', default: null },
   assignedAt: { type: Date },
   resolvedAt: { type: Date },

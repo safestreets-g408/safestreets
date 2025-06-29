@@ -108,6 +108,42 @@ const TaskManagementScreen = ({ navigation }) => {
         );
         return;
       }
+
+      // If putting task on hold, show confirmation
+      if (newStatus === 'on_hold') {
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return;
+        
+        Alert.alert(
+          'Put Task On Hold',
+          'Are you sure you want to put this task on hold? You can resume it later.',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel'
+            },
+            {
+              text: 'Put On Hold',
+              onPress: async () => {
+                try {
+                  await updateTaskStatusAPI(taskId, 'on_hold');
+                  setTasks(prevTasks => 
+                    prevTasks.map(task => 
+                      task.id === taskId ? { ...task, status: 'on_hold' } : task
+                    )
+                  );
+                  setSnackbarMessage('Task put on hold');
+                  setSnackbarVisible(true);
+                } catch (error) {
+                  console.error('Error updating task status:', error);
+                  Alert.alert('Error', error.message || 'Failed to update task status');
+                }
+              }
+            }
+          ]
+        );
+        return;
+      }
       
       // Update status via API
       const updatedReport = await updateTaskStatusAPI(taskId, newStatus);
@@ -199,7 +235,8 @@ const TaskManagementScreen = ({ navigation }) => {
       all: tasks.length,
       pending: tasks.filter(t => t.status === 'pending').length,
       in_progress: tasks.filter(t => t.status === 'in_progress').length,
-      completed: tasks.filter(t => t.status === 'completed').length
+      completed: tasks.filter(t => t.status === 'completed').length,
+      on_hold: tasks.filter(t => t.status === 'on_hold').length
     };
   };
 
@@ -218,7 +255,8 @@ const TaskManagementScreen = ({ navigation }) => {
       >
         <ModernCard 
           style={styles.taskCard}
-          onPress={() => navigation.navigate('ViewReport', { reportId: item.reportId })}
+          onPress={() => navigation.navigate('ViewReport', { reportId: item.id })}
+          elevation={2}
         >
           <View style={styles.taskHeader}>
             <View style={styles.taskTitleContainer}>
@@ -248,11 +286,27 @@ const TaskManagementScreen = ({ navigation }) => {
                   {statusConfig.label}
                 </Text>
               </View>
+              
+              <View style={styles.viewDetailsIndicator}>
+                <MaterialCommunityIcons 
+                  name="chevron-right" 
+                  size={16} 
+                  color={theme.colors.primary} 
+                />
+              </View>
             </View>
           </View>
 
           <Text style={[styles.taskDescription, { color: theme.colors.textSecondary }]}>
-            {item.description}
+            {item.description.length > 80 
+              ? `${item.description.substring(0, 80)}...` 
+              : item.description
+            }
+            {item.description.length > 80 && (
+              <Text style={[styles.readMoreText, { color: theme.colors.primary }]}>
+                {' '}Tap to read more
+              </Text>
+            )}
           </Text>
 
           <View style={styles.taskFooter}>
@@ -306,6 +360,52 @@ const TaskManagementScreen = ({ navigation }) => {
 
             <View style={styles.taskActions}>
               {item.status === 'pending' && (
+                <>
+                  <Button
+                    mode="contained"
+                    compact
+                    onPress={() => updateTaskStatus(item.id, 'in_progress')}
+                    style={[styles.actionButton, { backgroundColor: theme.colors.primary }]}
+                    labelStyle={styles.actionButtonLabel}
+                  >
+                    Start Work
+                  </Button>
+                  <Button
+                    mode="outlined"
+                    compact
+                    onPress={() => updateTaskStatus(item.id, 'on_hold')}
+                    style={[styles.actionButton, { borderColor: theme.colors.error }]}
+                    labelStyle={[styles.actionButtonLabel, { color: theme.colors.error }]}
+                  >
+                    Put on Hold
+                  </Button>
+                </>
+              )}
+              
+              {item.status === 'in_progress' && (
+                <>
+                  <Button
+                    mode="contained"
+                    compact
+                    onPress={() => updateTaskStatus(item.id, 'completed')}
+                    style={[styles.actionButton, { backgroundColor: theme.colors.success }]}
+                    labelStyle={styles.actionButtonLabel}
+                  >
+                    Mark Complete
+                  </Button>
+                  <Button
+                    mode="outlined"
+                    compact
+                    onPress={() => updateTaskStatus(item.id, 'on_hold')}
+                    style={[styles.actionButton, { borderColor: theme.colors.error }]}
+                    labelStyle={[styles.actionButtonLabel, { color: theme.colors.error }]}
+                  >
+                    Put on Hold
+                  </Button>
+                </>
+              )}
+
+              {item.status === 'on_hold' && (
                 <Button
                   mode="contained"
                   compact
@@ -313,19 +413,7 @@ const TaskManagementScreen = ({ navigation }) => {
                   style={[styles.actionButton, { backgroundColor: theme.colors.primary }]}
                   labelStyle={styles.actionButtonLabel}
                 >
-                  Start
-                </Button>
-              )}
-              
-              {item.status === 'in_progress' && (
-                <Button
-                  mode="contained"
-                  compact
-                  onPress={() => updateTaskStatus(item.id, 'completed')}
-                  style={[styles.actionButton, { backgroundColor: theme.colors.success }]}
-                  labelStyle={styles.actionButtonLabel}
-                >
-                  Complete
+                  Resume Work
                 </Button>
               )}
 
@@ -344,8 +432,18 @@ const TaskManagementScreen = ({ navigation }) => {
                   style={[styles.actionButton, { borderColor: theme.colors.warning }]}
                   labelStyle={{ color: theme.colors.warning }}
                 >
-                  Add Image
+                  Upload After Image
                 </Button>
+              )}
+
+              {item.status === 'completed' && item.hasAfterImage && (
+                <Chip
+                  icon="check-circle"
+                  style={[styles.completedChip, { backgroundColor: theme.colors.success + '20' }]}
+                  textStyle={{ color: theme.colors.success }}
+                >
+                  Task Resolved
+                </Chip>
               )}
             </View>
           </View>
@@ -427,6 +525,7 @@ const TaskManagementScreen = ({ navigation }) => {
           <FilterChip status="pending" label="Pending" count={taskCounts.pending} />
           <FilterChip status="in_progress" label="In Progress" count={taskCounts.in_progress} />
           <FilterChip status="completed" label="Completed" count={taskCounts.completed} />
+          <FilterChip status="on_hold" label="On Hold" count={taskCounts.on_hold} />
         </ScrollView>
       </View>
 
@@ -586,6 +685,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+    marginBottom: 4,
+  },
+  viewDetailsIndicator: {
+    opacity: 0.6,
   },
   statusText: {
     marginLeft: 4,
@@ -597,20 +700,24 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 12,
   },
+  readMoreText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
   taskFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: 'column',
+    gap: 12,
   },
   taskInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    flexWrap: 'wrap',
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 12,
+    marginBottom: 4,
   },
   infoText: {
     marginLeft: 4,
@@ -618,9 +725,17 @@ const styles = StyleSheet.create({
   },
   taskActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 8,
   },
   actionButton: {
-    marginLeft: 8,
+    marginLeft: 0,
+    minWidth: 100,
+  },
+  completedChip: {
+    alignSelf: 'flex-start',
   },
   actionButtonLabel: {
     fontSize: 12,

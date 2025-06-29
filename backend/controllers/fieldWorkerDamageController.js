@@ -28,7 +28,7 @@ const updateRepairStatus = async (req, res) => {
     const fieldWorkerId = req.fieldWorker.id;
 
     // Validate status
-    const validStatuses = ['pending', 'in_progress', 'completed', 'cancelled'];
+    const validStatuses = ['pending', 'in_progress', 'completed', 'on_hold', 'cancelled'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ 
         message: 'Invalid status', 
@@ -52,6 +52,17 @@ const updateRepairStatus = async (req, res) => {
     report.repairStatus = status;
     if (notes) {
       report.repairNotes = notes;
+    }
+
+    // Update main status based on repair status
+    if (status === 'in_progress') {
+      report.status = 'In Progress';
+    } else if (status === 'completed') {
+      report.status = 'Completed';
+    } else if (status === 'on_hold') {
+      report.status = 'On Hold';
+    } else if (status === 'cancelled') {
+      report.status = 'Cancelled';
     }
     
     // Add status update to history
@@ -655,6 +666,10 @@ const uploadAfterImage = async (req, res) => {
       contentType: req.file.mimetype
     };
 
+    // Mark the report as resolved when after image is uploaded
+    report.status = 'Resolved';
+    report.resolvedAt = new Date();
+
     await report.save();
 
     res.status(200).json({ 
@@ -664,6 +679,36 @@ const uploadAfterImage = async (req, res) => {
   } catch (error) {
     console.error('Error uploading after image:', error);
     res.status(500).json({ message: 'Error uploading after image', error: error.message });
+  }
+};
+
+// Get specific damage report by ID
+const getDamageReportById = async (req, res) => {
+  try {
+    const { reportId } = req.params;
+    const fieldWorkerId = req.fieldWorker.id;
+
+    // Find the report and verify it's assigned to this field worker
+    const report = await DamageReport.findOne({ 
+      _id: reportId, 
+      assignedTo: fieldWorkerId 
+    }).populate('assignedTo', 'name workerId specialization');
+
+    if (!report) {
+      return res.status(404).json({ 
+        message: 'Report not found or not assigned to you' 
+      });
+    }
+
+    // Don't send the image data in the main response for performance
+    const reportData = report.toObject();
+    delete reportData.beforeImage.data;
+    delete reportData.afterImage?.data;
+
+    res.status(200).json(reportData);
+  } catch (error) {
+    console.error('Error fetching damage report:', error);
+    res.status(500).json({ message: 'Error fetching damage report', error: error.message });
   }
 };
 
@@ -677,5 +722,6 @@ module.exports = {
   getWeeklyReportStats,
   getReportStatusSummary,
   getNearbyReports,
-  uploadAfterImage
+  uploadAfterImage,
+  getDamageReportById
 };

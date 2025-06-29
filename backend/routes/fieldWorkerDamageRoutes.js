@@ -9,7 +9,8 @@ const {
   getWeeklyReportStats,
   getReportStatusSummary,
   getNearbyReports,
-  uploadAfterImage
+  uploadAfterImage,
+  getDamageReportById
 } = require('../controllers/fieldWorkerDamageController');
 const { getReportImage } = require('../controllers/damageController');
 const { protectFieldWorker } = require('../middleware/fieldWorkerAuthMiddleware');
@@ -41,6 +42,7 @@ router.get('/status-summary', protectFieldWorker, getReportStatusSummary);
 // Report management endpoints
 router.get('/reports', protectFieldWorker, getFieldWorkerReports);
 router.get('/reports/filtered', protectFieldWorker, getFilteredReports);
+router.get('/reports/:reportId', protectFieldWorker, getDamageReportById);
 router.patch('/reports/:reportId/status', protectFieldWorker, updateRepairStatus);
 router.post('/reports/:reportId/after-image', protectFieldWorker, upload.single('afterImage'), uploadAfterImage);
 router.post('/ai-reports/upload', protectFieldWorker, uploadDamageReportByFieldWorker);

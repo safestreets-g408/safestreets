@@ -112,12 +112,64 @@ export const uploadAfterImage = async (reportId, imageUri) => {
   }
 };
 
+// Get specific damage report by ID
+export const getDamageReportById = async (reportId) => {
+  try {
+    const token = await getValidAuthToken();
+    const baseUrl = await getBaseUrl();
+    
+    if (!token) {
+      throw new Error('No valid auth token found');
+    }
+
+    const response = await fetch(`${baseUrl}/fieldworker/damage/reports/${reportId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to fetch damage report');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Get damage report by ID error:', error);
+    throw error;
+  }
+};
+
 // Transform damage report to task format for UI consistency
 export const transformReportToTask = (report) => {
+  // Create a more readable title
+  const getTaskTitle = (damageType, location) => {
+    const type = damageType.toLowerCase();
+    const shortLocation = location.length > 30 ? `${location.substring(0, 30)}...` : location;
+    
+    switch (type) {
+      case 'pothole':
+        return `Pothole Repair - ${shortLocation}`;
+      case 'sidewalk crack':
+        return `Sidewalk Repair - ${shortLocation}`;
+      case 'road surface':
+        return `Road Surface Repair - ${shortLocation}`;
+      case 'street light':
+        return `Street Light Fix - ${shortLocation}`;
+      case 'sign damage':
+        return `Sign Repair - ${shortLocation}`;
+      default:
+        return `${damageType} Repair - ${shortLocation}`;
+    }
+  };
+
   return {
     id: report._id,
-    title: `Repair ${report.damageType.toLowerCase()} - ${report.location}`,
-    description: report.description || `${report.damageType} repair needed`,
+    title: getTaskTitle(report.damageType, report.location),
+    description: report.description || `${report.damageType} repair required at ${report.location}`,
     status: report.repairStatus || 'pending',
     priority: report.priority?.toLowerCase() || 'medium',
     location: report.location,
