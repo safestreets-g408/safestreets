@@ -52,7 +52,7 @@ function SafeThemeProvider({ children }) {
       fallback={
         <PaperProvider theme={fallbackTheme}>
           <View style={styles.container}>
-            <Text style={{ textAlign: 'center', padding: 20, color: '#333' }}>
+            <Text style={{ textAlign: 'center', padding: 20, color: '#666' }}>
               There was an issue loading the app theme. Using default appearance.
             </Text>
             {children}

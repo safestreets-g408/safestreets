@@ -1,11 +1,50 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Animatable from 'react-native-animatable';
-import { Avatar, useTheme } from 'react-native-paper';
+import { Avatar, useTheme, IconButton } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useThemeContext, THEME_MODE } from '../../context/ThemeContext';
 
-const HeaderComponent = ({ fieldWorker, cityStats }) => {
+const HeaderComponent = ({ fieldWorker, cityStats, navigation }) => {
   const theme = useTheme();
+  const { themeMode, isDarkMode, changeThemeMode } = useThemeContext();
+  
+  const handleThemeToggle = () => {
+    // Cycle through theme modes: Light -> Dark -> System -> Light
+    switch (themeMode) {
+      case THEME_MODE.LIGHT:
+        changeThemeMode(THEME_MODE.DARK);
+        break;
+      case THEME_MODE.DARK:
+        changeThemeMode(THEME_MODE.SYSTEM);
+        break;
+      case THEME_MODE.SYSTEM:
+        changeThemeMode(THEME_MODE.LIGHT);
+        break;
+      default:
+        changeThemeMode(THEME_MODE.LIGHT);
+    }
+  };
+
+  const handleProfilePress = () => {
+    if (navigation) {
+      navigation.navigate('Profile');
+    }
+  };
+
+  const getThemeIcon = () => {
+    switch (themeMode) {
+      case THEME_MODE.LIGHT:
+        return 'white-balance-sunny';
+      case THEME_MODE.DARK:
+        return 'moon-waning-crescent';
+      case THEME_MODE.SYSTEM:
+        return isDarkMode ? 'theme-light-dark' : 'theme-light-dark';
+      default:
+        return 'white-balance-sunny';
+    }
+  };
   
   return (
     <LinearGradient
@@ -42,7 +81,25 @@ const HeaderComponent = ({ fieldWorker, cityStats }) => {
           duration={1000}
           style={styles.headerActions}
         >
-          <View style={styles.avatarContainer}>
+          {/* Theme Toggle Button */}
+          <TouchableOpacity 
+            onPress={handleThemeToggle}
+            style={styles.themeToggleButton}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons 
+              name={getThemeIcon()} 
+              size={22} 
+              color="rgba(255,255,255,0.9)" 
+            />
+          </TouchableOpacity>
+          
+          {/* Profile Avatar */}
+          <TouchableOpacity 
+            onPress={handleProfilePress}
+            style={styles.avatarContainer}
+            activeOpacity={0.8}
+          >
             {fieldWorker?.profileImage ? (
               <Avatar.Image 
                 size={44} 
@@ -59,7 +116,7 @@ const HeaderComponent = ({ fieldWorker, cityStats }) => {
               />
             )}
             <View style={styles.onlineIndicator} />
-          </View>
+          </TouchableOpacity>
         </Animatable.View>
       </Animatable.View>
       
@@ -107,6 +164,20 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+  },
+  themeToggleButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: 'rgba(0,0,0,0.3)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   avatarContainer: {
     position: 'relative',

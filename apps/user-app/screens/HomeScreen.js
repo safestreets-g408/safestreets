@@ -12,6 +12,7 @@ import { useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { useAuth } from '../context/AuthContext';
+import { useThemeContext } from '../context/ThemeContext';
 import { updateRepairStatus } from '../utils/auth';
 import { 
   getDashboardData, 
@@ -89,6 +90,7 @@ const quickActions = [
 const HomeScreen = ({ navigation }) => {
   const { fieldWorker, logout } = useAuth();
   const theme = useTheme();
+  const { isDarkMode } = useThemeContext();
   const [notifications, setNotifications] = useState([]);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -625,9 +627,14 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
+      <StatusBar 
+        barStyle={isDarkMode ? "light-content" : "light-content"} 
+        backgroundColor={theme.colors.primary} 
+        translucent={false}
+        animated={true}
+      />
       
-      <HeaderComponent fieldWorker={fieldWorker} cityStats={cityStats} />
+      <HeaderComponent fieldWorker={fieldWorker} cityStats={cityStats} navigation={navigation} />
 
       <ScrollView 
         style={styles.content}

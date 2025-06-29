@@ -4,6 +4,7 @@ import { Avatar, useTheme, IconButton } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
+import { useThemeContext } from '../../context/ThemeContext';
 
 const ConsistentHeader = ({
   title,
@@ -21,6 +22,7 @@ const ConsistentHeader = ({
   blurEffect = false, // iOS blur effect option
 }) => {
   const theme = useTheme();
+  const { isDarkMode } = useThemeContext();
   const insets = useSafeAreaInsets();
   
   // Calculate proper padding for both platforms

@@ -33,6 +33,7 @@ import { MaterialIcons, Ionicons, MaterialCommunityIcons } from '@expo/vector-ic
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Animatable from 'react-native-animatable';
 import { useAuth } from '../context/AuthContext';
+import { useThemeContext } from '../context/ThemeContext';
 import { getUserReports, getFilteredUserReports } from '../utils/reportAPI';
 import { getReportImageUrlSync } from '../utils/imageUtils';
 import { ModernCard, EmptyState, ConsistentHeader } from '../components/ui';
@@ -45,6 +46,7 @@ const { width: screenWidth } = Dimensions.get('window');
 const ReportsScreen = ({ navigation }) => {
   const { fieldWorker } = useAuth();
   const theme = useTheme();
+  const { isDarkMode } = useThemeContext();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -325,7 +327,7 @@ const ReportsScreen = ({ navigation }) => {
   if (!loading && reports.length === 0) {
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background} />
+        <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={theme.colors.background} />
         
         {/* Header */}
         <LinearGradient

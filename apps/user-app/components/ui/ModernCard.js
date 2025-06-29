@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, TouchableOpacity } from 'react-native';
 import { Surface, useTheme } from 'react-native-paper';
+import { useThemeContext } from '../../context/ThemeContext';
 
 
 const ModernCard = ({
@@ -13,13 +14,39 @@ const ModernCard = ({
   bgColor,
 }) => {
   const theme = useTheme();
+  const { isDarkMode } = useThemeContext();
   
   // Define shadow styles based on elevation level
   const getShadowStyle = () => {
     if (outlined) return styles.outlined;
     
-    // Default shadow styles if theme.shadows is not available
-    const defaultShadows = {
+    // Dark mode shadows should be more subtle
+    const darkShadows = {
+      small: {
+        elevation: 2,
+        shadowColor: 'rgba(0,0,0,0.5)',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.3,
+        shadowRadius: 2,
+      },
+      medium: {
+        elevation: 3,
+        shadowColor: 'rgba(0,0,0,0.6)',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.4,
+        shadowRadius: 4,
+      },
+      large: {
+        elevation: 4,
+        shadowColor: 'rgba(0,0,0,0.7)',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.5,
+        shadowRadius: 6,
+      }
+    };
+    
+    // Light mode shadows
+    const lightShadows = {
       small: {
         elevation: 2,
         shadowColor: 'rgba(0,0,0,0.25)',
@@ -43,8 +70,10 @@ const ModernCard = ({
       }
     };
     
-    // Use theme shadows if available, otherwise use default shadows
-    return (theme.shadows && theme.shadows[elevation]) || defaultShadows[elevation] || defaultShadows.medium;
+    const shadows = isDarkMode ? darkShadows : lightShadows;
+    
+    // Use theme shadows if available, otherwise use mode-specific shadows
+    return (theme.shadows && theme.shadows[elevation]) || shadows[elevation] || shadows.medium;
   };
   
   const shadowStyle = getShadowStyle();
@@ -55,6 +84,11 @@ const ModernCard = ({
       backgroundColor: bgColor || theme.colors.surface,
       borderRadius: theme.roundness * 1.25, // More rounded for modern look
       borderColor: outlined ? theme.colors.border : 'transparent',
+      // Add subtle border for dark mode to improve definition
+      ...(isDarkMode && !outlined && {
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)'
+      })
     },
     shadowStyle,
     interactive && styles.interactive,

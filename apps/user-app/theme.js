@@ -133,90 +133,90 @@ export const lightTheme = {
   }
 };
 
-// Dark theme with appropriate dark colors
+// Dark theme with modern, attractive dark colors
 export const darkTheme = {
   ...DefaultTheme,
   ...commonThemeProps,
   dark: true,
   colors: {
     ...DefaultTheme.colors,
-    // Primary colors
-    primary: '#3b82f6',
-    primaryLight: '#60a5fa',
-    primaryDark: '#1e40af',
+    // Primary colors - brighter and more vibrant for dark mode
+    primary: '#4f46e5',
+    primaryLight: '#6366f1',
+    primaryDark: '#3730a3',
     onPrimary: '#ffffff',
     
-    // Secondary colors
-    secondary: '#9ca3af',
-    secondaryLight: '#d1d5db',
-    secondaryDark: '#4b5563',
+    // Secondary colors - warmer grays
+    secondary: '#a1a1aa',
+    secondaryLight: '#d4d4d8',
+    secondaryDark: '#71717a',
     onSecondary: '#ffffff',
     
-    // Feedback colors
-    success: '#10b981',
-    successLight: '#34d399',
-    successDark: '#059669',
+    // Feedback colors - more vibrant
+    success: '#22c55e',
+    successLight: '#4ade80',
+    successDark: '#16a34a',
     onSuccess: '#ffffff',
     
     error: '#ef4444',
     errorLight: '#f87171',
-    errorDark: '#b91c1c',
+    errorDark: '#dc2626',
     onError: '#ffffff',
     
     warning: '#f59e0b',
     warningLight: '#fbbf24',
     warningDark: '#d97706',
-    onWarning: '#ffffff',
+    onWarning: '#000000',
     
-    info: '#60a5fa',
-    infoLight: '#93c5fd',
+    info: '#3b82f6',
+    infoLight: '#60a5fa',
     infoDark: '#2563eb',
     onInfo: '#ffffff',
     
-    // Background colors - dark mode
-    background: '#121212',
-    surface: '#1e1e1e',
-    surfaceVariant: '#2d2d2d',
-    surfaceDisabled: '#3d3d3d',
+    // Background colors - modern dark with slight blue tint
+    background: '#0f0f23',
+    surface: '#1a1a2e',
+    surfaceVariant: '#16213e',
+    surfaceDisabled: '#2a2a3e',
     
-    // Text colors - dark mode
-    text: '#e5e7eb',
-    textSecondary: '#9ca3af',
-    placeholder: '#6b7280',
-    disabled: '#4b5563',
-    onSurface: '#e5e7eb',
-    onSurfaceVariant: '#9ca3af',
+    // Text colors - better contrast
+    text: '#f1f5f9',
+    textSecondary: '#cbd5e1',
+    placeholder: '#94a3b8',
+    disabled: '#64748b',
+    onSurface: '#f1f5f9',
+    onSurfaceVariant: '#cbd5e1',
     
-    // Card and border
-    card: '#252525',
-    cardShadow: 'rgba(0,0,0,0.5)',
-    border: '#374151',
-    outline: '#4b5563',
+    // Card and border - subtle purple/blue tint
+    card: '#1e1e3f',
+    cardShadow: 'rgba(0,0,0,0.6)',
+    border: '#2d3748',
+    outline: '#4a5568',
     
-    // Status colors
-    pending: '#fbbf24',
-    assigned: '#60a5fa',
-    inProgress: '#fbbf24',
-    completed: '#34d399',
-    rejected: '#f87171',
+    // Status colors - more vibrant
+    pending: '#f59e0b',
+    assigned: '#3b82f6',
+    inProgress: '#8b5cf6',
+    completed: '#22c55e',
+    rejected: '#ef4444',
     
-    // Gradient colors
+    // Gradient colors - more attractive combinations
     gradient: {
-      primary: ['#3b82f6', '#1e40af'],
-      secondary: ['#9ca3af', '#4b5563'],
-      success: ['#34d399', '#059669'],
-      warning: ['#fbbf24', '#d97706'],
-      danger: ['#f87171', '#b91c1c'],
+      primary: ['#4f46e5', '#7c3aed'],
+      secondary: ['#6366f1', '#8b5cf6'],
+      success: ['#22c55e', '#16a34a'],
+      warning: ['#f59e0b', '#d97706'],
+      danger: ['#ef4444', '#dc2626'],
     },
     
-    // Elevation
+    // Elevation - layered dark surfaces
     elevation: {
-      level0: '#121212',
-      level1: '#1e1e1e',
-      level2: '#222222',
-      level3: '#272727',
-      level4: '#2c2c2c',
-      level5: '#313131',
+      level0: '#0f0f23',
+      level1: '#1a1a2e',
+      level2: '#1e1e3f',
+      level3: '#252547',
+      level4: '#2a2a52',
+      level5: '#2f2f5a',
     },
   }
 };

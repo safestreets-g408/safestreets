@@ -44,12 +44,27 @@ const defaultColors = {
   surfaceVariant: '#f3f4f6',
 };
 
+// Dark theme default colors for fallback
+const defaultDarkColors = {
+  background: '#0f0f23',
+  surface: '#1a1a2e',
+  text: '#f1f5f9',
+  textSecondary: '#cbd5e1',
+  primary: '#4f46e5',
+  primaryDark: '#3730a3',
+  error: '#ef4444',
+  outline: '#4a5568',
+  surfaceVariant: '#16213e',
+};
+
 // Separate ThemeSafeWrapper into its own component file (for future refactoring)
 // For now, keep it here but make it more robust
 const ThemeSafeWrapper = ({ children }) => {
-  // Always provide default fallback without depending on theme context
+  const { isDarkMode } = useThemeContext() || {};
+  const fallbackColors = isDarkMode ? defaultDarkColors : defaultColors;
+  
   return (
-    <View style={{ flex: 1, backgroundColor: defaultColors.background }}>
+    <View style={{ flex: 1, backgroundColor: fallbackColors.background }}>
       {children}
     </View>
   );
@@ -75,16 +90,17 @@ const SettingsScreen = ({ navigation }) => {
   
   // Create a stable theme object that combines both sources safely
   const theme = React.useMemo(() => {
+    const fallbackColors = isDarkMode ? defaultDarkColors : defaultColors;
     const baseTheme = {
       roundness: 12,
       colors: {
-        ...defaultColors,
+        ...fallbackColors,
         ...(paperTheme?.colors || {}),
         ...(contextTheme?.colors || {})
       }
     };
     return baseTheme;
-  }, [paperTheme, contextTheme]);
+  }, [paperTheme, contextTheme, isDarkMode]);
   
   const [notifications, setNotifications] = useState(true);
   const [locationServices, setLocationServices] = useState(true);
@@ -114,8 +130,9 @@ const SettingsScreen = ({ navigation }) => {
   const themeOptions = React.useMemo(() => [
     { 
       value: THEME_MODE.SYSTEM, 
-      label: `Use System Settings (${systemTheme === 'dark' ? 'Dark' : 'Light'})`, 
-      icon: systemTheme === 'dark' ? 'moon-waning-crescent' : 'white-balance-sunny' 
+      label: `Use System Settings`, 
+      icon: systemTheme === 'dark' ? 'moon-waning-crescent' : 'white-balance-sunny',
+      subtitle: `Currently using ${systemTheme === 'dark' ? 'dark' : 'light'} theme from your device`
     },
     { value: THEME_MODE.LIGHT, label: 'Light Mode', icon: 'white-balance-sunny' },
     { value: THEME_MODE.DARK, label: 'Dark Mode', icon: 'moon-waning-crescent' }
@@ -316,7 +333,7 @@ const SettingsScreen = ({ navigation }) => {
                       </View>
                       <View style={styles.themeSelectorContainer}>
                         <RadioButton.Group 
-                          onValueChange={value => setSelectedTheme(value)} 
+                          onValueChange={handleThemeChange} 
                           value={selectedTheme}
                         >
                           {themeOptions.map((option) => (
@@ -325,13 +342,13 @@ const SettingsScreen = ({ navigation }) => {
                                 style={[
                                   styles.themeOption,
                                   selectedTheme === option.value && {
-                                    backgroundColor: theme?.colors?.surfaceVariant || defaultColors.surfaceVariant,
+                                    backgroundColor: isDarkMode ? 'rgba(79, 70, 229, 0.15)' : theme?.colors?.surfaceVariant || defaultColors.surfaceVariant,
                                     borderRadius: 8,
                                     borderWidth: 1,
                                     borderColor: theme?.colors?.primary || defaultColors.primary,
                                   }
                                 ]}
-                                onPress={() => setSelectedTheme(option.value)}
+                                onPress={() => handleThemeChange(option.value)}
                               >
                                 <View style={styles.themeOptionContent}>
                                   <MaterialCommunityIcons
@@ -339,7 +356,7 @@ const SettingsScreen = ({ navigation }) => {
                                     size={24}
                                     color={selectedTheme === option.value 
                                       ? theme?.colors?.primary || defaultColors.primary
-                                      : theme?.colors?.secondary || defaultColors.textSecondary}
+                                      : isDarkMode ? '#94a3b8' : theme?.colors?.secondary || defaultColors.textSecondary}
                                     style={styles.themeOptionIcon}
                                   />
                                   <View>
@@ -355,13 +372,13 @@ const SettingsScreen = ({ navigation }) => {
                                       {option.label}
                                     </Text>
                                     
-                                    {option.value === THEME_MODE.SYSTEM && (
+                                    {(option.value === THEME_MODE.SYSTEM || option.subtitle) && (
                                       <Text style={{ 
                                         fontSize: 12, 
                                         color: theme?.colors?.textSecondary || defaultColors.textSecondary,
                                         marginTop: 2
                                       }}>
-                                        Using {systemTheme === 'dark' ? 'dark' : 'light'} theme from your device settings
+                                        {option.subtitle || `Using ${systemTheme === 'dark' ? 'dark' : 'light'} theme from your device settings`}
                                       </Text>
                                     )}
                                   </View>
@@ -466,9 +483,10 @@ const SettingsScreen = ({ navigation }) => {
   } catch (error) {
     console.error('Error rendering SettingsScreen:', error);
     // Return a simple fallback UI
+    const fallbackColors = isDarkMode ? defaultDarkColors : defaultColors;
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: defaultColors.background }}>
-        <Text style={{ color: defaultColors.text, fontSize: 16, textAlign: 'center', marginHorizontal: 20 }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: fallbackColors.background }}>
+        <Text style={{ color: fallbackColors.text, fontSize: 16, textAlign: 'center', marginHorizontal: 20 }}>
           There was a problem loading the settings. Please try again.
         </Text>
       </View>

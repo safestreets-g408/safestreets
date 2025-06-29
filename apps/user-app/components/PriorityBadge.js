@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { theme } from '../theme';
+import { useThemeContext } from '../context/ThemeContext';
 
 const PriorityBadge = ({ 
   priority = 'medium', 
@@ -10,40 +10,42 @@ const PriorityBadge = ({
   showLabel = true,
   style 
 }) => {
+  const { theme, isDarkMode } = useThemeContext();
+  
   const getPriorityConfig = (priority) => {
     const priorityLower = priority?.toLowerCase() || 'medium';
     
     const configs = {
       critical: {
-        colors: ['#dc2626', '#b91c1c'],
+        colors: isDarkMode ? ['#ef4444', '#dc2626'] : ['#dc2626', '#b91c1c'],
         textColor: 'white',
         icon: 'alert-circle',
         label: 'Critical',
         pulse: true,
       },
       high: {
-        colors: ['#ea580c', '#c2410c'],
+        colors: isDarkMode ? ['#f97316', '#ea580c'] : ['#ea580c', '#c2410c'],
         textColor: 'white',
         icon: 'arrow-up-circle',
         label: 'High',
         pulse: false,
       },
       medium: {
-        colors: ['#d97706', '#b45309'],
+        colors: isDarkMode ? ['#eab308', '#d97706'] : ['#d97706', '#b45309'],
         textColor: 'white',
         icon: 'remove-circle',
         label: 'Medium',
         pulse: false,
       },
       low: {
-        colors: ['#059669', '#047857'],
+        colors: isDarkMode ? ['#22c55e', '#16a34a'] : ['#059669', '#047857'],
         textColor: 'white',
         icon: 'arrow-down-circle',
         label: 'Low',
         pulse: false,
       },
       info: {
-        colors: ['#0ea5e9', '#0284c7'],
+        colors: isDarkMode ? ['#3b82f6', '#2563eb'] : ['#0ea5e9', '#0284c7'],
         textColor: 'white',
         icon: 'information-circle',
         label: 'Info',

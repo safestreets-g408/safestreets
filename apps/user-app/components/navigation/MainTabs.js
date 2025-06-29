@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from 'react-native-paper';
+import { useThemeContext } from '../../context/ThemeContext';
 
 // Import screens
 import HomeScreen from '../../screens/HomeScreen';
@@ -14,6 +15,7 @@ const Tab = createBottomTabNavigator();
 
 const MainTabs = () => {
   const theme = useTheme();
+  const { isDarkMode } = useThemeContext();
   
   return (
     <Tab.Navigator
@@ -36,11 +38,25 @@ const MainTabs = () => {
           return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: 'gray',
+        tabBarInactiveTintColor: isDarkMode ? '#94a3b8' : '#6b7280',
         tabBarHideOnKeyboard: true,
         tabBarStyle: {
-          elevation: 10,
-          borderTopWidth: 0,
+          backgroundColor: isDarkMode ? theme.colors.surface : theme.colors.surface,
+          borderTopColor: isDarkMode ? theme.colors.border : '#e5e7eb',
+          borderTopWidth: 1,
+          elevation: isDarkMode ? 0 : 10,
+          shadowColor: isDarkMode ? 'transparent' : '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: isDarkMode ? 0 : 0.1,
+          shadowRadius: isDarkMode ? 0 : 8,
+          paddingBottom: 8,
+          paddingTop: 8,
+          height: 65,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '500',
+          marginTop: 4,
         },
         headerShown: false,
       })}

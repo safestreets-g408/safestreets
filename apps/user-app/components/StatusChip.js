@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Chip } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../theme';
+import { useThemeContext } from '../context/ThemeContext';
 
 const StatusChip = ({ 
   status, 
@@ -11,6 +11,8 @@ const StatusChip = ({
   style,
   textStyle 
 }) => {
+  const { theme, isDarkMode } = useThemeContext();
+  
   const getStatusConfig = (status) => {
     const statusLower = status?.toLowerCase() || 'unknown';
     
@@ -30,9 +32,9 @@ const StatusChip = ({
         label: 'In Progress'
       },
       under_review: {
-        color: '#7c3aed',
-        bgColor: '#f3f4f6',
-        textColor: '#5b21b6',
+        color: isDarkMode ? '#a855f7' : '#7c3aed',
+        bgColor: isDarkMode ? '#312e81' : '#f3f4f6',
+        textColor: isDarkMode ? '#c4b5fd' : '#5b21b6',
         icon: 'eye-outline',
         label: 'Under Review'
       },
