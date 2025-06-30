@@ -68,10 +68,24 @@ export const chatService = {
     return response.data;
   },
 
-  // Send a message
-  sendMessage: async (tenantId, messageData) => {
-    const response = await chatAPI.post(`/room/${tenantId}/message`, messageData);
-    return response.data;
+  // Send a message with better error handling
+  sendMessage: async (tenantId, content) => {
+    try {
+      console.log('Sending message to room:', tenantId, 'Content:', content);
+      const messageData = typeof content === 'string' ? { message: content } : content;
+      
+      // Make sure the messageType is valid for the backend
+      if (messageData.messageType && !['text', 'image', 'file'].includes(messageData.messageType)) {
+        console.warn(`Invalid messageType: ${messageData.messageType}. Defaulting to 'text'`);
+        messageData.messageType = 'text';
+      }
+      
+      const response = await chatAPI.post(`/room/${tenantId}/message`, messageData);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to send message:', error.response?.data || error.message);
+      throw error;
+    }
   },
 
   // Mark messages as read
