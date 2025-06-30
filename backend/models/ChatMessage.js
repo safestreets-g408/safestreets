@@ -14,16 +14,16 @@ const chatMessageSchema = new mongoose.Schema({
   senderModel: {
     type: String,
     required: true,
-    enum: ['Admin', 'Tenant']
+    enum: ['Admin', 'Tenant', 'FieldWorker']
   },
   senderName: {
     type: String,
-    required: true
+    required: false
   },
   senderRole: {
     type: String,
-    required: true,
-    enum: ['super_admin', 'tenant_admin', 'admin']
+    required: false,
+    enum: ['super_admin', 'tenant_admin', 'admin', 'field_worker']
   },
   message: {
     type: String,
@@ -46,6 +46,11 @@ const chatMessageSchema = new mongoose.Schema({
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       required: true
+    },
+    userModel: {
+      type: String,
+      required: true,
+      enum: ['Admin', 'Tenant', 'FieldWorker']
     },
     readAt: {
       type: Date,

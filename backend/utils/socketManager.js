@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const Admin = require('../models/Admin');
 const Tenant = require('../models/Tenant');
+const FieldWorker = require('../models/FieldWorker');
 const ChatMessage = require('../models/ChatMessage');
 const ChatRoom = require('../models/ChatRoom');
 
@@ -22,8 +23,39 @@ class SocketManager {
         try {
           const decoded = jwt.verify(token, process.env.JWT_SECRET);
           let user;
+          
+          if (socket.handshake.auth && socket.handshake.auth.userType === 'fieldworker') {
+            // This is a field worker token
+            if (decoded.fieldWorkerId) {
+              user = await FieldWorker.findById(decoded.fieldWorkerId).populate('tenant');
+              if (user) {
+                const userInfo = {
+                  id: user._id.toString(),
+                  name: user.name,
+                  role: 'field_worker',
+                  tenantId: user.tenant?.toString() || null,
+                  userType: 'fieldworker'
+                };
 
-          if (decoded.adminId) {
+                // Store user-socket mapping
+                this.userSockets.set(userInfo.id, socket.id);
+                this.socketUsers.set(socket.id, userInfo);
+
+                socket.userId = userInfo.id;
+                socket.userInfo = userInfo;
+
+                // Join a field worker room for notifications
+                socket.join(`fieldworker_${userInfo.id}`);
+                if (userInfo.tenantId) {
+                  socket.join(`tenant_fieldworkers_${userInfo.tenantId}`);
+                }
+
+                socket.emit('authenticated', userInfo);
+                console.log(`Field Worker authenticated: ${userInfo.name}`);
+                return;
+              }
+            }
+          } else if (decoded.adminId) {
             // This is an admin token
             user = await Admin.findById(decoded.adminId).populate('tenant');
             if (user) {
@@ -31,7 +63,8 @@ class SocketManager {
                 id: user._id.toString(),
                 name: user.name,
                 role: user.role,
-                tenantId: user.tenant?._id?.toString() || null
+                tenantId: user.tenant?._id?.toString() || null,
+                userType: 'admin'
               };
 
               // Store user-socket mapping
@@ -64,7 +97,8 @@ class SocketManager {
                 id: user._id.toString(),
                 name: user.name,
                 role: 'tenant_admin',
-                tenantId: user._id.toString()
+                tenantId: user._id.toString(),
+                userType: 'tenant'
               };
 
               // Store user-socket mapping
@@ -92,6 +126,98 @@ class SocketManager {
         }
       });
 
+      // Handle joining chat room for field worker
+      socket.on('join_room', async (data) => {
+        if (!socket.userInfo) {
+          socket.emit('error', 'Not authenticated');
+          return;
+        }
+        
+        // Join the requested room
+        socket.join(data.room);
+        console.log(`User ${socket.userInfo.name} joined room: ${data.room}`);
+      });
+      
+      // Handle field worker typing notifications
+      socket.on('typing', async (data) => {
+        if (!socket.userInfo) {
+          socket.emit('error', 'Not authenticated');
+          return;
+        }
+        
+        if (socket.userInfo.userType === 'fieldworker' && data.adminId) {
+          // Emit typing notification to admin
+          this.io.to(`admin_${data.adminId}`).emit('field_worker_typing', {
+            fieldWorkerId: socket.userInfo.id,
+            userName: data.userName || socket.userInfo.name,
+            isTyping: data.isTyping
+          });
+        } else if (socket.userInfo.userType === 'admin' && data.fieldWorkerId) {
+          // Emit typing notification to field worker
+          this.io.to(`fieldworker_${data.fieldWorkerId}`).emit('admin_typing', {
+            adminId: socket.userInfo.id,
+            userName: data.userName || socket.userInfo.name,
+            isTyping: data.isTyping
+          });
+        }
+      });
+      
+      // Handle marking messages as read for field workers
+      socket.on('mark_as_read', async (data) => {
+        try {
+          if (!socket.userInfo) {
+            socket.emit('error', 'Not authenticated');
+            return;
+          }
+          
+          // Handle field worker marking admin messages as read
+          if (socket.userInfo.userType === 'fieldworker' && data.adminId) {
+            const fieldWorkerId = socket.userInfo.id;
+            
+            // Find the chat room between this field worker and the admin
+            const chatRoom = await ChatRoom.findOne({
+              participants: {
+                $all: [
+                  { $elemMatch: { userId: fieldWorkerId, userModel: 'FieldWorker' } },
+                  { $elemMatch: { userId: data.adminId, userModel: 'Admin' } }
+                ]
+              }
+            });
+            
+            if (chatRoom) {
+              await ChatMessage.updateMany(
+                { 
+                  chatId: chatRoom._id,
+                  senderId: data.adminId,
+                  senderModel: 'Admin',
+                  'readBy.userId': { $ne: fieldWorkerId }
+                },
+                { 
+                  $push: { 
+                    readBy: { 
+                      userId: fieldWorkerId,
+                      userModel: 'FieldWorker',
+                      readAt: new Date()
+                    } 
+                  } 
+                }
+              );
+              
+              // Broadcast to the admin that messages were read
+              this.io.to(`admin_${data.adminId}`).emit('messages_read_by_field_worker', {
+                fieldWorkerId,
+                adminId: data.adminId,
+                chatRoomId: chatRoom._id
+              });
+              
+              console.log(`Field worker ${fieldWorkerId} marked messages from admin ${data.adminId} as read`);
+            }
+          }
+        } catch (error) {
+          console.error('Error marking messages as read (field worker):', error);
+        }
+      });
+      
       // Handle joining chat room
       socket.on('join_chat', async (tenantId) => {
         if (!socket.userInfo) {

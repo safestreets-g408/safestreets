@@ -18,6 +18,7 @@ const damageRoutes = require('./routes/damageRoutes');
 const tenantRoutes = require('./routes/tenantRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const fieldWorkerChatRoutes = require('./routes/fieldWorkerChatRoutes');
 const path = require('path');
 
 dotenv.config();
@@ -61,6 +62,7 @@ app.use('/api/fieldworker/auth', fieldWorkerAuthRoutes);
 app.use('/api/fieldworker/damage', fieldWorkerDamageRoutes);
 app.use('/api/fieldworker', fieldWorkerNotificationRoutes);
 app.use('/api/fieldworker', weatherRoutes);
+app.use('/api/fieldworker/chat', fieldWorkerChatRoutes);
 
 app.use('/api/admin/auth', adminRoutes);
 app.use('/api/admin/profile', adminProfileRoutes);

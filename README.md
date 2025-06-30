@@ -8,15 +8,7 @@ SafeStreets is an innovative end-to-end solution that revolutionizes road mainte
 
 The SafeStreets platform consists of five interconnected components:
 
-```mermaid
-graph TB
-    A[Mobile App - React Native] --> B[Backend API - Node.js/Express]
-    B --> C[MongoDB Database]
-    B --> D[AI Model Server - Flask/PyTorch]
-    E[Admin Portal - React/MUI] --> B
-    B --> F[File Storage System]
-    D --> G[Vision Transformer Model]
-```
+![System Architecture Diagram](./docs/architecture.png)
 
 ### Core Components:
 

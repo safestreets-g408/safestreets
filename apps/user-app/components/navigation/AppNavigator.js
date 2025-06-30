@@ -11,6 +11,7 @@ import MainTabs from './MainTabs';
 import ViewReportScreen from '../../screens/ViewReportScreen';
 import SettingsScreen from '../../screens/SettingsScreen';
 import AfterImageCameraScreen from '../../screens/AfterImageCameraScreen';
+import ChatDetailScreen from '../../screens/ChatDetailScreen';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const Stack = createStackNavigator();
@@ -78,6 +79,24 @@ const AppNavigator = () => {
               component={AfterImageCameraScreen}
               options={{ 
                 headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="ChatDetail"
+              component={ChatDetailScreen}
+              options={{ 
+                title: "Chat",
+                headerTitleAlign: 'center',
+                headerBackground: () => (
+                  <LinearGradient
+                    colors={['#2196f3', '#1976d2', '#0d47a1']}
+                    style={{ flex: 1 }}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  />
+                ),
+                headerTintColor: '#ffffff',
+                headerBackTitleVisible: false,
               }}
             />
           </>

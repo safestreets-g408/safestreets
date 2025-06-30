@@ -10,6 +10,7 @@ import ReportsScreen from '../../screens/ReportsScreen';
 import CameraScreen from '../../screens/CameraScreen';
 import ProfileScreen from '../../screens/ProfileScreen';
 import TaskManagementScreen from '../../screens/TaskManagementScreen';
+import ChatScreen from '../../screens/ChatScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -22,6 +23,8 @@ const MainTabs = () => {
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
+          // Use slightly smaller icon size for better fit
+          const iconSize = size - 2;
 
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
@@ -31,11 +34,13 @@ const MainTabs = () => {
             iconName = focused ? 'camera' : 'camera-outline';
           } else if (route.name === 'Tasks') {
             iconName = focused ? 'clipboard-check' : 'clipboard-check-outline';
+          } else if (route.name === 'Chat') {
+            iconName = focused ? 'chat' : 'chat-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'account' : 'account-outline';
           }
 
-          return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
+          return <MaterialCommunityIcons name={iconName} size={iconSize} color={color} />;
         },
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: isDarkMode ? '#94a3b8' : '#6b7280',
@@ -49,14 +54,17 @@ const MainTabs = () => {
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: isDarkMode ? 0 : 0.1,
           shadowRadius: isDarkMode ? 0 : 8,
-          paddingBottom: 8,
-          paddingTop: 8,
-          height: 65,
+          paddingBottom: 4,
+          paddingTop: 4,
+          height: 70,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 10,
           fontWeight: '500',
-          marginTop: 4,
+          marginTop: 2,
+        },
+        tabBarItemStyle: {
+          paddingHorizontal: 4,
         },
         headerShown: false,
       })}
@@ -65,6 +73,7 @@ const MainTabs = () => {
       <Tab.Screen name="Reports" component={ReportsScreen} />
       <Tab.Screen name="Camera" component={CameraScreen} />
       <Tab.Screen name="Tasks" component={TaskManagementScreen} />
+      <Tab.Screen name="Chat" component={ChatScreen} options={{ tabBarBadge: null }} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
