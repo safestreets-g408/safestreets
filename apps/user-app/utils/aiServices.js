@@ -1,21 +1,67 @@
 import { getBaseUrl } from '../config';
 import { getAuthToken } from './auth';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-
-const AI_SERVER_BASE_URL = 'http://192.168.199.27:5000'; 
+const MANUAL_OVERRIDE_IP = '192.168.23.177'; 
+const AI_SERVER_PORT = '5000';
 
 class AIServices {
   constructor() {
     this.backendBaseUrl = null;
-    this.initializeBaseUrl();
+    this.aiServerBaseUrl = null;
+    this.initializeUrls();
   }
 
-  async initializeBaseUrl() {
+  async getAiServerUrl() {
+    try {
+      const storedUrl = await AsyncStorage.getItem('custom_ai_server_url');
+      if (storedUrl) {
+        console.log('Using custom AI server URL from storage:', storedUrl);
+        return storedUrl;
+      }
+    } catch (error) {
+      console.log('Error reading custom AI server URL from storage:', error);
+    }
+
+    // Get the Expo host URL when running in Expo Go
+    const debuggerHost = Constants.expoConfig?.hostUri || Constants.manifest?.debuggerHost;
+    const expoHost = debuggerHost ? debuggerHost.split(':')[0] : null;
+    
+    let aiServerUrl;
+
+    if (__DEV__) {
+      if (Platform.OS === 'android') {
+        // For Android Emulator (10.0.2.2 maps to host's localhost)
+        aiServerUrl = `http://10.0.2.2:${AI_SERVER_PORT}`;
+      } else if (expoHost) {
+        // For Expo Go - use the same IP that Expo server is running on
+        aiServerUrl = `http://${expoHost}:${AI_SERVER_PORT}`;
+      } else if (MANUAL_OVERRIDE_IP) {
+        // Use manually specified IP if available
+        aiServerUrl = `http://${MANUAL_OVERRIDE_IP}:${AI_SERVER_PORT}`;
+      } else {
+        // Fallback to localhost
+        aiServerUrl = `http://localhost:${AI_SERVER_PORT}`;
+      }
+    } else {
+      // Production URL for AI server
+      aiServerUrl = 'https://ai.safestreets-prod.com';
+    }
+
+    console.log('Using AI server URL:', aiServerUrl);
+    return aiServerUrl;
+  }
+
+  async initializeUrls() {
     try {
       this.backendBaseUrl = await getBaseUrl();
+      this.aiServerBaseUrl = await this.getAiServerUrl();
     } catch (error) {
-      console.error('Error getting base URL:', error);
+      console.error('Error getting base URLs:', error);
       this.backendBaseUrl = 'http://localhost:5030/api';
+      this.aiServerBaseUrl = 'http://localhost:5000';
     }
   }
 
@@ -44,10 +90,15 @@ class AIServices {
     try {
       console.log('Starting damage classification...');
       
+      // Ensure AI server URL is initialized
+      if (!this.aiServerBaseUrl) {
+        this.aiServerBaseUrl = await this.getAiServerUrl();
+      }
+      
       // Convert image to base64
       const base64Image = await this.imageToBase64(imageUri);
       
-      const response = await fetch(`${AI_SERVER_BASE_URL}/predict`, {
+      const response = await fetch(`${this.aiServerBaseUrl}/predict`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -140,7 +191,11 @@ class AIServices {
       }
 
       // Fallback to direct AI server call
-      const response = await fetch(`${AI_SERVER_BASE_URL}/generate-summary`, {
+      if (!this.aiServerBaseUrl) {
+        this.aiServerBaseUrl = await this.getAiServerUrl();
+      }
+      
+      const response = await fetch(`${this.aiServerBaseUrl}/generate-summary`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
