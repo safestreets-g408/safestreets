@@ -8,6 +8,7 @@ const {
     getReportById,
     testAiServer 
 } = require('../controllers/ImageController');
+const { analyzeWithYolo } = require('../controllers/aiModelController');
 const { protectAdmin, ensureTenantIsolation } = require('../middleware/adminAuthMiddleware');
 const upload = require('../middleware/multerConfig');
 
@@ -16,6 +17,7 @@ router.get('/test-ai-server', protectAdmin, testAiServer);
 
 // Protected routes with tenant isolation
 router.post('/upload', protectAdmin, ensureTenantIsolation(), upload.single('image'), uploadImage);
+router.post('/analyze-yolo', protectAdmin, ensureTenantIsolation(), upload.single('image'), analyzeWithYolo);
 router.get('/email/:email', protectAdmin, ensureTenantIsolation(), getImage);
 router.get('/id/:imageId', protectAdmin, ensureTenantIsolation(), getImageById);
 

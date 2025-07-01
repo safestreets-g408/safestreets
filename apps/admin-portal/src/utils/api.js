@@ -200,4 +200,18 @@ export const api = {
       throw error;
     }
   },
+  
+  // Check if the AI server is accessible
+  checkAiServer: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/ai/health-check`, {
+        method: 'GET',
+        headers: getHeaders(),
+      });
+      return handleResponse(response);
+    } catch (error) {
+      console.error('Error checking AI server:', error);
+      return { success: false, message: 'Could not connect to AI server' };
+    }
+  },
 };
