@@ -4,6 +4,7 @@ const chatRoomSchema = new mongoose.Schema({
   roomType: {
     type: String,
     enum: ['admin_tenant', 'admin_fieldworker'],
+    default: 'admin_tenant',
     required: true
   },
   tenantId: {

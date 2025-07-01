@@ -15,7 +15,9 @@ const getChatRoom = async (req, res) => {
     // Check if admin has access to this chat
     if (admin.role !== 'super-admin') {
       // For non-super admin, check if they belong to this tenant
-      if (!admin.tenant || admin.tenant._id.toString() !== tenantId) {
+      // Handle both populated and unpopulated tenant field
+      const adminTenantId = admin.tenant?._id?.toString() || admin.tenant?.toString();
+      if (!adminTenantId || adminTenantId !== tenantId) {
         return res.status(403).json({ message: 'Access denied - tenant mismatch' });
       }
     }
@@ -101,10 +103,13 @@ const getChatMessages = async (req, res) => {
     const { admin } = req;
 
     console.log('getChatMessages - Admin:', admin.name, 'Role:', admin.role, 'Tenant ID:', tenantId);
+    console.log('getChatMessages - Admin tenant:', admin.tenant?._id || admin.tenant);
 
     // Check if admin has access to this chat
     if (admin.role !== 'super-admin') {
-      if (!admin.tenant || admin.tenant._id.toString() !== tenantId) {
+      // Handle both populated and unpopulated tenant field
+      const adminTenantId = admin.tenant?._id?.toString() || admin.tenant?.toString();
+      if (!adminTenantId || adminTenantId !== tenantId) {
         return res.status(403).json({ message: 'Access denied - tenant mismatch' });
       }
     }
@@ -141,9 +146,16 @@ const sendMessage = async (req, res) => {
     const { message, messageType = 'text', attachmentUrl } = req.body;
     const { admin } = req;
 
+    console.log('sendMessage - Admin:', admin.name, 'Role:', admin.role, 'Tenant ID requested:', tenantId);
+    console.log('sendMessage - Admin tenant:', admin.tenant?._id || admin.tenant);
+    
     // Check if admin has access to this chat
-    if (admin.role !== 'super-admin' && admin.tenant?._id?.toString() !== tenantId) {
-      return res.status(403).json({ message: 'Access denied' });
+    if (admin.role !== 'super-admin') {
+      // Handle both populated and unpopulated tenant field
+      const adminTenantId = admin.tenant?._id?.toString() || admin.tenant?.toString();
+      if (!adminTenantId || adminTenantId !== tenantId) {
+        return res.status(403).json({ message: 'Access denied - tenant mismatch' });
+      }
     }
 
     const chatId = `tenant_${tenantId}`;
@@ -199,9 +211,16 @@ const markMessagesAsRead = async (req, res) => {
     const { tenantId } = req.params;
     const { admin } = req;
 
+    console.log('markMessagesAsRead - Admin:', admin.name, 'Role:', admin.role, 'Tenant ID:', tenantId);
+    console.log('markMessagesAsRead - Admin tenant:', admin.tenant?._id || admin.tenant);
+
     // Check if admin has access to this chat
-    if (admin.role !== 'super-admin' && admin.tenant?._id?.toString() !== tenantId) {
-      return res.status(403).json({ message: 'Access denied' });
+    if (admin.role !== 'super-admin') {
+      // Handle both populated and unpopulated tenant field
+      const adminTenantId = admin.tenant?._id?.toString() || admin.tenant?.toString();
+      if (!adminTenantId || adminTenantId !== tenantId) {
+        return res.status(403).json({ message: 'Access denied - tenant mismatch' });
+      }
     }
 
     const chatId = `tenant_${tenantId}`;

@@ -17,7 +17,8 @@ import {
   ListItemIcon,
   Paper,
   Tabs,
-  Tab
+  Tab,
+  alpha
 } from '@mui/material';
 
 // Icons
@@ -28,8 +29,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import BusinessIcon from '@mui/icons-material/Business';
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
-import PersonIcon from '@mui/icons-material/Person';
+import ChatIcon from '@mui/icons-material/Chat';
 
 // Custom Components
 import StatCard from '../components/dashboard/StatCard';
@@ -38,9 +38,13 @@ import ActivityFeed from '../components/dashboard/ActivityFeed';
 import QuickActions from '../components/dashboard/QuickActions';
 import AiReportsDialog from '../components/dashboard/AiReportsDialog';
 import CreateDamageReportDialog from '../components/dashboard/CreateDamageReportDialog';
+import ChatDialog from '../components/chat/ChatDialog';
 
 // Auth
 import { useAuth } from '../hooks/useAuth';
+
+// Socket
+import { useSocket } from '../context/SocketContext';
 
 // API
 import { api } from '../utils/api';
@@ -96,6 +100,7 @@ const Dashboard = () => {
   const [createReportError, setCreateReportError] = useState(null);
   
   const [recentActivity, setRecentActivity] = useState([]);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const fetchDashboardData = async () => {
     try {
@@ -416,10 +421,86 @@ const Dashboard = () => {
     updateRecentActivity();
   }, [aiReports, dashboardData.recentReports, updateRecentActivity]);
 
+  // Import socket context
+  const { unreadCounts, chatNotifications } = useSocket();
+
+  // Calculate total unread messages
+  const totalUnreadMessages = Object.values(unreadCounts).reduce((sum, count) => sum + count, 0);
+  const hasNewMessages = totalUnreadMessages > 0;
 
   return (
     <Box sx={{ width: '100%' }}>
       <Box sx={{ mb: 4 }}>
+          {/* Chat Notification Alert - only shown when there are unread messages */}
+          {totalUnreadMessages > 0 && (
+            <Box
+              sx={{
+                p: 2,
+                mb: 3,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                borderRadius: 2,
+                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(139, 92, 246, 0.12) 100%)',
+                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.12)',
+                border: '1px solid',
+                borderColor: alpha('#3b82f6', 0.2),
+                overflow: 'hidden',
+                position: 'relative',
+                '&:after': {
+                  content: '""',
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: '3px',
+                  background: 'linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%)',
+                }
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box sx={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+                  boxShadow: '0 6px 16px rgba(139, 92, 246, 0.25)',
+                  mr: 2,
+                }}>
+                  <ChatIcon sx={{ color: 'white', fontSize: 24 }} />
+                </Box>
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5, color: '#111827' }}>
+                    New Messages Available
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#4b5563' }}>
+                    You have {totalUnreadMessages} unread message{totalUnreadMessages > 1 ? 's' : ''}. Click to view and respond.
+                  </Typography>
+                </Box>
+              </Box>
+              <Button 
+                variant="contained"
+                onClick={() => setChatOpen(true)}
+                sx={{
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+                  boxShadow: '0 4px 12px rgba(139, 92, 246, 0.25)',
+                  borderRadius: '10px',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
+                    boxShadow: '0 6px 16px rgba(139, 92, 246, 0.3)',
+                  }
+                }}
+              >
+                View Messages
+              </Button>
+            </Box>
+          )}
+
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
             <Box>
               <Typography 
@@ -650,6 +731,12 @@ const Dashboard = () => {
         selectedFieldWorker={selectedFieldWorker}
         loading={createReportLoading}
         error={createReportError}
+      />
+      
+      {/* Chat Dialog */}
+      <ChatDialog
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
       />
     </Box>
   );

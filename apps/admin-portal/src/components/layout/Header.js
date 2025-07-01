@@ -41,13 +41,19 @@ import PersonIcon from '@mui/icons-material/Person';
 import BuildIcon from '@mui/icons-material/Build';
 import { DRAWER_WIDTH } from '../../config/constants';
 import { useSearch } from '../../context/SearchContext';
+import { useSocket } from '../../context/SocketContext';
+import ChatIcon from '@mui/icons-material/Chat';
+import MarkChatReadIcon from '@mui/icons-material/MarkChatRead';
 
 const Header = ({ onDrawerToggle }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [notificationAnchor, setNotificationAnchor] = useState(null);
   const [searchValue, setSearchValue] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [showChatNotificationMenu, setShowChatNotificationMenu] = useState(false);
+  const [chatNotificationAnchor, setChatNotificationAnchor] = useState(null);
   const searchInputRef = useRef(null);
+  const { chatNotifications, unreadCounts, clearAllNotifications } = useSocket();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -130,8 +136,24 @@ const Header = ({ onDrawerToggle }) => {
   const handleNotificationClose = () => {
     setNotificationAnchor(null);
   };
-  
-  // Handler functions are now inlined in the component
+
+  const handleChatNotificationOpen = (event) => {
+    setChatNotificationAnchor(event.currentTarget);
+    setShowChatNotificationMenu(true);
+  };
+
+  const handleChatNotificationClose = () => {
+    setChatNotificationAnchor(null);
+    setShowChatNotificationMenu(false);
+  };
+
+  const handleClearChatNotifications = () => {
+    clearAllNotifications();
+    handleChatNotificationClose();
+  };
+
+  // Calculate total unread messages from all chat rooms
+  const totalUnreadMessages = Object.values(unreadCounts).reduce((sum, count) => sum + count, 0);
 
   // Get page title from current route
   const getPageTitle = () => {
@@ -551,7 +573,58 @@ const Header = ({ onDrawerToggle }) => {
             </Typography>
           )}
 
-          {/* Notifications */}
+          {/* Chat Notifications */}
+          <Tooltip title="Chat Messages">
+            <IconButton 
+              onClick={handleChatNotificationOpen}
+              sx={{ 
+                color: '#374151',
+                mr: 1,
+                '&:hover': {
+                  backgroundColor: alpha('#374151', 0.04),
+                },
+                position: 'relative',
+                '&:after': totalUnreadMessages > 0 ? {
+                  content: '""',
+                  position: 'absolute',
+                  top: 12,
+                  right: 12,
+                  width: 8,
+                  height: 8,
+                  backgroundColor: '#3b82f6',
+                  borderRadius: '50%',
+                  animation: 'pulse 1.5s infinite',
+                  boxShadow: '0 0 0 rgba(59, 130, 246, 0.4)',
+                  '@keyframes pulse': {
+                    '0%': {
+                      boxShadow: '0 0 0 0 rgba(59, 130, 246, 0.4)'
+                    },
+                    '70%': {
+                      boxShadow: '0 0 0 8px rgba(59, 130, 246, 0)'
+                    },
+                    '100%': {
+                      boxShadow: '0 0 0 0 rgba(59, 130, 246, 0)'
+                    }
+                  }
+                } : {}
+              }}
+            >
+              <Badge 
+                badgeContent={totalUnreadMessages} 
+                color="primary"
+                sx={{
+                  '& .MuiBadge-badge': {
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                  }
+                }}
+              >
+                <ChatIcon />
+              </Badge>
+            </IconButton>
+          </Tooltip>
+          
+          {/* System Notifications */}
           <Tooltip title="Notifications">
             <IconButton 
               onClick={handleNotificationOpen}
@@ -673,7 +746,146 @@ const Header = ({ onDrawerToggle }) => {
           </MenuItem>
         </Menu>
 
-        {/* Notifications Menu */}
+        {/* Chat Notifications Menu */}
+        <Menu
+          anchorEl={chatNotificationAnchor}
+          open={Boolean(chatNotificationAnchor)}
+          onClose={handleChatNotificationClose}
+          PaperProps={{
+            elevation: 4,
+            sx: {
+              width: 340,
+              maxHeight: 480,
+              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
+              mt: 1,
+              background: '#ffffff',
+              border: '1px solid #e5e7eb',
+              borderRadius: 2,
+              overflow: 'hidden',
+              '&:before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '4px',
+                background: 'linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%)',
+              },
+            }
+          }}
+          transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+          anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        >
+          <Box sx={{ p: 2, borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#111827' }}>
+              Chat Messages
+            </Typography>
+            {chatNotifications.length > 0 && (
+              <Button 
+                size="small"
+                onClick={handleClearChatNotifications}
+                startIcon={<MarkChatReadIcon fontSize="small" />}
+                sx={{ 
+                  textTransform: 'none', 
+                  color: '#3b82f6',
+                  '&:hover': {
+                    backgroundColor: alpha('#3b82f6', 0.08),
+                  }
+                }}
+              >
+                Mark all as read
+              </Button>
+            )}
+          </Box>
+          
+          <Box sx={{ maxHeight: 360, overflow: 'auto' }}>
+            {chatNotifications.length > 0 ? (
+              chatNotifications.map((notification, index) => (
+                <Box 
+                  key={index}
+                  onClick={() => {
+                    handleChatNotificationClose();
+                    navigate(`/chat/${notification.tenantId}`);
+                  }}
+                  sx={{
+                    p: 2,
+                    borderBottom: index < chatNotifications.length - 1 ? '1px solid #f3f4f6' : 'none',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      backgroundColor: alpha('#3b82f6', 0.04),
+                    },
+                    backgroundColor: notification.isRead ? 'transparent' : alpha('#3b82f6', 0.05),
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}>
+                    <Box sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: '10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+                      boxShadow: '0 4px 8px rgba(59, 130, 246, 0.25)',
+                      mr: 1.5
+                    }}>
+                      <ChatIcon sx={{ color: 'white', fontSize: 20 }} />
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#111827' }}>
+                          {notification.senderName}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: '#6b7280', fontSize: '0.7rem' }}>
+                          {new Date(notification.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </Typography>
+                      </Box>
+                      <Typography variant="body2" sx={{ color: '#4b5563', mb: 0.5 }}>
+                        {notification.tenantName}
+                      </Typography>
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          color: '#6b7280',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical'
+                        }}
+                      >
+                        {notification.message}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+              ))
+            ) : (
+              <Box sx={{ p: 4, textAlign: 'center' }}>
+                <Box sx={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: alpha('#3b82f6', 0.1),
+                  margin: '0 auto 16px',
+                }}>
+                  <ChatIcon sx={{ color: '#3b82f6', fontSize: 28 }} />
+                </Box>
+                <Typography variant="body1" sx={{ color: '#4b5563', fontWeight: 500, mb: 1 }}>
+                  No new messages
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#6b7280' }}>
+                  You'll see new chat notifications here
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </Menu>
+        
+        {/* System Notifications Menu */}
         <Menu
           anchorEl={notificationAnchor}
           open={Boolean(notificationAnchor)}

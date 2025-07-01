@@ -26,8 +26,11 @@ export const getBaseUrl = async () => {
 
   if (__DEV__) {
     if (Platform.OS === 'android') {
-      // For Android Emulator (10.0.2.2 maps to host's localhost)
-      baseUrl = `http://10.0.2.2:${API_PORT}/api`;
+      if (expoHost) {
+        baseUrl = `http://${expoHost}:${API_PORT}/api`;  // Use the Expo debug IP
+      } else {
+        baseUrl = `http://${MANUAL_OVERRIDE_IP}:${API_PORT}/api`; // Fallback to manual IP
+      }
     } else if (expoHost) {
       // For Expo Go - use the same IP that Expo server is running on
       baseUrl = `http://${expoHost}:${API_PORT}/api`;

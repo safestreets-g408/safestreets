@@ -72,6 +72,12 @@ export const chatService = {
   sendMessage: async (tenantId, content) => {
     try {
       console.log('Sending message to room:', tenantId, 'Content:', content);
+      
+      // Validate tenantId
+      if (!tenantId) {
+        throw new Error('Invalid tenant ID');
+      }
+      
       const messageData = typeof content === 'string' ? { message: content } : content;
       
       // Make sure the messageType is valid for the backend
@@ -80,11 +86,20 @@ export const chatService = {
         messageData.messageType = 'text';
       }
       
+      // Ensure message is not empty
+      if (!messageData.message || messageData.message.trim() === '') {
+        throw new Error('Message cannot be empty');
+      }
+      
       const response = await chatAPI.post(`/room/${tenantId}/message`, messageData);
       return response.data;
     } catch (error) {
       console.error('Failed to send message:', error.response?.data || error.message);
-      throw error;
+      const errorMessage = 
+        error.response?.data?.message || 
+        error.message || 
+        'Failed to send message. Please check your connection and try again.';
+      throw new Error(errorMessage);
     }
   },
 

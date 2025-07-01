@@ -23,9 +23,16 @@ export const SocketProvider = ({ children }) => {
   const connect = useCallback(() => {
     if (!token || socket) return;
 
-    const newSocket = io(process.env.REACT_APP_BACKEND_URL || 'http://localhost:5030', {
+    console.log('Connecting to socket server...');
+    const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5030';
+    console.log('Backend URL:', backendUrl);
+
+    const newSocket = io(backendUrl, {
       withCredentials: true,
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      auth: {
+        token // Send token with initial connection
+      }
     });
 
     newSocket.on('connect', () => {
