@@ -299,8 +299,11 @@ const getImageById = async (req, res) => {
 
 const getReports = async (req, res) => {
     try {
-        // Fetch all reports and populate the imageId reference
-        const reports = await AiReport.find({})
+        // Apply tenant isolation - use tenantId from middleware
+        const tenantFilter = req.tenantId ? { tenant: req.tenantId } : {};
+        
+        // Fetch tenant-specific reports and populate the imageId reference
+        const reports = await AiReport.find(tenantFilter)
             .populate('imageId', 'name email')
             .sort({ createdAt: -1 }); // Sort by newest first
 
@@ -341,7 +344,14 @@ const getReports = async (req, res) => {
 const getReportById = async (req, res) => {
     try {
         const { reportId } = req.params;
-        const report = await AiReport.findById(reportId)
+        
+        // Apply tenant isolation - use tenantId from middleware
+        const query = { _id: reportId };
+        if (req.tenantId) {
+            query.tenant = req.tenantId;
+        }
+        
+        const report = await AiReport.findOne(query)
             .populate('imageId', 'name email');
 
         if (!report) {

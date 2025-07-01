@@ -206,6 +206,7 @@ function Reports() {
 
   const fetchFieldWorkers = async () => {
     try {
+      // For non-super-admin users, the tenant ID should be automatically applied by the backend middleware
       const workers = await api.get(`${API_ENDPOINTS.FIELD_WORKERS}`);
       const workersData = Array.isArray(workers) ? workers : 
                          (workers.fieldWorkers || workers.workers || []);

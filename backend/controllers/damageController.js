@@ -99,11 +99,15 @@ const getReports = async (req, res) => {
     const { status, region, severity, startDate, endDate } = req.query;
     
     // Start with tenant filter from middleware
-    let query = { ...req.query };
+    let query = {};
     
     // Filter reports by tenant (this ensures tenant isolation)
     // The tenant filter is added by the ensureTenantIsolation middleware
-    // in req.query.tenant
+    if (req.tenantId) {
+      query.tenant = req.tenantId;
+    } else if (req.query.tenant) {
+      query.tenant = req.query.tenant;
+    }
     
     if (status) {
       // Handle special case for status not equal (format: !Status)
@@ -139,8 +143,13 @@ const getReports = async (req, res) => {
 // Get damage report by ID
 const getReportById = async (req, res) => {
   try {
-    // Include tenant filter from middleware
-    const tenantFilter = req.query.tenant ? { tenant: req.query.tenant } : {};
+    // Create tenant filter from middleware
+    const tenantFilter = {};
+    if (req.tenantId) {
+      tenantFilter.tenant = req.tenantId;
+    } else if (req.query.tenant) {
+      tenantFilter.tenant = req.query.tenant;
+    }
     
     const report = await DamageReport.findOne({ 
       reportId: req.params.reportId,
