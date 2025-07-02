@@ -270,7 +270,82 @@ const sendMessage = async (req, res) => {
     chatRoom.lastMessageAt = chatMessage.createdAt;
     await chatRoom.save();
     
-    // Emit socket event (handled by socket.io setup)
+    // Handle socket.io notifications
+    if (req.io) {
+      try {
+        console.log(`Emitting new_message events for message: ${chatMessage._id}`);
+        
+        // Get admin details for more targeting
+        const Admin = require('../models/Admin');
+        const adminUser = await Admin.findById(adminId).select('tenant role');
+        
+        // Create serializable message object
+        const messageObj = {
+          ...chatMessage.toObject(),
+          _id: chatMessage._id.toString(),
+          senderId: chatMessage.senderId.toString(),
+          chatId: chatMessage.chatId.toString()
+        };
+        
+        // Emit to admin-specific room
+        req.io.to(`admin_${adminId}`).emit('new_message', messageObj);
+        console.log(`Emitted to admin_${adminId}`);
+        
+        // Emit to chat room
+        req.io.to(`chat_${chatRoom._id}`).emit('new_message', messageObj);
+        console.log(`Emitted to chat_${chatRoom._id}`);
+        
+        // If admin has a tenant, emit to that tenant's room
+        if (adminUser && adminUser.tenant) {
+          const tenantId = adminUser.tenant.toString ? adminUser.tenant.toString() : adminUser.tenant;
+          req.io.to(`chat_${tenantId}`).emit('new_message', messageObj);
+          console.log(`Emitted to tenant chat_${tenantId}`);
+        }
+        
+        // Emit to super_admin room for visibility
+        req.io.to('super_admin').emit('new_message', messageObj);
+        console.log('Emitted to super_admin room');
+        
+        // Also broadcast to the field worker's tenant room
+        if (fieldWorker.tenant) {
+          const fwTenantId = fieldWorker.tenant.toString ? fieldWorker.tenant.toString() : fieldWorker.tenant;
+          req.io.to(`tenant_fieldworkers_${fwTenantId}`).emit('new_message', messageObj);
+          console.log(`Emitted to tenant_fieldworkers_${fwTenantId}`);
+        }
+        
+        // Send a notification event for admin portal to update UI
+        const notificationData = {
+          type: 'new_message',
+          senderId: fieldWorker._id.toString(),
+          senderName: fieldWorker.name,
+          tenantId: fieldWorker.tenant.toString(),
+          message: message.length > 30 ? `${message.substring(0, 30)}...` : message,
+          chatId: chatRoom._id.toString(),
+          timestamp: new Date(),
+          adminId: adminId, // Include adminId explicitly for better targeting
+          directMessage: true // Flag that this is a direct message
+        };
+        
+        // Emit to multiple admin channels for redundancy
+        req.io.to(`admin_${adminId}`).emit('chat_notification', notificationData);
+        req.io.to(`admin_${adminId}`).emit('new_chat_message', messageObj); // Additional event name for redundancy
+        req.io.to('super_admin').emit('chat_notification', notificationData);
+        
+        // Also broadcast to all connected clients (will be filtered on client side)
+        req.io.emit('global_message', {
+          type: 'admin_message',
+          targetAdmin: adminId,
+          message: messageObj,
+          notification: notificationData
+        });
+        
+        console.log('Socket notifications complete');
+      } catch (socketErr) {
+        console.error('Error sending socket notifications:', socketErr);
+      }
+    } else {
+      console.warn('Socket.io not available - message sent but notification not emitted');
+    }
     
     res.json(chatMessage);
   } catch (error) {

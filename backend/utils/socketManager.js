@@ -318,6 +318,76 @@ class SocketManager {
         });
       });
 
+      // Handle direct_message event from client (backup for message delivery)
+      socket.on('direct_message', async (messageData) => {
+        try {
+          if (!socket.userInfo) {
+            socket.emit('error', 'Not authenticated');
+            return;
+          }
+          
+          console.log('Received direct_message:', messageData);
+          
+          // Forward the message to relevant rooms
+          if (messageData.adminId) {
+            this.io.to(`admin_${messageData.adminId}`).emit('new_message', messageData.message);
+            console.log(`Forwarded direct message to admin_${messageData.adminId}`);
+            
+            // Also send a notification
+            if (messageData.forceNotify) {
+              this.io.to(`admin_${messageData.adminId}`).emit('chat_notification', {
+                type: 'new_message',
+                senderId: messageData.message.senderId,
+                senderName: messageData.message.senderName || 'Field Worker',
+                message: messageData.message.message.length > 30 ? 
+                  `${messageData.message.message.substring(0, 30)}...` : 
+                  messageData.message.message,
+                timestamp: new Date()
+              });
+            }
+          }
+          
+          // If we have info about tenant ID, notify all admins for this tenant
+          if (socket.userInfo.tenantId) {
+            this.io.to(`chat_${socket.userInfo.tenantId}`).emit('new_message', messageData.message);
+            console.log(`Forwarded direct message to chat_${socket.userInfo.tenantId}`);
+          }
+          
+          // Also notify super admins
+          this.io.to('super_admin').emit('new_message', messageData.message);
+        } catch (error) {
+          console.error('Error handling direct_message:', error);
+        }
+      });
+      
+      // Handle manual message forwarding (backup for message delivery)
+      socket.on('manual_message', async (messageData) => {
+        try {
+          if (!socket.userInfo) {
+            socket.emit('error', 'Not authenticated');
+            return;
+          }
+          
+          console.log('Received manual_message:', messageData);
+          
+          // Forward the message to relevant rooms
+          if (messageData.adminId) {
+            this.io.to(`admin_${messageData.adminId}`).emit('new_message', messageData);
+          }
+          
+          if (messageData.chatRoomId) {
+            this.io.to(`chat_${messageData.chatRoomId}`).emit('new_message', messageData);
+          }
+          
+          // Also forward to tenant room if available
+          if (socket.userInfo.tenantId) {
+            this.io.to(`chat_${socket.userInfo.tenantId}`).emit('new_message', messageData);
+          }
+        } catch (error) {
+          console.error('Error handling manual message:', error);
+        }
+      });
+      
       // Handle marking messages as read
       socket.on('mark_read', async (tenantId) => {
         try {

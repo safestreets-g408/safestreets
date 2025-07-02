@@ -66,7 +66,72 @@ export const SocketProvider = ({ children }) => {
     });
 
     newSocket.on('new_message', (message) => {
+      // Log all incoming messages for debugging
+      console.log('SocketContext: Received new_message event:', message);
+      
       // This will be handled by individual chat components
+      // But also update global notification state
+      if (message.senderModel === 'FieldWorker') {
+        console.log('SocketContext: Field worker message received');
+        
+        // Find the tenantId for this message
+        const tenantId = message.tenantId || (typeof message.chatId === 'string' && message.chatId.includes('_') ? 
+          message.chatId.split('_')[1] : null);
+        
+        if (tenantId) {
+          setChatNotifications(prev => [{
+            type: 'new_message',
+            senderId: message.senderId,
+            senderName: message.senderName || 'Field Worker',
+            tenantId,
+            message: message.message.length > 30 ? `${message.message.substring(0, 30)}...` : message.message,
+            timestamp: new Date()
+          }, ...prev].slice(0, 10));
+          
+          // Update unread count
+          setUnreadCounts(prev => ({
+            ...prev,
+            [tenantId]: (prev[tenantId] || 0) + 1
+          }));
+        }
+      }
+    });
+    
+    // Listen for additional message events for redundancy
+    newSocket.on('new_chat_message', (message) => {
+      console.log('SocketContext: Received new_chat_message event:', message);
+      // Forward this to new_message handlers by re-emitting
+      newSocket.emit('new_message', message);
+    });
+    
+    // Global message handler for broadcast messages
+    newSocket.on('global_message', (data) => {
+      console.log('SocketContext: Received global_message:', data);
+      
+      // Check if this is targeted at current admin
+      if (data.type === 'admin_message' && user && 
+          (data.targetAdmin === user._id || data.targetAdmin === user.id)) {
+        
+        console.log('Global message is targeted at current admin, forwarding to handlers');
+        
+        // Re-emit as chat notification
+        if (data.notification) {
+          setChatNotifications(prev => [data.notification, ...prev].slice(0, 10));
+          
+          // Update unread count if tenantId is available
+          if (data.notification.tenantId) {
+            setUnreadCounts(prev => ({
+              ...prev,
+              [data.notification.tenantId]: (prev[data.notification.tenantId] || 0) + 1
+            }));
+          }
+        }
+        
+        // Re-emit message for chat components
+        if (data.message) {
+          newSocket.emit('new_message', data.message);
+        }
+      }
     });
 
     newSocket.on('user_typing', (data) => {

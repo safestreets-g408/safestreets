@@ -15,6 +15,8 @@ import { useNavigation } from '@react-navigation/native';
 import { format } from 'date-fns';
 import { chatService } from '../../utils/chatAPI';
 import { LinearGradient } from 'expo-linear-gradient';
+import { checkNetworkConnectivity, showNetworkError } from '../../utils/auth';
+import { useThemeContext } from '../../context/ThemeContext';
 
 const AdminChatList = () => {
   const [loading, setLoading] = useState(true);
@@ -24,24 +26,67 @@ const AdminChatList = () => {
   const [searchQuery, setSearchQuery] = useState('');
   
   const theme = useTheme();
+  const { isDarkMode } = useThemeContext();
   const navigation = useNavigation();
+  
+  // Function to fetch admin list with proper error handling
+  const loadAdmins = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Check network connectivity first
+      const isConnected = await checkNetworkConnectivity();
+      if (!isConnected) {
+        console.error('Network connectivity issue detected');
+        setError('Network connection error. Please check your internet connection.');
+        setLoading(false);
+        return;
+      }
+      
+      console.log('Fetching admin chat list...');
+      const response = await chatService.getAdminChatList();
+      console.log('Admin list response:', response);
+      
+      if (!response || !Array.isArray(response)) {
+        console.error('Invalid response format:', response);
+        setError('Received invalid data from server');
+        setLoading(false);
+        return;
+      }
+      
+      setAdmins(response);
+      setFilteredAdmins(response);
+      console.log(`Loaded ${response.length} admins successfully`);
+    } catch (err) {
+      console.error('Error loading admins:', err);
+      
+      if (err.response) {
+        // Server responded with an error status code
+        const statusCode = err.response.status;
+        const errorMessage = err.response.data?.message || 'Unknown server error';
+        console.error(`Server error ${statusCode}: ${errorMessage}`);
+        
+        if (statusCode === 401) {
+          setError('Authentication error. Please log in again.');
+        } else {
+          setError(`Failed to load admin list: ${errorMessage}`);
+        }
+      } else if (err.request) {
+        // Request was made but no response received
+        console.error('No response received from server');
+        setError('Server not responding. Please try again later.');
+      } else {
+        // Error setting up the request
+        setError('Failed to load admin list. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
   
   // Fetch available admins
   useEffect(() => {
-    const loadAdmins = async () => {
-      try {
-        setLoading(true);
-        const response = await chatService.getAdminChatList();
-        setAdmins(response);
-        setFilteredAdmins(response);
-      } catch (err) {
-        console.error('Error loading admins:', err);
-        setError('Failed to load admin list');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     loadAdmins();
   }, []);
   
@@ -86,7 +131,10 @@ const AdminChatList = () => {
       <TouchableOpacity
         style={[
           styles.adminItem,
-          { borderBottomColor: '#E5E7EB' }
+          { 
+            borderBottomColor: theme.colors.border,
+            backgroundColor: theme.colors.surface
+          }
         ]}
         onPress={() => openChat(item)}
       >
@@ -109,11 +157,11 @@ const AdminChatList = () => {
         
         <View style={styles.adminInfo}>
           <View style={styles.adminNameRow}>
-            <Text style={styles.adminName}>
+            <Text style={[styles.adminName, { color: theme.colors.text }]}>
               {item.name}
             </Text>
             {item.lastMessage?.timestamp && (
-              <Text style={styles.timestamp}>
+              <Text style={[styles.timestamp, { color: theme.colors.textSecondary }]}>
                 {formatTime(item.lastMessage.timestamp)}
               </Text>
             )}
@@ -134,14 +182,14 @@ const AdminChatList = () => {
             
             {item.lastMessage?.message ? (
               <Text 
-                style={styles.lastMessage}
+                style={[styles.lastMessage, { color: theme.colors.textSecondary }]}
                 numberOfLines={1}
                 ellipsizeMode="tail"
               >
                 {item.lastMessage.message}
               </Text>
             ) : (
-              <Text style={styles.noMessages}>No messages yet</Text>
+              <Text style={[styles.noMessages, { color: theme.colors.placeholder }]}>No messages yet</Text>
             )}
             
             {unreadCount > 0 && (
@@ -169,13 +217,13 @@ const AdminChatList = () => {
           color={theme.colors.disabled}
         />
         {searchQuery ? (
-          <Text style={styles.emptyText}>
+          <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
             No admins found matching "{searchQuery}"
           </Text>
         ) : (
           <>
-            <Text style={styles.emptyText}>No admins available</Text>
-            <Text style={styles.emptySubtext}>
+            <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>No admins available</Text>
+            <Text style={[styles.emptySubtext, { color: theme.colors.placeholder }]}>
               There are no admins available to chat with at the moment
             </Text>
           </>
@@ -187,9 +235,9 @@ const AdminChatList = () => {
   // Loading state
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={styles.loadingText}>Loading admins...</Text>
+        <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>Loading admins...</Text>
       </View>
     );
   }
@@ -197,26 +245,22 @@ const AdminChatList = () => {
   // Error state
   if (error) {
     return (
-      <View style={styles.errorContainer}>
+      <View style={[styles.errorContainer, { backgroundColor: theme.colors.background }]}>
         <MaterialCommunityIcons name="alert-circle" size={60} color={theme.colors.error} />
         <Text style={[styles.errorText, { color: theme.colors.error }]}>{error}</Text>
+        
+        <View style={styles.errorDetailsContainer}>
+          <Text style={[styles.errorDetailsText, { color: theme.colors.textSecondary }]}>
+            If this problem persists, please try:
+          </Text>
+          <Text style={[styles.errorDetailItem, { color: theme.colors.textSecondary }]}>• Checking your internet connection</Text>
+          <Text style={[styles.errorDetailItem, { color: theme.colors.textSecondary }]}>• Making sure the server is running</Text>
+          <Text style={[styles.errorDetailItem, { color: theme.colors.textSecondary }]}>• Logging out and logging back in</Text>
+        </View>
+        
         <TouchableOpacity 
           style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
-          onPress={() => {
-            setError(null);
-            setLoading(true);
-            chatService.getAdminChatList()
-              .then(response => {
-                setAdmins(response);
-                setFilteredAdmins(response);
-              })
-              .catch(err => {
-                setError('Failed to load admin list');
-              })
-              .finally(() => {
-                setLoading(false);
-              });
-          }}
+          onPress={loadAdmins}
         >
           <Text style={styles.retryText}>Retry</Text>
         </TouchableOpacity>
@@ -225,16 +269,24 @@ const AdminChatList = () => {
   }
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Search bar */}
-      <View style={styles.searchContainer}>
-        <MaterialCommunityIcons name="magnify" size={20} color="#9CA3AF" style={styles.searchIcon} />
+      <View style={[styles.searchContainer, { 
+        backgroundColor: theme.colors.surface, 
+        borderColor: theme.colors.border 
+      }]}>
+        <MaterialCommunityIcons 
+          name="magnify" 
+          size={20} 
+          color={theme.colors.placeholder} 
+          style={styles.searchIcon} 
+        />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: theme.colors.text }]}
           placeholder="Search admins..."
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={theme.colors.placeholder}
           clearButtonMode="while-editing"
         />
       </View>
@@ -255,19 +307,16 @@ const AdminChatList = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     marginHorizontal: 16,
     marginVertical: 12,
     paddingHorizontal: 12,
     height: 44,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   searchIcon: {
     marginRight: 8,
@@ -275,7 +324,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#1F2937',
     height: '100%',
   },
   listContainer: {
@@ -399,10 +447,27 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   errorText: {
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: '600',
     textAlign: 'center',
     marginTop: 16,
+    marginBottom: 16,
+  },
+  errorDetailsContainer: {
     marginBottom: 20,
+    width: '100%',
+    paddingHorizontal: 20,
+  },
+  errorDetailsText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  errorDetailItem: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginVertical: 3,
+    marginLeft: 10,
   },
   retryButton: {
     paddingHorizontal: 24,

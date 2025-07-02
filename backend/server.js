@@ -45,6 +45,11 @@ const io = socketIo(server, {
 // Initialize Socket Manager
 const socketManager = new SocketManager(io);
 
+// Simple health check endpoint for API connectivity testing
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // Middleware to attach io to requests
 app.use((req, res, next) => {
   req.io = io;

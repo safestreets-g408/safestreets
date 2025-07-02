@@ -17,6 +17,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Animatable from 'react-native-animatable';
 import { loginFieldWorker } from '../utils/auth';
 import { useAuth } from '../context/AuthContext';
+import { useThemeContext } from '../context/ThemeContext';
 import { API_BASE_URL } from '../config';
 import { GradientButton } from '../components/ui';
 
@@ -27,6 +28,7 @@ const LoginScreen = ({ navigation, route }) => {
   const [secureTextEntry, setSecureTextEntry] = useState(true);
   const { login } = useAuth();
   const theme = useTheme();
+  const { isDarkMode } = useThemeContext();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -117,8 +119,8 @@ const LoginScreen = ({ navigation, route }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primaryDark} />
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={theme.colors.primaryDark} />
       
       {/* Background Gradient */}
       <LinearGradient
@@ -137,7 +139,7 @@ const LoginScreen = ({ navigation, route }) => {
       </LinearGradient>
       
       <Animatable.View 
-        style={styles.formContainer}
+        style={[styles.formContainer, { backgroundColor: theme.colors.surface }]}
         animation="fadeInUpBig"
         duration={800}
       >
@@ -171,6 +173,7 @@ const LoginScreen = ({ navigation, route }) => {
               activeOutlineColor={theme.colors.primary}
               outlineColor={theme.colors.border}
               theme={{ roundness: theme.roundness }}
+              backgroundColor={theme.colors.surface}
             />
 
             <TextInput
@@ -183,6 +186,7 @@ const LoginScreen = ({ navigation, route }) => {
               activeOutlineColor={theme.colors.primary}
               outlineColor={theme.colors.border}
               theme={{ roundness: theme.roundness }}
+              backgroundColor={theme.colors.surface}
               left={<TextInput.Icon icon="lock" color={theme.colors.primary} />}
               right={
                 <TextInput.Icon 
@@ -235,7 +239,6 @@ const LoginScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white',
   },
   headerGradient: {
     height: '35%',
@@ -249,7 +252,6 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     flex: 1,
-    backgroundColor: 'white',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     marginTop: -40,
@@ -276,7 +278,6 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 18,
-    backgroundColor: 'white',
     height: 56,
   },
   loginButton: {

@@ -108,9 +108,9 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
   };
 
   // Scroll to bottom
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  }, []);
 
   // Load messages
   const loadMessages = useCallback(async (pageNum = 1, append = false) => {
@@ -136,7 +136,7 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [tenantId]);
+  }, [tenantId, scrollToBottom]);
 
   // Load more messages
   const loadMoreMessages = () => {
@@ -197,7 +197,27 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
     if (!socket) return;
 
     const handleNewMessage = (message) => {
-      if (message.chatId === `tenant_${tenantId}`) {
+      console.log('Received new_message event:', message);
+      
+      // We need to check multiple possible chatId formats
+      const isTenantChat = 
+        message.chatId === `tenant_${tenantId}` || 
+        message.chatId.toString() === tenantId ||
+        message.chatId.includes(tenantId);
+      
+      // For debugging
+      if (!isTenantChat) {
+        console.log(`Message chatId ${message.chatId} doesn't match expected tenantId ${tenantId}`);
+        // Also log if this is possibly from a field worker we're interested in
+        if (message.senderModel === 'FieldWorker') {
+          console.log('This is a field worker message - checking if it belongs in this chat');
+          // Additional logging to help debug
+          console.log('Message full details:', message);
+        }
+      }
+      
+      if (isTenantChat || (user?.tenant?._id === tenantId || user?.tenant === tenantId)) {
+        console.log('Adding message to chat:', message);
         setMessages(prev => [...prev, message]);
         setTimeout(scrollToBottom, 100);
         
@@ -227,7 +247,7 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
       socket.off('new_message', handleNewMessage);
       socket.off('user_typing', handleUserTyping);
     };
-  }, [socket, tenantId, user._id, user.id, markAsRead]);
+  }, [socket, tenantId, user, markAsRead, scrollToBottom]);
 
   // Cleanup typing timeout
   useEffect(() => {

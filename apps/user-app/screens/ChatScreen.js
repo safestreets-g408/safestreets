@@ -22,7 +22,7 @@ const ChatScreen = () => {
         backgroundColor={isDarkMode ? theme.colors.background : '#f5f7fa'}
       />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Messages</Text>
+        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Messages</Text>
       </View>
       <View style={styles.content}>
         <AdminChatList />
@@ -45,7 +45,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1F2937',
   }
 });
 

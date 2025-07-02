@@ -72,11 +72,33 @@ export const SocketProvider = ({ children }) => {
     };
   }, [isAuthenticated, fieldWorker]);
   
-  const joinChat = useCallback(() => {
+  const joinChat = useCallback((adminId, chatRoomId) => {
     if (socket && connected && fieldWorker?.tenant) {
-      const chatRoom = `tenant_${fieldWorker.tenant}`;
-      socket.emit('join_room', { room: chatRoom });
-      console.log(`Joined chat room: ${chatRoom}`);
+      // Join tenant-wide chat room
+      const tenantRoom = `tenant_${fieldWorker.tenant}`;
+      socket.emit('join_room', { room: tenantRoom });
+      console.log(`Joined tenant chat room: ${tenantRoom}`);
+      
+      // Join specific admin chat room if provided
+      if (adminId) {
+        const adminRoom = `admin_${adminId}`;
+        socket.emit('join_room', { room: adminRoom });
+        console.log(`Joined admin chat room: ${adminRoom}`);
+        
+        // Also join the direct chat room (if it exists)
+        if (fieldWorker?._id) {
+          const directRoom = `direct_${fieldWorker._id}_${adminId}`;
+          socket.emit('join_room', { room: directRoom });
+          console.log(`Joined direct chat room: ${directRoom}`);
+        }
+      }
+      
+      // Join the specific chat room if we have its ID
+      if (chatRoomId) {
+        const specificChatRoom = `chat_${chatRoomId}`;
+        socket.emit('join_room', { room: specificChatRoom });
+        console.log(`Joined specific chat room: ${specificChatRoom}`);
+      }
     }
   }, [socket, connected, fieldWorker]);
   
