@@ -42,6 +42,9 @@ The SafeStreets platform consists of five interconnected components:
 ### Vision Transformer (ViT) for Image Classification
 The system uses a Vision Transformer model to detect and classify road damage from uploaded images.
 
+### CNN-based Road Classification
+The platform features a CNN-based road classification service that validates if submitted images contain road surfaces before processing them for damage analysis, ensuring higher quality reports.
+
 ### Google Gemini Integration
 SafeStreets integrates Google's Gemini 1.5 Flash model to automatically generate professional damage report summaries based on:
 - Location

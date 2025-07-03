@@ -33,7 +33,7 @@ import { ConsistentHeader } from '../components/ui';
 import { aiServices } from '../utils/aiServices';
 import { useAuth } from '../context/AuthContext';
 import { submitNewReport, submitAiReport } from '../utils/reports';
-import { validateRoadImageAdvanced } from '../utils/advancedRoadClassifier';
+// Road validation now uses the AI server
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -89,7 +89,7 @@ const CameraScreen = ({ navigation }) => {
             console.log('Background location not available:', bgError);
           }
           
-          // Pre-fetch location for faster response when user takes photo
+          // Immediately fetch location when app opens
           setHasLocationPermission(true);
           getCurrentLocation();
         } else {
@@ -260,8 +260,36 @@ const CameraScreen = ({ navigation }) => {
       
       console.log('Starting road validation for image:', imageUri);
       
-      // Use advanced road classifier to validate the image
-      const validation = await validateRoadImageAdvanced(imageUri, 0.6); // 60% confidence threshold
+      // Use the AI server's road classification endpoint
+      const base64Image = await aiServices.imageToBase64(imageUri);
+      
+      const response = await fetch(`${await aiServices.getAiServerUrl()}/classify-road`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image: base64Image,
+          confidenceThreshold: 0.6
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`AI server error: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Road classification failed');
+      }
+      
+      const validation = {
+        isValid: result.isRoad,
+        confidence: result.confidence,
+        message: result.message,
+        classification: result.features
+      };
       
       setRoadValidation(validation);
       
@@ -291,51 +319,8 @@ const CameraScreen = ({ navigation }) => {
     }
   };
 
-  const analyzeImageWithAI = async (imageUri, locationDetails) => {
-    try {
-      setIsAnalyzing(true);
-      setAnalysisError(null);
-      
-      // Step 1: Validate that the image contains a road
-      console.log('Step 1: Validating if image contains a road...');
-      const roadValidationResult = await validateRoadImage(imageUri);
-      
-      // If road validation fails with low confidence, show warning but allow user to proceed
-      if (!roadValidationResult.isValid && roadValidationResult.confidence > 0.3) {
-        Alert.alert(
-          'Road Surface Not Detected',
-          roadValidationResult.message + '\n\nWould you like to proceed anyway or take a new photo?',
-          [
-            { text: 'Take New Photo', style: 'cancel', onPress: () => {
-              retakePicture();
-              return;
-            }},
-            { text: 'Proceed Anyway', onPress: () => {
-              // Continue with analysis
-              proceedWithDamageAnalysis(imageUri, locationDetails);
-            }}
-          ]
-        );
-        return;
-      }
-      
-      // Step 2: If road validation passes, proceed with damage analysis
-      await proceedWithDamageAnalysis(imageUri, locationDetails);
-      
-    } catch (error) {
-      console.error('Image analysis pipeline failed:', error);
-      setAnalysisError(error.message);
-      
-      // Show error but don't block submission
-      Alert.alert(
-        'Analysis Failed',
-        'Could not analyze the image automatically. You can still submit the report manually.',
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
+  // Analysis flow now happens directly in pickImage and takePicture
+  // First road validation, then damage analysis if valid
 
   const proceedWithDamageAnalysis = async (imageUri, locationDetails) => {
     try {
@@ -396,7 +381,11 @@ const CameraScreen = ({ navigation }) => {
     try {
       // Start location fetching immediately when user takes picture
       if (hasLocationPermission && (!location || !locationAddress)) {
-        getCurrentLocation().catch(err => console.log('Location fetch error:', err));
+        try {
+          await getCurrentLocation();
+        } catch (err) {
+          console.log('Location fetch error:', err);
+        }
       }
       
       const photo = await cameraRef.current.takePictureAsync({
@@ -408,52 +397,54 @@ const CameraScreen = ({ navigation }) => {
       if (photo && photo.uri) {
         setCapturedImage(photo);
         
-        // Wait a short time to see if we have location data
-        setTimeout(async () => {
-          // If we have full location data already, use it immediately
-          if (location?.addressDetails && locationAddress) {
-            analyzeImageWithAI(photo.uri, location.addressDetails);
+        // First validate if the image contains a road
+        try {
+          setIsValidatingRoad(true);
+          const roadValidationResult = await validateRoadImage(photo.uri);
+          setIsValidatingRoad(false);
+          
+          // If road validation fails, show warning and ask user if they want to proceed
+          if (!roadValidationResult.isValid) {
+            Alert.alert(
+              'Road Surface Not Detected',
+              roadValidationResult.message + '\n\nWould you like to proceed anyway or take a new photo?',
+              [
+                { text: 'Take New Photo', style: 'cancel', onPress: () => {
+                  retakePicture();
+                  return;
+                }},
+                { text: 'Proceed Anyway', onPress: () => {
+                  // Continue with analysis using whatever location we have
+                  const locationData = location?.addressDetails || {
+                    formattedAddress: locationAddress || 'Address being determined...',
+                    coordinates: location?.coords ? 
+                      [location.coords.longitude, location.coords.latitude] : undefined
+                  };
+                  proceedWithDamageAnalysis(photo.uri, locationData);
+                }}
+              ]
+            );
             return;
           }
           
-          // If not, try to get location then analyze
-          try {
-            if (hasLocationPermission && (!location || !locationAddress)) {
-              await getCurrentLocation();
-            }
-            
-            // Now check if we got location data
-            if (location?.addressDetails) {
-              analyzeImageWithAI(photo.uri, location.addressDetails);
-            } else {
-              // Create a listener for when location becomes available
-              const locationInterval = setInterval(() => {
-                if (location?.addressDetails) {
-                  clearInterval(locationInterval);
-                  analyzeImageWithAI(photo.uri, location.addressDetails);
-                }
-              }, 1000);
-              
-              // Timeout after 8 seconds
-              setTimeout(() => {
-                clearInterval(locationInterval);
-                // Use whatever we have at this point
-                const bestLocationData = {
-                  formattedAddress: locationAddress || 'Address being determined...',
-                  coordinates: location?.coords ? 
-                    [location.coords.longitude, location.coords.latitude] : undefined
-                };
-                analyzeImageWithAI(photo.uri, bestLocationData);
-              }, 8000);
-            }
-          } catch (err) {
-            console.error('Error processing location for AI analysis:', err);
-            // Analyze with whatever location info we have
-            analyzeImageWithAI(photo.uri, { 
-              formattedAddress: locationAddress || 'Location services unavailable'
-            });
-          }
-        }, 300);
+          // If road validation passes, proceed with damage analysis
+          const locationData = location?.addressDetails || {
+            formattedAddress: locationAddress || 'Address being determined...',
+            coordinates: location?.coords ? 
+              [location.coords.longitude, location.coords.latitude] : undefined
+          };
+          proceedWithDamageAnalysis(photo.uri, locationData);
+          
+        } catch (error) {
+          console.error('Error in road validation:', error);
+          // If road validation fails, still proceed with damage analysis
+          const locationData = location?.addressDetails || {
+            formattedAddress: locationAddress || 'Address being determined...',
+            coordinates: location?.coords ? 
+              [location.coords.longitude, location.coords.latitude] : undefined
+          };
+          proceedWithDamageAnalysis(photo.uri, locationData);
+        }
       } else {
         throw new Error('Invalid photo data');
       }
@@ -485,53 +476,61 @@ const CameraScreen = ({ navigation }) => {
         
         // Start location fetch if needed
         if (hasLocationPermission && (!location || !locationAddress)) {
-          getCurrentLocation().catch(err => console.log('Location fetch error:', err));
+          try {
+            await getCurrentLocation();
+          } catch (err) {
+            console.log('Location fetch error:', err);
+          }
         }
 
-        // Similar to takePicture - wait briefly to see if location is already available
-        setTimeout(async () => {
-          if (location?.addressDetails && locationAddress) {
-            analyzeImageWithAI(result.assets[0].uri, location.addressDetails);
+        // First validate if the image contains a road
+        try {
+          setIsValidatingRoad(true);
+          const roadValidationResult = await validateRoadImage(result.assets[0].uri);
+          setIsValidatingRoad(false);
+          
+          // If road validation fails, show warning and ask user if they want to proceed
+          if (!roadValidationResult.isValid) {
+            Alert.alert(
+              'Road Surface Not Detected',
+              roadValidationResult.message + '\n\nWould you like to proceed anyway or take a new photo?',
+              [
+                { text: 'Take New Photo', style: 'cancel', onPress: () => {
+                  retakePicture();
+                  return;
+                }},
+                { text: 'Proceed Anyway', onPress: () => {
+                  // Continue with analysis using whatever location we have
+                  const locationData = location?.addressDetails || {
+                    formattedAddress: locationAddress || 'Address being determined...',
+                    coordinates: location?.coords ? 
+                      [location.coords.longitude, location.coords.latitude] : undefined
+                  };
+                  proceedWithDamageAnalysis(result.assets[0].uri, locationData);
+                }}
+              ]
+            );
             return;
           }
           
-          try {
-            // Try again to get location if needed
-            if (hasLocationPermission && (!location || !locationAddress)) {
-              await getCurrentLocation();
-            }
-            
-            // Check if we have location now
-            if (location?.addressDetails) {
-              analyzeImageWithAI(result.assets[0].uri, location.addressDetails);
-            } else {
-              // Create a listener for when location becomes available
-              const locationInterval = setInterval(() => {
-                if (location?.addressDetails) {
-                  clearInterval(locationInterval);
-                  analyzeImageWithAI(result.assets[0].uri, location.addressDetails);
-                }
-              }, 1000);
-              
-              // Timeout after 8 seconds
-              setTimeout(() => {
-                clearInterval(locationInterval);
-                // Use whatever we have at this point
-                const bestLocationData = {
-                  formattedAddress: locationAddress || 'Address being determined...',
-                  coordinates: location?.coords ? 
-                    [location.coords.longitude, location.coords.latitude] : undefined
-                };
-                analyzeImageWithAI(result.assets[0].uri, bestLocationData);
-              }, 8000);
-            }
-          } catch (err) {
-            console.error('Error processing location for gallery image:', err);
-            analyzeImageWithAI(result.assets[0].uri, { 
-              formattedAddress: locationAddress || 'Location services unavailable'
-            });
-          }
-        }, 300);
+          // If road validation passes, proceed with damage analysis
+          const locationData = location?.addressDetails || {
+            formattedAddress: locationAddress || 'Address being determined...',
+            coordinates: location?.coords ? 
+              [location.coords.longitude, location.coords.latitude] : undefined
+          };
+          proceedWithDamageAnalysis(result.assets[0].uri, locationData);
+          
+        } catch (error) {
+          console.error('Error in road validation:', error);
+          // If road validation fails, still proceed with damage analysis
+          const locationData = location?.addressDetails || {
+            formattedAddress: locationAddress || 'Address being determined...',
+            coordinates: location?.coords ? 
+              [location.coords.longitude, location.coords.latitude] : undefined
+          };
+          proceedWithDamageAnalysis(result.assets[0].uri, locationData);
+        }
       }
     } catch (error) {
       console.error('Error picking image:', error);
@@ -1076,7 +1075,7 @@ const CameraScreen = ({ navigation }) => {
                   {!roadValidation.isValid && (
                     <Button
                       mode="outlined"
-                      onPress={() => analyzeImageWithAI(capturedImage.uri, location?.addressDetails || { formattedAddress: 'Unknown location' })}
+                      onPress={() => validateRoadImage(capturedImage.uri)}
                       style={{ marginTop: 8 }}
                       compact
                       icon="refresh"
@@ -1157,7 +1156,17 @@ const CameraScreen = ({ navigation }) => {
                     </Text>
                     <Button
                       mode="outlined"
-                      onPress={() => analyzeImageWithAI(capturedImage.uri, location?.addressDetails || { formattedAddress: 'Unknown location' })}
+                      onPress={() => {
+                        // First validate the road, then proceed with damage analysis
+                        validateRoadImage(capturedImage.uri).then(result => {
+                          const locationData = location?.addressDetails || {
+                            formattedAddress: locationAddress || 'Address being determined...',
+                            coordinates: location?.coords ? 
+                              [location.coords.longitude, location.coords.latitude] : undefined
+                          };
+                          proceedWithDamageAnalysis(capturedImage.uri, locationData);
+                        });
+                      }}
                       style={{ marginTop: 8 }}
                       compact
                     >

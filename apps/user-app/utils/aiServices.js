@@ -300,6 +300,8 @@ class AIServices {
       throw error;
     }
   }
+
+  // Road classification is now handled directly by the AI server
 }
 
 export const aiServices = new AIServices();

@@ -43,7 +43,6 @@
     "react-native-image-picker": "^8.2.0",
     "react-native-pager-view": "^6.7.1",
     "react-native-paper": "^5.13.3",
-    "react-native-pytorch-core": "^0.2.4",
     "react-native-reanimated": "~3.17.4",
     "react-native-restart": "^0.0.27",
     "react-native-safe-area-context": "^5.4.0",
