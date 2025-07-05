@@ -2,6 +2,60 @@
 
 A well-organized Flask-based AI server for road damage detection and analysis.
 
+## 🚀 Quick Start
+
+Make sure all required models are in the `models/` directory:
+- `vit_model.pth` - Vision Transformer model for damage classification
+- `yolo_model.pt` - YOLO model for object detection
+- `cnn_road_classifier_scripted.pt` - CNN model for road surface validation
+- `class_names.txt` - Class labels for damage classification
+
+Set up a virtual environment and install dependencies:
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Start the server:
+```bash
+python app.py
+```
+
+Or use the start script:
+```bash
+./scripts/start.sh
+```
+
+## 🧪 Model Verification
+
+Verify that all models are working correctly:
+```bash
+./scripts/verify_models.sh
+```
+
+To test the CNN road classifier specifically:
+```bash
+python scripts/test_road_classifier_fix.py
+```
+
+To test the ViT model and ensure bounding boxes are valid:
+```bash
+python scripts/test_vit_model_fix.py
+```
+
+## ✅ Recent Fixes
+
+### CNN Road Classifier
+- Fixed the "index 1 is out of bounds for dimension 1 with size 1" error
+- Added support for both binary (single output) and multi-class scenarios
+- Improved handling of different model output formats
+
+### ViT Model
+- Fixed the "y1 must be greater than or equal to y0" error in bounding box coordinates
+- Improved image annotation to ensure valid bounding box dimensions
+- Enhanced error handling for annotation failures
+
 ## 🏗️ Project Structure
 
 ```

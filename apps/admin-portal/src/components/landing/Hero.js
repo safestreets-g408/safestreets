@@ -226,7 +226,7 @@ const Hero = ({ isAuthenticated }) => {
             >
               <Box
                 component="img"
-                src="/assets/images/hero-dashboard.png" // This path needs to be updated to your actual image path
+                src="../../assets/images/dashboard.png" 
                 alt="SafeStreets Dashboard"
                 sx={{
                   maxWidth: '100%',

@@ -5,6 +5,8 @@ Handles YOLO object detection for road damage detection
 import torch
 import base64
 import io
+import os
+import traceback
 import numpy as np
 from PIL import Image
 from typing import Dict, Any, List, Optional
@@ -23,10 +25,18 @@ def load_yolo_model() -> bool:
     try:
         print("Loading YOLO model...")
         
-        # Try to load custom model first
-        if YOLO_MODEL_PATH and torch.cuda.is_available():
-            YOLO_MODEL = torch.hub.load('ultralytics/yolov5', 'custom', path=YOLO_MODEL_PATH)
+        # Check if model file exists
+        if os.path.exists(YOLO_MODEL_PATH):
+            try:
+                # Try to load custom model first
+                YOLO_MODEL = torch.hub.load('ultralytics/yolov5', 'custom', path=YOLO_MODEL_PATH, source='local')
+                print("Loaded custom YOLO model")
+            except Exception as custom_error:
+                print(f"Custom model load failed: {custom_error}, trying pre-trained model")
+                # Load pre-trained model as fallback
+                YOLO_MODEL = torch.hub.load('ultralytics/yolov5', 'yolov5s')
         else:
+            print(f"YOLO model file not found at {YOLO_MODEL_PATH}, using pre-trained model")
             # Load pre-trained model as fallback
             YOLO_MODEL = torch.hub.load('ultralytics/yolov5', 'yolov5s')
         
@@ -37,6 +47,7 @@ def load_yolo_model() -> bool:
         
     except Exception as e:
         print(f"Failed to load YOLO model: {e}")
+        traceback.print_exc()
         YOLO_MODEL = None
         return False
 

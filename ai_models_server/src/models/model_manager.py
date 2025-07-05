@@ -47,16 +47,25 @@ class ModelManager:
     def _load_vit_model(self):
         """Load ViT model"""
         try:
-            from ..utils.predict import predict_from_base64
+            from ..utils.predict import predict_from_base64, load_vit_model
+            
+            # Try to actually load the model
+            model_loaded = load_vit_model()
+            
             self.models['vit'] = predict_from_base64
             self.model_status['vit'] = {
-                'loaded': True,
-                'error': None,
+                'loaded': model_loaded,
+                'error': None if model_loaded else "Failed to load ViT model",
                 'fallback': False
             }
-            print("✅ ViT model loaded successfully")
+            
+            if model_loaded:
+                print("✅ ViT model loaded successfully")
+            else:
+                print("⚠️ ViT model loading failed, prediction function available but will use fallback")
         except Exception as e:
             print(f"❌ ViT model failed to load: {e}")
+            traceback.print_exc()
             self.models['vit'] = None
             self.model_status['vit'] = {
                 'loaded': False,
@@ -67,20 +76,26 @@ class ModelManager:
     def _load_yolo_model(self):
         """Load YOLO model"""
         try:
-            from ..utils.yolo_utils import detect_road_damage, YOLO_MODEL
+            from ..utils.yolo_utils import detect_road_damage, load_yolo_model, YOLO_MODEL
+            
+            # Attempt to load the YOLO model
+            model_loaded = load_yolo_model()
+            
             self.models['yolo'] = detect_road_damage
             self.models['yolo_model'] = YOLO_MODEL
             self.model_status['yolo'] = {
-                'loaded': YOLO_MODEL is not None,
-                'error': None if YOLO_MODEL is not None else "Model not found",
-                'fallback': YOLO_MODEL is None
+                'loaded': model_loaded and YOLO_MODEL is not None,
+                'error': None if (model_loaded and YOLO_MODEL is not None) else "Model loading failed",
+                'fallback': not model_loaded or YOLO_MODEL is None
             }
-            if YOLO_MODEL is not None:
+            
+            if model_loaded and YOLO_MODEL is not None:
                 print("✅ YOLO model loaded successfully")
             else:
-                print("❌ YOLO model not found, using fallback")
+                print("⚠️ YOLO model loading failed, will use fallback detection")
         except Exception as e:
             print(f"❌ YOLO model failed to load: {e}")
+            traceback.print_exc()
             self.models['yolo'] = None
             self.model_status['yolo'] = {
                 'loaded': False,
@@ -91,12 +106,16 @@ class ModelManager:
     def _load_road_classifier(self):
         """Load Road Classifier"""
         try:
-            from ..utils.road_classifier import validate_road_image
+            from ..utils.road_classifier import validate_road_image, load_road_classifier, ROAD_CLASSIFIER
+            
+            # Attempt to load the road classifier model
+            model_loaded = load_road_classifier()
+            
             self.models['road_classifier'] = validate_road_image
             self.model_status['road_classifier'] = {
-                'loaded': True,
-                'error': None,
-                'fallback': False
+                'loaded': model_loaded and ROAD_CLASSIFIER is not None,
+                'error': None if (model_loaded and ROAD_CLASSIFIER is not None) else "Model loading failed",
+                'fallback': not model_loaded or ROAD_CLASSIFIER is None
             }
             print("✅ Road classifier loaded successfully")
         except Exception as e:

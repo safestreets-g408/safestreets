@@ -56,9 +56,10 @@ def handle_predict_endpoint():
         
         print(f"📊 Image data received, length: {len(image_string)}")
         
-        # Check if ViT model is available
-        if not model_manager.is_model_available('vit'):
-            print("⚠️  ViT model not available, generating mock prediction")
+        # Always try to use the actual model
+        predict_func = model_manager.get_model('vit')
+        if predict_func is None:
+            print("⚠️  ViT model function not available, generating mock prediction")
             
             # Generate a random prediction
             damage_classes = ['D00', 'D10', 'D20', 'D30', 'D40', 'D43', 'D44', 'D50']
@@ -181,9 +182,10 @@ def handle_yolo_detection_endpoint():
         if not success:
             return create_error_response("Failed to save image")
         
-        # Check if YOLO model is available
-        if not model_manager.is_model_available('yolo'):
-            print("⚠️  YOLO model not available, using fallback detection")
+        # Always try to use the YOLO model
+        detect_func = model_manager.get_model('yolo')
+        if detect_func is None:
+            print("⚠️  YOLO detection function not available, using fallback detection")
             
             # Create mock detection
             mock_result = create_mock_yolo_detection(image_string)
@@ -250,9 +252,10 @@ def handle_road_classification_endpoint():
     print("🛣️  Road classification endpoint called")
     
     try:
-        # Check if road classifier is available
-        if not model_manager.is_model_available('road_classifier'):
-            print("⚠️  Road classifier not available, using fallback")
+        # Always try to use the road classifier
+        validate_func = model_manager.get_model('road_classifier')
+        if validate_func is None:
+            print("⚠️  Road classifier function not available, using fallback")
             response_data = {
                 "isRoad": True,  # Default to True to allow processing
                 "confidence": 0.7,
@@ -273,21 +276,55 @@ def handle_road_classification_endpoint():
         
         print(f"📊 Image data received for road classification, length: {len(image_string)}")
         
-        # Get confidence threshold
+        # Get confidence threshold (default to 0.6 if not specified)
         confidence_threshold = validate_confidence_threshold(data)
+        print(f"Using confidence threshold: {confidence_threshold}")
+        
+        # Save image for debugging if needed
+        success, save_path, image_url = save_image_from_base64(
+            image_string, UPLOAD_FOLDER, "road_classification"
+        )
+        
+        if not success:
+            print("⚠️ Failed to save image, continuing with classification")
         
         try:
             # Validate image with road classifier
-            validate_func = model_manager.get_model('road_classifier')
             validation_result = validate_func(image_string)
             
-            print(f"🛣️  Road classification result: is_road={validation_result['is_road']}, confidence={validation_result['confidence']:.2f}")
+            # Apply custom threshold if needed
+            is_road = validation_result["is_road"]
+            confidence = validation_result["confidence"]
+            
+            # Override if confidence is below threshold
+            if confidence < confidence_threshold:
+                is_road = False
+                
+            print(f"🛣️  Road classification result: is_road={is_road}, confidence={confidence:.2f}")
+            
+            # Add model and heuristic details to response
+            model_prediction = validation_result.get("model_prediction")
+            model_confidence = validation_result.get("model_confidence", 0.0)
+            heuristic_features = validation_result.get("heuristic_features", {})
+            
+            if is_road:
+                message = "Road surface detected"
+                if model_prediction is not None:
+                    message += f" (model confidence: {model_confidence:.2f})"
+            else:
+                message = "Not a road surface"
+                if model_prediction is not None:
+                    message += f" (model confidence: {model_confidence:.2f})"
             
             response_data = {
-                "isRoad": bool(validation_result["is_road"]),
-                "confidence": float(validation_result["confidence"]),
-                "message": "Road classification completed successfully",
-                "features": validation_result.get("heuristic_features", {}),
+                "isRoad": bool(is_road),
+                "confidence": float(confidence),
+                "message": message,
+                "modelPrediction": model_prediction,
+                "modelConfidence": float(model_confidence),
+                "heuristicScore": float(heuristic_features.get("road_score", 0.0)),
+                "features": heuristic_features,
+                "imageUrl": image_url,
                 "fallback": bool(validation_result.get("fallback", False))
             }
             
@@ -295,12 +332,15 @@ def handle_road_classification_endpoint():
             
         except Exception as classifier_error:
             print(f"❌ Error in road classification: {classifier_error}")
+            traceback.print_exc()
             # Fall back to permissive response
             response_data = {
                 "isRoad": True,  # Default to True to allow processing
                 "confidence": 0.6,
-                "message": "Road surface detected (classifier error, using fallback)",
-                "features": {"error": str(classifier_error)}
+                "message": f"Road surface detected (classifier error: {str(classifier_error)}, using fallback)",
+                "features": {"error": str(classifier_error)},
+                "imageUrl": image_url,
+                "fallback": True
             }
             return add_cors_headers(create_fallback_response(response_data))
         

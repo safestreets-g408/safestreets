@@ -4,11 +4,12 @@ Handles Vision Transformer model inference for road damage classification
 """
 import torch
 from torchvision import transforms
-from PIL import Image
+from PIL import Image, ImageDraw
 import os
 import time
 import base64
 import io
+import traceback
 import numpy as np
 from typing import Tuple, Optional, Dict, Any
 
@@ -80,45 +81,49 @@ def load_vit_model() -> bool:
             print(f"Warning: Class names file not found at {CLASS_NAMES_PATH}")
             CLASS_NAMES = ["D00", "D10", "D20", "D40", "D50", "D60"]  # Default classes
         
-        # Create fallback model
-        fallback_model = ViTClassifier(num_classes=len(CLASS_NAMES))
+        # Create model instance
+        model = ViTClassifier(num_classes=len(CLASS_NAMES))
         
-        # Try to load model with robust compatibility system
-        if os.path.exists(VIT_MODEL_PATH):
-            MODEL, is_fallback = RobustModelLoader.load_with_fallback(
-                VIT_MODEL_PATH, 
-                fallback_model,
-                model_type="vit"
-            )
-            
-            if MODEL:
-                MODEL.eval()
-                status = "fallback" if is_fallback else "loaded"
-                print(f"ViT model {status} successfully in {time.time() - start_time:.2f} seconds")
-                return True
-            else:
-                print("Failed to load any model variant")
-                return False
-        else:
-            print(f"Warning: Model file not found at {VIT_MODEL_PATH}")
-            # Use fallback model
-            MODEL = fallback_model
-            MODEL.eval()
-            print(f"Using fallback ViT model in {time.time() - start_time:.2f} seconds")
-            return True
-            
-    except Exception as e:
-        print(f"Failed to load ViT model: {e}")
-        # Last resort - create a minimal working model
-        try:
-            MODEL = ViTClassifier(num_classes=len(CLASS_NAMES))
-            MODEL.eval()
-            print("Created minimal ViT model as last resort")
-            return True
-        except Exception as final_e:
-            print(f"Final fallback failed: {final_e}")
-            MODEL = None
+        # Check if model file exists
+        if not os.path.exists(VIT_MODEL_PATH):
+            print(f"Error: ViT model file not found at {VIT_MODEL_PATH}")
             return False
+            
+        try:
+            # Try to load as TorchScript first
+            MODEL = torch.jit.load(VIT_MODEL_PATH)
+            print("ViT model loaded as TorchScript")
+        except Exception as e:
+            print(f"TorchScript loading failed: {e}, trying state dict...")
+            # Try to load as state dict
+            checkpoint = torch.load(VIT_MODEL_PATH, map_location="cpu")
+            
+            if isinstance(checkpoint, dict):
+                if 'model_state_dict' in checkpoint:
+                    state_dict = checkpoint['model_state_dict']
+                elif 'state_dict' in checkpoint:
+                    state_dict = checkpoint['state_dict']
+                else:
+                    state_dict = checkpoint
+            else:
+                state_dict = checkpoint
+                
+            # Try to load state dict with flexible key matching
+            try:
+                model.load_state_dict(state_dict, strict=False)
+                MODEL = model
+                print("ViT model loaded from state dict")
+            except Exception as e2:
+                print(f"State dict loading failed: {e2}")
+                return False
+        
+        # Set to evaluation mode
+        MODEL.eval()
+        print(f"ViT model loaded successfully in {time.time() - start_time:.2f} seconds")
+        return True
+    except Exception as e:
+        print(f"Error loading ViT model: {e}")
+        return False
 
 
 def predict_from_base64(base64_string: str) -> Dict[str, Any]:
@@ -131,8 +136,12 @@ def predict_from_base64(base64_string: str) -> Dict[str, Any]:
     Returns:
         Dictionary containing prediction results
     """
+    global MODEL
+    
+    # Ensure model is loaded
     if MODEL is None:
         if not load_vit_model():
+            print("ViT model couldn't be loaded, returning error")
             return {
                 'error': 'ViT model not available',
                 'prediction': 'Unknown',
@@ -142,6 +151,10 @@ def predict_from_base64(base64_string: str) -> Dict[str, Any]:
             }
     
     try:
+        # Clean the base64 string if needed
+        if ',' in base64_string:
+            base64_string = base64_string.split(',')[1]
+            
         # Decode and transform image
         img_bytes = base64.b64decode(base64_string)
         img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
@@ -167,24 +180,141 @@ def predict_from_base64(base64_string: str) -> Dict[str, Any]:
                 else:
                     prob = torch.sigmoid(logits).item()
                     probabilities = torch.tensor([[1 - prob, prob]])
+                
                 confidence, predicted = torch.max(probabilities, 1)
                 pred_idx = predicted.item()
                 pred_class = CLASS_NAMES[pred_idx] if pred_idx < len(CLASS_NAMES) else "Unknown"
                 confidence_score = float(confidence.item())
 
-                # Bounding box conversion
+                # Advanced bounding box processing
+                # First, normalize model outputs for better bounding box prediction
                 bbox_arr = bbox_output[0].cpu().numpy()
                 w, h = original_size
+                
+                # Get raw coordinates from model output
                 x_center, y_center, box_w, box_h = bbox_arr.tolist()
+                
+                # Apply sigmoid to center coordinates to constrain them to [0, 1]
+                x_center = 1 / (1 + np.exp(-x_center))
+                y_center = 1 / (1 + np.exp(-y_center))
+                
+                # Ensure positive box dimensions using exponential function for width/height
+                # This gives a better spread of values and avoids very small boxes
+                box_w = np.exp(min(box_w, 2))  # Limit max box size 
+                box_h = np.exp(min(box_h, 2))  # Limit max box size
+                
+                # Scale box size based on confidence (higher confidence = larger box)
+                # This helps for cases where the model is uncertain
+                conf_scaling = max(0.5, min(1.5, confidence_score * 2))
+                box_w = min(0.8, box_w * conf_scaling / 10)  # Limit to 80% of image width
+                box_h = min(0.8, box_h * conf_scaling / 10)  # Limit to 80% of image height
+                
+                # Use damage class to adjust box size (certain damages tend to be larger/smaller)
+                if pred_class in ["D40", "D43", "D44"]:  # Large damage classes
+                    box_w *= 1.2
+                    box_h *= 1.2
+                elif pred_class in ["D00", "D10"]:  # Small damage classes
+                    box_w *= 0.8
+                    box_h *= 0.8
+                
+                # Ensure minimum box size relative to image dimensions
+                min_box_w = w * 0.1  # At least 10% of image width
+                min_box_h = h * 0.1  # At least 10% of image height
+                
+                # Calculate box coordinates with normalized values
                 x1 = max(0, int((x_center - box_w / 2) * w))
                 y1 = max(0, int((y_center - box_h / 2) * h))
                 x2 = min(w, int((x_center + box_w / 2) * w))
                 y2 = min(h, int((y_center + box_h / 2) * h))
+                
+                # Enforce minimum box size
+                if x2 - x1 < min_box_w:
+                    # Center the box while expanding to minimum width
+                    center_x = (x1 + x2) // 2
+                    half_width = int(min_box_w // 2)
+                    x1 = max(0, center_x - half_width)
+                    x2 = min(w, center_x + half_width)
+                
+                if y2 - y1 < min_box_h:
+                    # Center the box while expanding to minimum height
+                    center_y = (y1 + y2) // 2
+                    half_height = int(min_box_h // 2)
+                    y1 = max(0, center_y - half_height)
+                    y2 = min(h, center_y + half_height)
+                
+                # Generate enhanced annotated image
+                draw = ImageDraw.Draw(img)
+                
+                # Draw bounding box with improved visibility
+                # Main rectangle (thicker border for better visibility)
+                border_width = max(3, min(5, int(w/100)))  # Dynamic border width based on image size
+                
+                # Draw box with double border for better visibility
+                # First: outer yellow border
+                draw.rectangle([(x1-2, y1-2), (x2+2, y2+2)], outline=(255, 255, 0), width=border_width+2)
+                # Second: inner green border
+                draw.rectangle([(x1, y1), (x2, y2)], outline=(0, 255, 0), width=border_width)
+                
+                # Draw corner markers for better visibility
+                corner_size = max(5, min(10, int(w/60)))  # Dynamic corner size
+                
+                # Top-left corner
+                draw.line([(x1, y1), (x1 + corner_size, y1)], fill=(255, 0, 0), width=border_width)
+                draw.line([(x1, y1), (x1, y1 + corner_size)], fill=(255, 0, 0), width=border_width)
+                
+                # Top-right corner
+                draw.line([(x2, y1), (x2 - corner_size, y1)], fill=(255, 0, 0), width=border_width)
+                draw.line([(x2, y1), (x2, y1 + corner_size)], fill=(255, 0, 0), width=border_width)
+                
+                # Bottom-left corner
+                draw.line([(x1, y2), (x1 + corner_size, y2)], fill=(255, 0, 0), width=border_width)
+                draw.line([(x1, y2), (x1, y2 - corner_size)], fill=(255, 0, 0), width=border_width)
+                
+                # Bottom-right corner
+                draw.line([(x2, y2), (x2 - corner_size, y2)], fill=(255, 0, 0), width=border_width)
+                draw.line([(x2, y2), (x2, y2 - corner_size)], fill=(255, 0, 0), width=border_width)
+                
+                # Add semi-transparent highlight on the damage area
+                overlay = Image.new('RGBA', img.size, (0, 0, 0, 0))
+                overlay_draw = ImageDraw.Draw(overlay)
+                overlay_draw.rectangle([(x1, y1), (x2, y2)], fill=(255, 255, 0, 60))  # Semi-transparent yellow
+                
+                # Convert original image to RGBA if it isn't already
+                if img.mode != 'RGBA':
+                    img = img.convert('RGBA')
+                
+                # Composite the images
+                img = Image.alpha_composite(img, overlay)
+                img = img.convert('RGB')  # Convert back to RGB for JPEG saving
+                
+                # Add text label with better background for readability
+                text = f"{pred_class} ({confidence_score:.2f})"
+                text_y = max(0, y1 - 25)
+                
+                # Calculate approximate text dimensions
+                # Using a simple estimation since we can't rely on font measurements
+                text_width = len(text) * 8  # Approximate 8 pixels per character
+                text_height = 15            # Default text height
+                
+                # Draw black background for text to improve readability
+                draw.rectangle(
+                    [(x1, text_y - 2), (x1 + text_width + 10, text_y + text_height + 2)],
+                    fill=(0, 0, 0)
+                )
+                
+                # Draw text with high contrast color
+                draw.text((x1 + 5, text_y), text, fill=(255, 255, 0))
+                
+                # Convert annotated image to base64
+                buffer = io.BytesIO()
+                img.save(buffer, format="JPEG")
+                annotated_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
 
                 return {
                     'prediction': pred_class,
                     'confidence': confidence_score,
                     'bbox': [x1, y1, x2, y2],
+                    'annotated_image': annotated_image,
                     'all_predictions': {CLASS_NAMES[i]: float(probabilities[0][i]) for i in range(min(len(CLASS_NAMES), probabilities.shape[1]))},
                     'fallback': False
                 }
@@ -264,26 +394,41 @@ def annotate_image_base64(base64_string: str, pred_class: str, bbox_coords: list
         Base64 encoded annotated image
     """
     try:
-        import cv2
-        
         # Decode base64 image
         img_bytes = base64.b64decode(base64_string)
-        img_array = np.frombuffer(img_bytes, np.uint8)
-        img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
         
-        # Draw bounding box and class name
+        # Use PIL for annotation (already imported at the top)
+        img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        draw = ImageDraw.Draw(img)
+        
+        # Validate bbox coordinates
+        w, h = img.size
         x1, y1, x2, y2 = bbox_coords
-        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        cv2.putText(img, pred_class, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36, 255, 12), 2)
+        x1, y1, x2, y2 = max(0, x1), max(0, y1), min(w, x2), min(h, y2)
+        
+        # Ensure valid box dimensions
+        if x2 <= x1:
+            x2 = min(w, x1 + 10)
+        if y2 <= y1:
+            y2 = min(h, y1 + 10)
+        
+        # Draw rectangle and text
+        draw.rectangle([(x1, y1), (x2, y2)], outline=(0, 255, 0), width=3)
+        
+        # Position text, ensure it's not out of bounds
+        text_y = max(0, y1 - 20)
+        draw.text((x1, text_y), pred_class, fill=(255, 0, 0))
         
         # Convert back to base64
-        _, buffer = cv2.imencode('.jpg', img)
-        img_base64 = base64.b64encode(buffer).decode('utf-8')
+        buffer = io.BytesIO()
+        img.save(buffer, format="JPEG")
+        img_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
         
         return img_base64
         
     except Exception as e:
         print(f"Error annotating image: {e}")
+        traceback.print_exc()
         return base64_string  # Return original if annotation fails
 
 
