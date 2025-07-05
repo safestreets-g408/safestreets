@@ -42,6 +42,7 @@ import BuildIcon from '@mui/icons-material/Build';
 import { DRAWER_WIDTH } from '../../config/constants';
 import { useSearch } from '../../context/SearchContext';
 import { useSocket } from '../../context/SocketContext';
+import { useAuth } from '../../hooks/useAuth';
 import ChatIcon from '@mui/icons-material/Chat';
 import MarkChatReadIcon from '@mui/icons-material/MarkChatRead';
 
@@ -50,10 +51,12 @@ const Header = ({ onDrawerToggle }) => {
   const [notificationAnchor, setNotificationAnchor] = useState(null);
   const [searchValue, setSearchValue] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [showChatNotificationMenu, setShowChatNotificationMenu] = useState(false);
   const [chatNotificationAnchor, setChatNotificationAnchor] = useState(null);
   const searchInputRef = useRef(null);
   const { chatNotifications, unreadCounts, clearAllNotifications } = useSocket();
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -737,7 +740,7 @@ const Header = ({ onDrawerToggle }) => {
           
           <MenuItem onClick={() => {
             handleProfileMenuClose();
-            navigate('/login');
+            logout();
           }} sx={{ py: 1.5, px: 3, color: '#dc2626' }}>
             <ListItemIcon>
               <LogoutIcon sx={{ color: '#dc2626' }} />

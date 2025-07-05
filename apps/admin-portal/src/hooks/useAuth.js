@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem(TOKEN_KEY, data.token);
       localStorage.setItem(USER_KEY, JSON.stringify(data.admin));
       setUser(data.admin);
-      navigate('/');
+      navigate('/dashboard');
       return true;
     } catch (error) {
       console.error('Login error:', error);
@@ -46,10 +46,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    // Clear all auth-related data
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    
+    // Reset user state
     setUser(null);
-    navigate('/login');
+    
+    // Navigate to landing page with replace to prevent back navigation to dashboard
+    navigate('/', { replace: true });
   };
 
   const updateUser = (userData) => {
@@ -69,7 +74,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };

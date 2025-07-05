@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Container, 
@@ -25,7 +25,14 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width:768px)');
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -63,7 +70,7 @@ const Login = () => {
       py: 4
     }}>
       <IconButton 
-        onClick={() => navigate('/')}
+        onClick={() => navigate('/landing')}
         sx={{ 
           position: 'absolute',
           top: 20,

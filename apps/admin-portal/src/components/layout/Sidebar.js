@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 import {
   Drawer,
   Box,
@@ -106,6 +107,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const {logout} = useAuth();
   
   // Get user from localStorage for role-based rendering
   const userString = localStorage.getItem('admin_data');
@@ -120,8 +122,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
   };
 
   const handleLogout = () => {
-    onLogout();
-    navigate('/login');
+    logout();
   };
 
   const drawer = (

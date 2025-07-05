@@ -13,6 +13,7 @@ import theme from './theme';
 
 // Layout
 import MainLayout from './components/layout/MainLayout';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -28,6 +29,7 @@ import ManageTenants from './pages/ManageTenants';
 import TenantDetails from './pages/TenantDetails';
 import SearchResults from './pages/SearchResults';
 import Chat from './pages/Chat';
+import Landing from './pages/Landing';
 
 function App() {
   return (
@@ -40,10 +42,12 @@ function App() {
               <SearchProvider>
                 <SocketProvider>
                   <Routes>
+                    <Route path="/" element={<Landing />} />
+                    <Route path="/landing" element={<Landing />} />
                     <Route path="/login" element={<Login />} />
                     
-                    <Route element={<MainLayout />}>
-                      <Route index element={<Dashboard />} />
+                    <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+                      <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/reports" element={<Reports />} />
                       <Route path="/map" element={<MapView />} />
                       <Route path="/analytics" element={<Analytics />} />
