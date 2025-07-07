@@ -130,7 +130,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
       height: '100%',
       display: 'flex',
       flexDirection: 'column',
-      background: '#ffffff',
+      background: theme.palette.background.paper,
       position: 'relative',
     }}>
       {/* Header Section */}
@@ -139,11 +139,11 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
         display: 'flex',
         alignItems: 'center',
         gap: 2,
-        background: '#f8f9fa',
-        borderBottom: '1px solid #e9ecef',
+        background: theme.palette.mode === 'dark' ? alpha(theme.palette.background.default, 0.6) : '#f8f9fa',
+        borderBottom: `1px solid ${theme.palette.divider}`,
       }}>
         <Avatar sx={{
-          background: '#2563eb',
+          background: theme.palette.primary.main,
           width: 48,
           height: 48,
           fontSize: '1.25rem',
@@ -155,13 +155,13 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
           <Typography variant="h6" sx={{
             fontWeight: 600,
             fontSize: '1.125rem',
-            color: '#1f2937',
+            color: theme.palette.text.primary,
             mb: 0,
           }}>
             SafeStreets
           </Typography>
           <Typography variant="caption" sx={{
-            color: '#6b7280',
+            color: theme.palette.text.secondary,
             fontSize: '0.75rem',
             fontWeight: 500,
           }}>
@@ -175,7 +175,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
         <Typography 
           variant="overline" 
           sx={{
-            color: '#6b7280',
+            color: theme.palette.text.secondary,
             px: 3,
             mb: 1,
             fontSize: '0.75rem',
@@ -235,7 +235,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
                     minWidth: 40,
                     color: isSelected 
                       ? theme.palette.primary.main 
-                      : '#6b7280',
+                      : theme.palette.text.secondary,
                     transition: 'color 0.15s ease',
                   }}>
                     {item.icon}
@@ -246,7 +246,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
                     primaryTypographyProps={{
                       fontSize: '0.875rem',
                       fontWeight: isSelected ? 600 : 500,
-                      color: isSelected ? theme.palette.primary.main : '#374151',
+                      color: isSelected ? theme.palette.primary.main : theme.palette.text.primary,
                     }}
                   />
 
@@ -261,8 +261,8 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
                             height: 20,
                             fontSize: '0.7rem',
                             fontWeight: 600,
-                            backgroundColor: '#dc2626',
-                            color: 'white',
+                            backgroundColor: theme.palette.error.main,
+                            color: theme.palette.error.contrastText,
                             '& .MuiChip-label': { px: 1 },
                           }}
                         />
@@ -274,8 +274,8 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
                             height: 20,
                             fontSize: '0.65rem',
                             fontWeight: 600,
-                            backgroundColor: '#2563eb',
-                            color: 'white',
+                            backgroundColor: theme.palette.primary.main,
+                            color: theme.palette.primary.contrastText,
                             '& .MuiChip-label': { px: 1 },
                           }}
                         />
@@ -290,7 +290,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
       </Box>
 
       {/* Footer Section */}
-      <Box sx={{ p: 2, borderTop: '1px solid #e9ecef' }}>
+      <Box sx={{ p: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
         <Button
           variant="outlined"
           onClick={handleLogout}
@@ -301,12 +301,12 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
             py: 1,
             textTransform: 'none',
             fontWeight: 500,
-            borderColor: '#d1d5db',
-            color: '#6b7280',
+            borderColor: theme.palette.mode === 'dark' ? theme.palette.grey[700] : '#d1d5db',
+            color: theme.palette.text.secondary,
             '&:hover': {
-              borderColor: '#dc2626',
-              backgroundColor: alpha('#dc2626', 0.04),
-              color: '#dc2626',
+              borderColor: theme.palette.error.main,
+              backgroundColor: alpha(theme.palette.error.main, 0.04),
+              color: theme.palette.error.main,
             },
             transition: 'all 0.15s ease',
           }}
@@ -316,7 +316,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
 
         <Typography variant="caption" sx={{ 
           mt: 2, 
-          color: '#9ca3af', 
+          color: theme.palette.text.secondary, 
           textAlign: 'center',
           display: 'block',
           fontSize: '0.7rem',
@@ -362,8 +362,10 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
             width: DRAWER_WIDTH,
-            borderRight: '1px solid rgba(0, 0, 0, 0.06)',
-            boxShadow: '2px 0 10px rgba(0, 0, 0, 0.05)',
+            borderRight: `1px solid ${theme.palette.divider}`,
+            boxShadow: theme.palette.mode === 'dark' 
+              ? '2px 0 10px rgba(0, 0, 0, 0.3)' 
+              : '2px 0 10px rgba(0, 0, 0, 0.05)',
           },
         }}
         open
@@ -374,4 +376,4 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
   );
 };
 
-export default Sidebar; 
+export default Sidebar;

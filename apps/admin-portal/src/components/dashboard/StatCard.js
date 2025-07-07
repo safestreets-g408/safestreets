@@ -15,22 +15,32 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 
 // Modern card with shadow and hover effect
-const ModernCard = ({ children, gradient = false, ...props }) => {  
+export const ModernCard = ({ children, gradient = false, ...props }) => {
+  const theme = useTheme();
+  
   return (
     <Card
       sx={{
         borderRadius: 4,
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-        border: '1px solid rgba(0, 0, 0, 0.06)',
+        boxShadow: theme.palette.mode === 'dark'
+          ? '0 4px 20px rgba(0, 0, 0, 0.2)'
+          : '0 4px 20px rgba(0, 0, 0, 0.08)',
+        border: theme.palette.mode === 'dark'
+          ? '1px solid rgba(255, 255, 255, 0.1)'
+          : '1px solid rgba(0, 0, 0, 0.06)',
         background: gradient 
-          ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)'
-          : '#ffffff',
+          ? theme.palette.mode === 'dark'
+              ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%)'
+              : 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)'
+          : theme.palette.background.card,
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         position: 'relative',
         overflow: 'hidden',
         '&:hover': {
           transform: 'translateY(-4px)',
-          boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
+          boxShadow: theme.palette.mode === 'dark'
+            ? '0 12px 40px rgba(0, 0, 0, 0.4)'
+            : '0 12px 40px rgba(0, 0, 0, 0.15)',
         },
         '&::before': gradient ? {
           content: '""',
@@ -128,4 +138,3 @@ const StatCard = ({ icon, title, value, change, color = 'primary', loading = fal
 };
 
 export default StatCard;
-export { ModernCard };

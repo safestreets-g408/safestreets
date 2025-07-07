@@ -176,7 +176,7 @@ const ChatDialog = ({ open, onClose }) => {
             transition: 'all 0.25s ease-in-out'
           }}
         >
-          <CloseIcon sx={{ color: '#4b5563' }} />
+          <CloseIcon sx={{ color: theme.palette.text.secondary }} />
         </IconButton>
       </DialogTitle>
 
@@ -276,7 +276,7 @@ const ChatDialog = ({ open, onClose }) => {
                       background: 'rgba(255, 255, 255, 0.3)',
                     }
                   }}>
-                    <ChatIcon sx={{ fontSize: 50, color: '#8b5cf6', opacity: 0.9 }} />
+                    <ChatIcon sx={{ fontSize: 50, color: theme.palette.primary.main, opacity: 0.9 }} />
                   </Box>
                   <Typography 
                     variant="h5" 

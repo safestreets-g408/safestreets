@@ -29,6 +29,7 @@ import {
   ListItemText,
   Divider,
 } from '@mui/material';
+import ThemeToggle from '../theme/ThemeToggle';
 import MenuIcon from '@mui/icons-material/Menu';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
@@ -248,8 +249,10 @@ const Header = ({ onDrawerToggle }) => {
       sx={{
         width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
         ml: { md: `${DRAWER_WIDTH}px` },
-        background: '#ffffff',
-        borderBottom: '0.5px solid #e5e7eb',
+        background: theme.palette.background.appBar,
+        borderBottom: theme.palette.mode === 'dark' 
+          ? '0.5px solid rgba(255, 255, 255, 0.1)' 
+          : '0.5px solid #e5e7eb',
         color: theme.palette.text.primary,
         zIndex: theme.zIndex.drawer + 1,
         borderRadius: '0 0 0px 0px',
@@ -342,17 +345,19 @@ const Header = ({ onDrawerToggle }) => {
             sx={{
               display: 'flex',
               alignItems: 'center',
-              background: '#f9fafb',
+              background: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f9fafb',
               px: 2,
               py: 0.5,
-              border: '1px solid #d1d5db',
+              border: theme.palette.mode === 'dark' 
+                ? '1px solid rgba(255, 255, 255, 0.1)'
+                : '1px solid #d1d5db',
               transition: 'all 0.15s ease',
               '&:hover': {
-                background: '#ffffff',
-                borderColor: '#9ca3af',
+                background: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#ffffff',
+                borderColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : '#9ca3af',
               },
               '&:focus-within': {
-                background: '#ffffff',
+                background: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#ffffff',
                 borderColor: theme.palette.primary.main,
                 boxShadow: `0 0 0 1px ${alpha(theme.palette.primary.main, 0.1)}`,
               }
@@ -627,6 +632,9 @@ const Header = ({ onDrawerToggle }) => {
             </IconButton>
           </Tooltip>
           
+          {/* Theme Toggle */}
+          <ThemeToggle />
+          
           {/* System Notifications */}
           <Tooltip title="Notifications">
             <IconButton 
@@ -690,14 +698,22 @@ const Header = ({ onDrawerToggle }) => {
               width: 280,
               boxShadow: theme.shadows[4],
               mt: 1,
-              background: '#ffffff',
-              border: '1px solid #e5e7eb',
+              background: theme.palette.background.paper,
+              border: theme.palette.mode === 'dark' 
+                ? '1px solid rgba(255, 255, 255, 0.1)' 
+                : '1px solid #e5e7eb',
             }
           }}
           transformOrigin={{ horizontal: 'right', vertical: 'top' }}
           anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
         >
-          <Box sx={{ p: 3, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>
+          <Box sx={{ 
+            p: 3, 
+            textAlign: 'center', 
+            borderBottom: theme.palette.mode === 'dark' 
+              ? '1px solid rgba(255, 255, 255, 0.1)' 
+              : '1px solid #e5e7eb' 
+          }}>
             <Avatar
               sx={{
                 width: 48,
@@ -710,10 +726,14 @@ const Header = ({ onDrawerToggle }) => {
             >
               AD
             </Avatar>
-            <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5, color: '#111827' }}>
+            <Typography variant="h6" sx={{ 
+              fontWeight: 600, 
+              mb: 0.5,
+              color: theme.palette.text.primary
+            }}>
               Admin User
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ color: '#6b7280' }}>
+            <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
               admin@safestreets.com
             </Typography>
             <Chip 

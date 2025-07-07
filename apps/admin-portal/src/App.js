@@ -1,15 +1,16 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, CssBaseline } from '@mui/material';
+import { ThemeProvider as MuiThemeProvider, CssBaseline } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { AuthProvider } from './hooks/useAuth';
 import { TenantProvider } from './context/TenantContext';
 import { SearchProvider } from './context/SearchContext';
 import { SocketProvider } from './context/SocketContext';
+import { ThemeProvider, useThemeContext } from './context/ThemeContext';
 
 // Theme
-import theme from './theme';
+import { createAppTheme } from './theme';
 
 // Layout
 import MainLayout from './components/layout/MainLayout';
@@ -31,45 +32,63 @@ import SearchResults from './pages/SearchResults';
 import Chat from './pages/Chat';
 import Landing from './pages/Landing';
 
+// ThemeApp component handles the MUI theme based on theme context
+const ThemeApp = ({ children }) => {
+  const { darkMode } = useThemeContext();
+  
+  // Create theme based on current mode
+  const currentTheme = React.useMemo(() => {
+    return createAppTheme(darkMode ? 'dark' : 'light');
+  }, [darkMode]);
+
+  return (
+    <MuiThemeProvider theme={currentTheme}>
+      <CssBaseline />
+      {children}
+    </MuiThemeProvider>
+  );
+};
+
 function App() {
   return (
     <BrowserRouter>
-      <ThemeProvider theme={theme}>
-        <LocalizationProvider dateAdapter={AdapterDateFns}>
-          <CssBaseline />
-          <AuthProvider>
-            <TenantProvider>
-              <SearchProvider>
-                <SocketProvider>
-                  <Routes>
-                    <Route path="/" element={<Landing />} />
-                    <Route path="/landing" element={<Landing />} />
-                    <Route path="/login" element={<Login />} />
+      <ThemeProvider>
+        <ThemeApp>
+          <LocalizationProvider dateAdapter={AdapterDateFns}>
+            <AuthProvider>
+              <TenantProvider>
+                <SearchProvider>
+                  <SocketProvider>
+                    <Routes>
+                      <Route path="/" element={<Landing />} />
+                      <Route path="/landing" element={<Landing />} />
+                      <Route path="/login" element={<Login />} />
                     
-                    <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-                      <Route path="/dashboard" element={<Dashboard />} />
-                      <Route path="/reports" element={<Reports />} />
-                      <Route path="/map" element={<MapView />} />
-                      <Route path="/analytics" element={<Analytics />} />
-                      <Route path="/repairs" element={<Repair />} />
-                      <Route path="/historical" element={<Historical />} />
-                      <Route path="/profile" element={<Profile />} />
-                      <Route path="/ai-analysis" element={<AiAnalysis />} />
-                      <Route path="/search-results" element={<SearchResults />} />
-                      <Route path="/chat" element={<Chat />} />
-                      {/* Tenant Management */}
-                      <Route path="/tenants" element={<ManageTenants />} />
-                      <Route path="/tenants/:tenantId" element={<TenantDetails />} />
-                    </Route>
-      
-                    {/* Catch all route */}
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
-                </SocketProvider>
-              </SearchProvider>
-            </TenantProvider>
-          </AuthProvider>
-        </LocalizationProvider>
+                      <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+                        <Route path="/dashboard" element={<Dashboard />} />
+                        <Route path="/reports" element={<Reports />} />
+                        <Route path="/map" element={<MapView />} />
+                        <Route path="/analytics" element={<Analytics />} />
+                        <Route path="/repairs" element={<Repair />} />
+                        <Route path="/historical" element={<Historical />} />
+                        <Route path="/profile" element={<Profile />} />
+                        <Route path="/ai-analysis" element={<AiAnalysis />} />
+                        <Route path="/search-results" element={<SearchResults />} />
+                        <Route path="/chat" element={<Chat />} />
+                        {/* Tenant Management */}
+                        <Route path="/tenants" element={<ManageTenants />} />
+                        <Route path="/tenants/:tenantId" element={<TenantDetails />} />
+                      </Route>
+        
+                      {/* Catch all route */}
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </SocketProvider>
+                </SearchProvider>
+              </TenantProvider>
+            </AuthProvider>
+          </LocalizationProvider>
+        </ThemeApp>
       </ThemeProvider>
     </BrowserRouter>
   );

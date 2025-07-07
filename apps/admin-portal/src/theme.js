@@ -1,8 +1,9 @@
 import { createTheme } from '@mui/material/styles';
 
-const theme = createTheme({
+// Create theme based on mode (light/dark)
+const createAppTheme = (mode) => createTheme({
   palette: {
-    mode: 'light',
+    mode,
     primary: {
       main: '#2563eb',
       light: '#60a5fa',
@@ -36,13 +37,26 @@ const theme = createTheme({
       dark: '#059669',
     },
     background: {
-      default: '#f9fafb',
-      paper: '#ffffff',
+      default: mode === 'dark' ? '#121212' : '#f9fafb',
+      paper: mode === 'dark' ? '#1e1e1e' : '#ffffff',
+      appBar: mode === 'dark' ? '#1a1a1a' : '#ffffff',
+      card: mode === 'dark' ? '#1e1e1e' : '#ffffff',
+      dialog: mode === 'dark' ? '#1e1e1e' : '#ffffff',
+      menu: mode === 'dark' ? '#1e1e1e' : '#ffffff',
     },
     text: {
-      primary: '#111827',
-      secondary: '#6b7280',
+      primary: mode === 'dark' ? '#f3f4f6' : '#111827',
+      secondary: mode === 'dark' ? '#d1d5db' : '#6b7280',
+      disabled: mode === 'dark' ? '#6b7280' : '#9ca3af',
     },
+    action: {
+      active: mode === 'dark' ? '#f3f4f6' : '#111827',
+      hover: mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+      selected: mode === 'dark' ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.08)',
+      disabled: mode === 'dark' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.26)',
+      disabledBackground: mode === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
+    },
+    divider: mode === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
     grey: {
       50: '#f9fafb',
       100: '#f3f4f6',
@@ -116,6 +130,29 @@ const theme = createTheme({
     },
   },
   components: {
+    MuiCssBaseline: {
+      styleOverrides: (theme) => ({
+        body: {
+          backgroundColor: theme.palette.background.default,
+          color: theme.palette.text.primary,
+          transition: 'background-color 0.3s ease, color 0.3s ease',
+        }
+      }),
+    },
+    MuiAppBar: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          backgroundColor: theme.palette.mode === 'dark' 
+            ? theme.palette.background.appBar 
+            : '#ffffff',
+          color: theme.palette.text.primary,
+          borderBottom: theme.palette.mode === 'dark'
+            ? '1px solid rgba(255, 255, 255, 0.1)'
+            : '1px solid rgba(0, 0, 0, 0.1)',
+        }),
+      },
+    },
+
     MuiButton: {
       styleOverrides: {
         root: {
@@ -149,51 +186,87 @@ const theme = createTheme({
     },
     MuiCard: {
       styleOverrides: {
-        root: {
+        root: ({ theme }) => ({
           borderRadius: 16,
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-          border: '1px solid rgba(0, 0, 0, 0.06)',
-          background: '#ffffff',
+          boxShadow: theme.palette.mode === 'dark' 
+            ? '0 4px 20px rgba(0, 0, 0, 0.2)' 
+            : '0 4px 20px rgba(0, 0, 0, 0.08)',
+          border: theme.palette.mode === 'dark'
+            ? '1px solid rgba(255, 255, 255, 0.1)'
+            : '1px solid rgba(0, 0, 0, 0.06)',
+          background: theme.palette.background.card,
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           '&:hover': {
-            boxShadow: '0 12px 40px rgba(0, 0, 0, 0.12)',
+            boxShadow: theme.palette.mode === 'dark'
+              ? '0 12px 40px rgba(0, 0, 0, 0.4)'
+              : '0 12px 40px rgba(0, 0, 0, 0.12)',
             transform: 'translateY(-4px)',
           },
-        },
-      },
-    },
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          borderRadius: 16,
-          backgroundImage: 'none',
-        },
-        elevation1: {
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-        },
-        elevation2: {
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-        },
-        elevation3: {
-          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
-        },
-      },
-    },
-    MuiAppBar: {
-      styleOverrides: {
-        root: {
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
-          backdropFilter: 'blur(20px)',
-          backgroundColor: 'rgba(255, 255, 255, 0.8)',
-        },
+        }),
       },
     },
     MuiDrawer: {
       styleOverrides: {
-        paper: {
-          borderRight: 'none',
-          background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
-        },
+        paper: ({ theme }) => ({
+          backgroundColor: theme.palette.mode === 'dark' 
+            ? theme.palette.background.paper 
+            : '#ffffff',
+          color: theme.palette.text.primary,
+          transition: 'background-color 0.3s ease',
+        }),
+      },
+    },
+    MuiMenu: {
+      styleOverrides: {
+        paper: ({ theme }) => ({
+          backgroundColor: theme.palette.mode === 'dark'
+            ? theme.palette.background.menu
+            : '#ffffff',
+          color: theme.palette.text.primary,
+        }),
+      },
+    },
+    MuiDialog: {
+      styleOverrides: {
+        paper: ({ theme }) => ({
+          backgroundColor: theme.palette.mode === 'dark'
+            ? theme.palette.background.dialog
+            : '#ffffff',
+          color: theme.palette.text.primary,
+        }),
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          backgroundColor: theme.palette.mode === 'dark' 
+            ? theme.palette.background.paper
+            : '#ffffff',
+          transition: 'background-color 0.3s ease',
+        }),
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          color: theme.palette.mode === 'dark' 
+            ? theme.palette.text.primary
+            : theme.palette.text.secondary,
+          '&:hover': {
+            backgroundColor: theme.palette.mode === 'dark'
+              ? 'rgba(255, 255, 255, 0.1)'
+              : 'rgba(0, 0, 0, 0.04)',
+          },
+        }),
+      },
+    },
+    MuiDivider: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          borderColor: theme.palette.mode === 'dark'
+            ? 'rgba(255, 255, 255, 0.12)'
+            : 'rgba(0, 0, 0, 0.12)',
+        }),
       },
     },
     MuiListItemButton: {
@@ -260,4 +333,9 @@ const theme = createTheme({
   ],
 });
 
+// Export the theme creator function
+export { createAppTheme };
+
+// Default theme for backward compatibility
+const theme = createAppTheme('light');
 export default theme;

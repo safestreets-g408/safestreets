@@ -15,6 +15,7 @@ import {
   ListItem,
   ListItemText,
 } from '@mui/material';
+import ThemeToggle from '../theme/ThemeToggle';
 import {
   RocketLaunch,
   Menu as MenuIcon,
@@ -45,9 +46,13 @@ const Navigation = ({
     <>
       {/* Modern Navigation */}
       <AppBar position="fixed" elevation={2} sx={{ 
-        bgcolor: alpha(theme.palette.background.paper, 0.97),
+        bgcolor: theme.palette.mode === 'dark'
+          ? alpha(theme.palette.background.appBar, 0.97)
+          : alpha(theme.palette.background.paper, 0.97),
         backdropFilter: 'blur(20px)',
-        borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+        borderBottom: theme.palette.mode === 'dark'
+          ? `1px solid ${alpha(theme.palette.divider, 0.2)}`
+          : `1px solid ${alpha(theme.palette.divider, 0.1)}`,
         boxShadow: `0 4px 20px ${alpha(theme.palette.common.black, 0.08)}`,
         transition: 'all 0.3s ease'
       }}>
@@ -158,26 +163,32 @@ const Navigation = ({
               </Button>
             </Box>
             
-            <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-              <Button
-                variant="contained"
-                onClick={handleGetStarted}
-                sx={{
-                  px: 3,
-                  py: 1.2,
-                  fontWeight: 600,
-                  borderRadius: '10px',
-                  boxShadow: `0 4px 14px ${alpha(theme.palette.primary.main, 0.25)}`,
-                  background: `linear-gradient(45deg, ${theme.palette.primary.dark}, ${theme.palette.primary.main})`,
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
-                    boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.4)}`,
-                  }
-                }}
-              >
-                {isAuthenticated ? 'Go to Dashboard' : 'Get Started'}
-              </Button>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              {/* Theme Toggle */}
+              <ThemeToggle />
+              
+              {/* Get Started Button */}
+              <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                <Button
+                  variant="contained"
+                  onClick={handleGetStarted}
+                  sx={{
+                    px: 3,
+                    py: 1.2,
+                    fontWeight: 600,
+                    borderRadius: '10px',
+                    boxShadow: `0 4px 14px ${alpha(theme.palette.primary.main, 0.25)}`,
+                    background: `linear-gradient(45deg, ${theme.palette.primary.dark}, ${theme.palette.primary.main})`,
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.4)}`,
+                    }
+                  }}
+                >
+                  {isAuthenticated ? 'Go to Dashboard' : 'Get Started'}
+                </Button>
+              </Box>
             </Box>
             
             <IconButton

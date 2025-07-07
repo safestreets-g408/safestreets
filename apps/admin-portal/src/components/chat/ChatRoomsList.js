@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTheme } from '@mui/material/styles';
 import {
   Box,
   Paper,
@@ -32,6 +33,7 @@ import { useAuth } from '../../hooks/useAuth';
 import PropTypes from 'prop-types';
 
 const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
+  const theme = useTheme();
   const [chatRooms, setChatRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -378,7 +380,7 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <SearchIcon sx={{ color: '#8b5cf6', fontSize: 20 }} />
+                <SearchIcon sx={{ color: theme.palette.primary.main, fontSize: 20 }} />
               </InputAdornment>
             ),
           }}
@@ -393,10 +395,10 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
               },
               '&:hover fieldset': {
-                borderColor: '#8b5cf6',
+                borderColor: theme.palette.primary.main,
               },
               '&.Mui-focused fieldset': {
-                borderColor: '#8b5cf6',
+                borderColor: theme.palette.primary.main,
                 borderWidth: 2
               },
               '& fieldset': {
@@ -414,7 +416,7 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
         {searchTerm && (
           <Typography variant="caption" sx={{ 
             mt: 1, 
-            color: '#8b5cf6', 
+            color: theme.palette.primary.main, 
             display: 'block',
             fontWeight: 500 
           }}>
@@ -533,7 +535,7 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
                             bottom: 0,
                             width: 4,
                             borderRadius: '0 4px 4px 0',
-                            bgcolor: isSelected ? '#8b5cf6' : 'transparent',
+                            bgcolor: isSelected ? theme.palette.primary.main : 'transparent',
                             transition: 'all 0.2s ease-in-out'
                           }
                         }}
@@ -645,7 +647,7 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
                                 }
                               </Typography>
                               {unreadCount > 0 && (
-                                <OnlineIcon sx={{ fontSize: 10, color: '#10b981' }} />
+                                <OnlineIcon sx={{ fontSize: 10, color: theme.palette.success.main }} />
                               )}
                             </Box>
                           }
@@ -713,7 +715,7 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
                 background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
                 boxShadow: '0 2px 8px rgba(139, 92, 246, 0.15)',
               }}>
-                <ChatIcon sx={{ color: '#8b5cf6', fontSize: 18 }} />
+                <ChatIcon sx={{ color: theme.palette.primary.main, fontSize: 18 }} />
               </Box>
             </Badge>
             <Typography variant="body2" sx={{ 

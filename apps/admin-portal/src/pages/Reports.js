@@ -1,4 +1,5 @@
 import React, { useState, useEffect} from 'react';
+import { useTheme, alpha } from '@mui/material/styles';
 import { 
   Box, Paper, Typography, Grid, TextField, MenuItem, 
   Button, FormControl, InputLabel, Select, Chip, Stack,
@@ -23,26 +24,29 @@ import { useTenant } from '../context/TenantContext';
 import { api } from '../utils/api';
 import { API_BASE_URL, TOKEN_KEY, API_ENDPOINTS } from '../config/constants';
 
-// Professional color palette
-const colors = {
-  primary: '#2563eb',
-  primaryDark: '#1d4ed8',
-  secondary: '#64748b',
-  success: '#059669',
-  warning: '#d97706',
-  error: '#dc2626',
-  surface: '#ffffff',
-  border: '#e2e8f0',
-  text: {
-    primary: '#1e293b',
-    secondary: '#64748b'
-  }
-};
+// Professional color palette - using theme instead for dark mode compatibility
 
 function Reports() {
+  const theme = useTheme();
   const { user } = useAuth();
   const { tenants } = useTenant();
   const isSuperAdmin = user?.role === 'super-admin';
+  
+  // Define colors based on the theme
+  const colors = {
+    primary: theme.palette.primary.main,
+    primaryDark: theme.palette.primary.dark,
+    secondary: theme.palette.secondary.main,
+    success: theme.palette.success.main,
+    warning: theme.palette.warning.main,
+    error: theme.palette.error.main,
+    surface: theme.palette.background.paper,
+    border: theme.palette.divider,
+    text: {
+      primary: theme.palette.text.primary,
+      secondary: theme.palette.text.secondary
+    }
+  };
   
   // Tenant selection state for super admin
   const [selectedTenant, setSelectedTenant] = useState('');
@@ -352,8 +356,8 @@ function Reports() {
         };
         
         // Make sure the aiReportId is properly formatted
-        if (typeof aiReportId === 'object' && aiReportId !== null) {
-          aiPayload.aiReportId = aiReportId.toString();
+        if (typeof aiPayload.aiReportId === 'object' && aiPayload.aiReportId !== null) {
+          aiPayload.aiReportId = aiPayload.aiReportId.toString();
         }
         
         console.log('Payload for create-from-ai:', aiPayload);
@@ -591,19 +595,19 @@ function Reports() {
     // Create a new window with formatted content
     const newWindow = window.open('', '_blank');
     
-    // Base styles for the PDF
+    // Use theme colors for the PDF (but keep it readable - always use light mode for PDFs)
     const styles = `
-      body { font-family: Arial, sans-serif; margin: 20px; }
-      h1 { color: #2563eb; margin-bottom: 20px; }
+      body { font-family: Arial, sans-serif; margin: 20px; background-color: white; }
+      h1 { color: ${colors.primary}; margin-bottom: 20px; }
       .report-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-      .report-table th, .report-table td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; }
-      .report-table th { background-color: #f8fafc; color: #1e293b; }
-      .low { color: #059669; }
-      .medium { color: #d97706; }
-      .high, .critical { color: #dc2626; }
-      .pending { color: #d97706; }
-      .completed { color: #059669; }
-      .in-progress { color: #2563eb; }
+      .report-table th { background-color: ${alpha(colors.primary, 0.1)}; color: ${colors.text.primary}; }
+      .report-table td, .report-table th { border: 1px solid ${colors.border}; padding: 8px; }
+      .low { color: ${colors.success}; }
+      .medium { color: ${colors.warning}; }
+      .high, .critical { color: ${colors.error}; }
+      .pending { color: ${colors.warning}; }
+      .completed { color: ${colors.success}; }
+      .in-progress { color: ${colors.primary}; }
     `;
     
     // Create HTML content
@@ -920,12 +924,14 @@ function Reports() {
           </thead>
           <tbody>
             {paginatedReports().map((report, index) => (
-              <tr 
-                key={report.id}
-                style={{
-                  backgroundColor: index % 2 === 0 ? '#f8fafc' : 'inherit'
-                }}
-              >
+              <tr key={report._id} style={{ 
+                  cursor: 'pointer',
+                  backgroundColor: index % 2 === 0 
+                    ? theme.palette.mode === 'dark' 
+                      ? alpha(theme.palette.background.default, 0.5) 
+                      : '#f8fafc' 
+                    : 'inherit'
+                }} onClick={() => handleViewReport(report)}>
                 <td style={{ padding: 8, fontWeight: 500, color: colors.primary }}>
                   {report.reportId}
                 </td>
@@ -980,7 +986,7 @@ function Reports() {
             ))}
             {paginatedReports().length === 0 && (
               <tr>
-                <td colSpan={isSuperAdmin && allTenantsReports ? 8 : 7} style={{ textAlign: 'center', padding: 24, color: '#888' }}>
+                <td colSpan={isSuperAdmin && allTenantsReports ? 8 : 7} style={{ textAlign: 'center', padding: 24, color: theme.palette.text.secondary }}>
                   {isSuperAdmin && !selectedTenant && !allTenantsReports ? 
                     'Please select a tenant or choose "Show All Tenants" to view reports.' :
                     'No reports found.'
@@ -998,7 +1004,7 @@ function Reports() {
     <Grid container spacing={3}>
       {paginatedReports().length === 0 ? (
         <Grid item xs={12}>
-          <Paper sx={{ p: 4, textAlign: 'center', bgcolor: '#f8fafc' }}>
+          <Paper sx={{ p: 4, textAlign: 'center', bgcolor: 'background.paper' }}>
             <Typography variant="h6" color="text.secondary" gutterBottom>
               {isSuperAdmin && !selectedTenant && !allTenantsReports ? 
                 '🏢 Select a tenant to view reports' :
@@ -1052,7 +1058,7 @@ function Reports() {
                   
                   {/* Show tenant info for super admin viewing all tenants */}
                   {isSuperAdmin && allTenantsReports && report.tenantInfo && (
-                    <Box sx={{ mt: 1, p: 1, bgcolor: '#e3f2fd', borderRadius: 1 }}>
+                    <Box sx={{ mt: 1, p: 1, bgcolor: theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.2) : '#e3f2fd', borderRadius: 1 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <BusinessIcon fontSize="small" color="primary" />
                         <Typography variant="caption" color="primary" sx={{ fontWeight: 600 }}>
@@ -1411,13 +1417,13 @@ function Reports() {
                       bgcolor: colors.warning,
                       color: 'white',
                       '&:hover': {
-                        bgcolor: '#b45309',
+                        bgcolor: theme.palette.warning.dark,
                       },
                     } : {
                       borderColor: colors.warning,
                       color: colors.warning,
                       '&:hover': {
-                        bgcolor: '#fef3c7',
+                        bgcolor: alpha(theme.palette.warning.main, 0.1),
                       },
                     })
                   }}
@@ -1428,7 +1434,13 @@ function Reports() {
               
               {/* Current Selection Info */}
               {(selectedTenant || allTenantsReports) && (
-                <Box sx={{ mt: 2, p: 2, bgcolor: '#f0f9ff', borderRadius: 2, border: '1px solid #bfdbfe' }}>
+                <Box sx={{ 
+                  mt: 2, 
+                  p: 2, 
+                  bgcolor: theme.palette.mode === 'dark' ? 'rgba(37, 99, 235, 0.1)' : '#f0f9ff',
+                  borderRadius: 2, 
+                  border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(37, 99, 235, 0.3)' : '#bfdbfe'}`
+                }}>
                   <Typography variant="body2" color="primary">
                     {allTenantsReports 
                       ? `📊 Showing reports from all ${(tenants || []).length} tenants`
@@ -1510,7 +1522,7 @@ function Reports() {
                 bgcolor: colors.warning,
                 color: 'white',
                 '&:hover': {
-                  bgcolor: '#b45309',
+                  bgcolor: theme.palette.warning.dark,
                 },
               }}
             >
@@ -1524,7 +1536,7 @@ function Reports() {
               sx={{
                 bgcolor: colors.success,
                 '&:hover': {
-                  bgcolor: '#047857',
+                  bgcolor: theme.palette.success.dark,
                 },
               }}
             >
@@ -1536,7 +1548,7 @@ function Reports() {
         {/* Tenant Summary Stats for Super Admin */}
         {isSuperAdmin && allTenantsReports && reports.length > 0 && (
           <Box sx={{ mb: 3 }}>
-            <Paper sx={{ p: 3, borderRadius: 2, bgcolor: '#f8f9fa' }}>
+            <Paper sx={{ p: 3, borderRadius: 2, bgcolor: 'background.paper' }}>
               <Typography variant="h6" sx={{ mb: 2, color: colors.primary, fontWeight: 600 }}>
                 📊 Tenant Summary
               </Typography>
@@ -1643,7 +1655,7 @@ function Reports() {
               sx={{
                 p: 3,
                 textAlign: 'center',
-                bgcolor: '#fef2f2',
+                bgcolor: alpha(theme.palette.error.main, 0.1),
                 border: `1px solid ${colors.error}`,
                 borderRadius: 2,
               }}

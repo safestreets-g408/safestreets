@@ -54,7 +54,8 @@ const RecentReports = memo(({ reports = [], loading }) => {
         borderColor: 'divider',
         height: '100%',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        background: (theme) => theme.palette.background.card
       }}
     >
       <CardHeader 
@@ -69,7 +70,11 @@ const RecentReports = memo(({ reports = [], loading }) => {
         }}
       />
       <CardContent sx={{ pt: 2, pb: 1, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-        <TableContainer component={Paper} elevation={0} sx={{ flexGrow: 1, borderRadius: 2 }}>
+        <TableContainer component={Paper} elevation={0} sx={{ 
+          flexGrow: 1, 
+          borderRadius: 2,
+          backgroundColor: 'transparent'
+        }}>
           <Table sx={{ minWidth: 600 }}>
             <TableHead>
               <TableRow>

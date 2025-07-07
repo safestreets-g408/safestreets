@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTheme } from '@mui/material/styles';
 import { 
   Box, Typography, Grid, FormControl, InputLabel, 
   Select, MenuItem, Card, CardContent,
@@ -19,23 +20,24 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { api } from '../utils/api';
 
-// Professional color palette
-const colors = {
-  primary: '#2563eb',
-  primaryDark: '#1d4ed8',
-  secondary: '#64748b',
-  success: '#059669',
-  warning: '#d97706',
-  error: '#dc2626',
-  surface: '#ffffff',
-  border: '#e2e8f0',
-  text: {
-    primary: '#1e293b',
-    secondary: '#64748b'
-  }
-};
-
 function Analytics() {
+  const theme = useTheme();
+  
+  // Define colors based on the theme
+  const colors = {
+    primary: theme.palette.primary.main,
+    primaryDark: theme.palette.primary.dark,
+    secondary: theme.palette.secondary.main,
+    success: theme.palette.success.main,
+    warning: theme.palette.warning.main,
+    error: theme.palette.error.main,
+    surface: theme.palette.background.paper,
+    border: theme.palette.divider,
+    text: {
+      primary: theme.palette.text.primary,
+      secondary: theme.palette.text.secondary
+    }
+  };
   const [timeframe, setTimeframe] = useState('7days');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -200,22 +202,22 @@ function Analytics() {
 
   const getStatusColor = (status) => {
     switch(status) {
-      case 'Pending': return '#f59e0b';
-      case 'Assigned': return '#3b82f6';
-      case 'In-Progress': return '#2563eb';
-      case 'Resolved': return '#10b981';
-      case 'Rejected': return '#ef4444';
-      default: return '#6b7280';
+      case 'Pending': return colors.warning;
+      case 'Assigned': return colors.primary;
+      case 'In-Progress': return colors.primaryDark;
+      case 'Resolved': return colors.success;
+      case 'Rejected': return colors.error;
+      default: return colors.text.secondary;
     }
   };
 
   const getSeverityColor = (severity) => {
     switch(severity) {
-      case 'Low': return '#3b82f6';
-      case 'Medium': return '#f59e0b';
-      case 'High': return '#ef4444';
-      case 'Critical': return '#dc2626';
-      default: return '#6b7280';
+      case 'Low': return colors.primary;
+      case 'Medium': return colors.warning;
+      case 'High': return colors.error;
+      case 'Critical': return colors.error;
+      default: return colors.text.secondary;
     }
   };
 

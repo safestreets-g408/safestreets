@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTheme } from '@mui/material/styles';
 import {
   Box,
   Paper,
@@ -33,6 +34,7 @@ import ReportSelectorDialog from './ReportSelectorDialog';
 import ReportMessage from './ReportMessage';
 
 const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
+  const theme = useTheme();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -439,15 +441,14 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
               width: 14,
               height: 14,
               borderRadius: '50%',
-              bgcolor: '#10b981',
+              bgcolor: theme.palette.success.main,
               border: '2px solid white',
               boxShadow: '0 2px 5px rgba(16, 185, 129, 0.3)',
             }} />
           </Box>
           <Box>
             <Typography variant="h6" sx={{ 
-              fontWeight: 700, 
-              color: '#1f2937',
+              fontWeight: 700,                color: theme.palette.text.primary,
               lineHeight: 1.3, 
             }}>
               {user.role === 'super-admin' ? tenantName : (contactName || 'Super Administrator')}
@@ -461,7 +462,7 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
                 width: 8,
                 height: 8,
                 borderRadius: '50%',
-                bgcolor: '#10b981',
+                bgcolor: theme.palette.success.main,
               }} />
               <Typography variant="caption" sx={{ 
                 color: '#6b7280', 
@@ -485,7 +486,7 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
             transition: 'all 0.2s ease-in-out'
           }}
         >
-          <CloseIcon sx={{ color: '#6b7280' }} />
+          <CloseIcon sx={{ color: theme.palette.text.secondary }} />
         </IconButton>
       </Box>
 

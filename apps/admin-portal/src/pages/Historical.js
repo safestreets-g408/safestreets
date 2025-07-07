@@ -22,7 +22,8 @@ import {
   IconButton,
   Tooltip as MuiTooltip,
   Alert,
-  Snackbar
+  Snackbar,
+  useTheme
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -51,6 +52,7 @@ import { api } from '../utils/api';
 import { API_BASE_URL, API_ENDPOINTS, TOKEN_KEY } from '../config/constants';
 
 const Historical = () => {
+  const theme = useTheme();
   const [loading, setLoading] = useState(false);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
@@ -407,7 +409,13 @@ const Historical = () => {
         </Alert>
       </Snackbar>
       
-      <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: 3 }}>
+      <Paper sx={{ 
+        p: 3, 
+        mb: 3, 
+        borderRadius: 2, 
+        boxShadow: 3,
+        bgcolor: 'background.paper'
+      }}>
         <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
           <FilterAltIcon sx={{ mr: 1 }} />
           Filter Reports
@@ -528,7 +536,13 @@ const Historical = () => {
       {!loading && view === 'reports' && (
         <>
           {selectedReport ? (
-            <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: 3 }}>
+            <Paper sx={{ 
+              p: 3, 
+              mb: 3, 
+              borderRadius: 2, 
+              boxShadow: 3,
+              bgcolor: 'background.paper'
+            }}>
               <Button 
                 variant="outlined" 
                 sx={{ mb: 3 }}
@@ -537,13 +551,13 @@ const Historical = () => {
               >
                 Back to Reports
               </Button>
-              <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+              <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>
                 Report #{selectedReport.reportId} - {selectedReport.location}
               </Typography>
               <Divider sx={{ mb: 3 }} />
               <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
-                  <Box sx={{ mb: 3, p: 2, bgcolor: '#f5f5f5', borderRadius: 2 }}>
+                  <Box sx={{ mb: 3, p: 2, bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f5f5f5', borderRadius: 2 }}>
                     <Grid container spacing={2}>
                       <Grid item xs={6}>
                         <Typography variant="subtitle2" color="textSecondary">Date:</Typography>
@@ -605,7 +619,7 @@ const Historical = () => {
                             }}
                           />
                         </Box>
-                        <CardContent sx={{ bgcolor: '#f5f5f5' }}>
+                        <CardContent sx={{ bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f5f5f5' }}>
                           <Typography variant="body2" sx={{ fontWeight: 'medium', textAlign: 'center' }}>Before Repair</Typography>
                         </CardContent>
                       </Card>
@@ -626,7 +640,7 @@ const Historical = () => {
                             }}
                           />
                         </Box>
-                        <CardContent sx={{ bgcolor: '#f5f5f5' }}>
+                        <CardContent sx={{ bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f5f5f5' }}>
                           <Typography variant="body2" sx={{ fontWeight: 'medium', textAlign: 'center' }}>After Repair</Typography>
                         </CardContent>
                       </Card>
@@ -656,7 +670,7 @@ const Historical = () => {
                       }} 
                       onClick={() => viewReport(report.reportId)}
                     >
-                      <Box sx={{ height: 140, bgcolor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Box sx={{ height: 140, bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <img 
                           src={getAuthenticatedImageUrl(report.reportId, 'before')} 
                           alt={report.location} 
@@ -691,7 +705,10 @@ const Historical = () => {
                           <Chip 
                             label={report.damageType} 
                             size="small" 
-                            sx={{ bgcolor: '#e3f2fd', color: '#1976d2' }} 
+                            sx={{ 
+                              bgcolor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.15)' : '#e3f2fd', 
+                              color: theme.palette.primary.main
+                            }} 
                           />
                           {getStatusChip(report.status)}
                           {getSeverityChip(report.severity)}
@@ -718,12 +735,18 @@ const Historical = () => {
 
       {!loading && view === 'trends' && (
         <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
-          <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2', mb: 3 }}>
+          <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', color: theme.palette.primary.main, mb: 3 }}>
             Damage Analysis Dashboard
           </Typography>
           <Grid container spacing={4}>
             <Grid item xs={12} md={8}>
-              <Paper sx={{ p: 2, borderRadius: 2, boxShadow: 1, mb: 3 }}>
+              <Paper sx={{ 
+                p: 2, 
+                borderRadius: 2, 
+                boxShadow: 1, 
+                mb: 3,
+                bgcolor: 'background.paper' 
+              }}>
                 <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
                   Damage Type Trends by Month
                 </Typography>
@@ -733,7 +756,7 @@ const Historical = () => {
                       data={trendData}
                       margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#f0f0f0'} />
                       <XAxis dataKey="month" />
                       <YAxis />
                       <Tooltip contentStyle={{ borderRadius: 8 }} />
@@ -757,7 +780,7 @@ const Historical = () => {
                       data={severityData}
                       margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#f0f0f0'} />
                       <XAxis dataKey="month" />
                       <YAxis />
                       <Tooltip contentStyle={{ borderRadius: 8 }} />
@@ -771,7 +794,13 @@ const Historical = () => {
               </Paper>
             </Grid>
             <Grid item xs={12} md={4}>
-              <Paper sx={{ p: 2, borderRadius: 2, boxShadow: 1, mb: 3 }}>
+              <Paper sx={{ 
+                p: 2, 
+                borderRadius: 2, 
+                boxShadow: 1, 
+                mb: 3,
+                bgcolor: 'background.paper' 
+              }}>
                 <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
                   Repairs by Region
                 </Typography>
@@ -805,26 +834,46 @@ const Historical = () => {
                 <Box sx={{ p: 2 }}>
                   <Grid container spacing={2}>
                     <Grid item xs={6}>
-                      <Paper sx={{ p: 2, bgcolor: '#e3f2fd', borderRadius: 2, textAlign: 'center' }}>
-                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#1976d2' }}>{stats.totalReports}</Typography>
+                      <Paper sx={{ 
+                        p: 2, 
+                        bgcolor: theme.palette.mode === 'dark' ? 'rgba(33, 150, 243, 0.15)' : '#e3f2fd',
+                        borderRadius: 2, 
+                        textAlign: 'center' 
+                      }}>
+                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>{stats.totalReports}</Typography>
                         <Typography variant="body2">Total Reports</Typography>
                       </Paper>
                     </Grid>
                     <Grid item xs={6}>
-                      <Paper sx={{ p: 2, bgcolor: '#e8f5e9', borderRadius: 2, textAlign: 'center' }}>
-                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#4caf50' }}>{stats.repaired}</Typography>
+                      <Paper sx={{ 
+                        p: 2, 
+                        bgcolor: theme.palette.mode === 'dark' ? 'rgba(76, 175, 80, 0.15)' : '#e8f5e9',
+                        borderRadius: 2, 
+                        textAlign: 'center' 
+                      }}>
+                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: theme.palette.success.main }}>{stats.repaired}</Typography>
                         <Typography variant="body2">Repaired</Typography>
                       </Paper>
                     </Grid>
                     <Grid item xs={6}>
-                      <Paper sx={{ p: 2, bgcolor: '#fff3e0', borderRadius: 2, textAlign: 'center' }}>
-                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#ff9800' }}>{stats.inProgress}</Typography>
+                      <Paper sx={{ 
+                        p: 2, 
+                        bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 152, 0, 0.15)' : '#fff3e0',
+                        borderRadius: 2, 
+                        textAlign: 'center' 
+                      }}>
+                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: theme.palette.warning.main }}>{stats.inProgress}</Typography>
                         <Typography variant="body2">In Progress</Typography>
                       </Paper>
                     </Grid>
                     <Grid item xs={6}>
-                      <Paper sx={{ p: 2, bgcolor: '#ffebee', borderRadius: 2, textAlign: 'center' }}>
-                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#f44336' }}>{stats.highSeverity}</Typography>
+                      <Paper sx={{ 
+                        p: 2, 
+                        bgcolor: theme.palette.mode === 'dark' ? 'rgba(244, 67, 54, 0.15)' : '#ffebee',
+                        borderRadius: 2, 
+                        textAlign: 'center' 
+                      }}>
+                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: theme.palette.error.main }}>{stats.highSeverity}</Typography>
                         <Typography variant="body2">High Severity</Typography>
                       </Paper>
                     </Grid>

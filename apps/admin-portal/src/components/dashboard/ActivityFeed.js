@@ -67,7 +67,7 @@ const ActivityFeed = ({ activities = [] }) => {
               key={activity.id}
               sx={{
                 borderBottom: index < activities.length - 1 
-                  ? '1px solid rgba(0, 0, 0, 0.06)' 
+                  ? `1px solid ${theme.palette.divider}` 
                   : 'none',
                 py: 2,
                 px: 3,

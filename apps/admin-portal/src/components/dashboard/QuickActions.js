@@ -25,12 +25,12 @@ const QuickAction = ({ icon, title, color, onClick }) => {
         borderRadius: 3,
         border: '2px dashed',
         borderColor: alpha(theme.palette[color].main, 0.3),
-        background: alpha(theme.palette[color].main, 0.05),
+        background: alpha(theme.palette[color].main, theme.palette.mode === 'dark' ? 0.15 : 0.05),
         cursor: 'pointer',
         transition: 'all 0.3s ease',
         '&:hover': {
           borderColor: theme.palette[color].main,
-          background: alpha(theme.palette[color].main, 0.1),
+          background: alpha(theme.palette[color].main, theme.palette.mode === 'dark' ? 0.25 : 0.1),
           transform: 'translateY(-2px)',
         },
       }}
