@@ -33,7 +33,7 @@ const superAdminMenuItems = [
   { 
     text: 'Dashboard', 
     icon: <DashboardIcon />, 
-    path: '/', 
+    path: '/dashboard', 
     badge: null,
   },
   {
@@ -61,7 +61,7 @@ const regularMenuItems = [
   { 
     text: 'Dashboard', 
     icon: <DashboardIcon />, 
-    path: '/', 
+    path: '/dashboard', 
     badge: null,
   },
   { 
