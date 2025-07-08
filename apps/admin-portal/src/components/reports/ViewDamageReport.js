@@ -15,7 +15,7 @@ import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 // API constants are imported directly
 import { API_BASE_URL, API_ENDPOINTS, TOKEN_KEY } from '../../config/constants';
-import { formatLocation, getCoordinatesString } from '../../utils/formatters';
+import { formatLocation } from '../../utils/formatters';
 
 const ViewDamageReport = ({ report }) => {
   const theme = useTheme();
@@ -64,10 +64,153 @@ const ViewDamageReport = ({ report }) => {
     return `${API_BASE_URL}${API_ENDPOINTS.DAMAGE_REPORTS}/report/${reportId}/image/${type}?token=${token}`;
   };
 
+  // Function to parse location if it's stored as a string
+  const parseLocation = (locationData) => {
+    if (!locationData) return null;
+    
+    // If already an object, return it
+    if (typeof locationData === 'object' && !Array.isArray(locationData)) return locationData;
+    
+    // If it's an array, try to use the first element (some backends might format it this way)
+    if (Array.isArray(locationData) && locationData.length > 0) {
+      console.log('Location is an array, using first element:', locationData[0]);
+      return locationData[0];
+    }
+    
+    // Try parsing if it's a JSON string
+    if (typeof locationData === 'string') {
+      try {
+        // First try to parse as JSON
+        const parsed = JSON.parse(locationData);
+        // Handle case where parsed result is an array
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed[0];
+        }
+        return parsed;
+      } catch (e) {
+        // Not JSON, check if it's a string with coordinates pattern like "lat, long"
+        const coordMatch = locationData.match(/([-+]?\d+\.\d+)[,\s]+([-+]?\d+\.\d+)/);
+        if (coordMatch) {
+          // Return as GeoJSON format object
+          return {
+            coordinates: [parseFloat(coordMatch[2]), parseFloat(coordMatch[1])],
+            address: locationData
+          };
+        }
+        
+        // If it doesn't contain coordinates, it might be just an address
+        return {
+          address: locationData
+        };
+      }
+    }
+    
+    return null;
+  };
+  
+  // Extract coordinates from location data in any format
+  const extractCoordinates = (location) => {
+    // If location is not defined, return null
+    if (!location) return null;
+    
+    // If it's a string, try to parse it
+    if (typeof location === 'string') {
+      try {
+        // Try to parse as JSON
+        const parsed = JSON.parse(location);
+        return extractCoordinates(parsed);
+      } catch (e) {
+        // Not JSON, check for coordinate pattern in string
+        const coordMatch = location.match(/([-+]?\d+\.\d+)[,\s]+([-+]?\d+\.\d+)/);
+        if (coordMatch) {
+          return { 
+            latitude: parseFloat(coordMatch[1]), 
+            longitude: parseFloat(coordMatch[2])
+          };
+        }
+        return null;
+      }
+    }
+    
+    // Handle GeoJSON format
+    if (location.coordinates && Array.isArray(location.coordinates) && location.coordinates.length === 2) {
+      // GeoJSON format is [longitude, latitude]
+      return {
+        latitude: location.coordinates[1],
+        longitude: location.coordinates[0]
+      };
+    }
+    
+    // Handle lat/lng properties
+    if ((location.lat !== undefined && location.lng !== undefined) ||
+        (location.latitude !== undefined && location.longitude !== undefined)) {
+      return {
+        latitude: location.lat || location.latitude,
+        longitude: location.lng || location.longitude
+      };
+    }
+    
+    // Handle nested location object common in MongoDB GeoJSON responses
+    if (location.location && location.location.coordinates) {
+      return {
+        latitude: location.location.coordinates[1],
+        longitude: location.location.coordinates[0]
+      };
+    }
+    
+    return null;
+  };
+  
+  // Computed location object that handles various formats
+  const locationObj = React.useMemo(() => {
+    // Check if we have location data
+    if (!report?.location) {
+      console.log('No location data found in report');
+      return null;
+    }
+    
+    console.log('Processing location data:', report.location);
+    
+    // First check if we have a nested location object (common in MongoDB responses)
+    if (report?.location?.location?.coordinates) {
+      console.log('Found nested location object:', report.location.location);
+      return report.location.location;
+    }
+    
+    // Try to parse if it's a string
+    const parsedLocation = parseLocation(report.location);
+    console.log('Parsed location result:', parsedLocation);
+    
+    // If we successfully parsed it, return the parsed object
+    if (parsedLocation) {
+      return parsedLocation;
+    }
+    
+    // If report has direct latitude/longitude properties
+    if (report.latitude !== undefined && report.longitude !== undefined) {
+      console.log('Using report direct coordinates:', report.latitude, report.longitude);
+      return {
+        coordinates: [report.longitude, report.latitude],
+        address: typeof report.location === 'string' ? report.location : 'Location from coordinates'
+      };
+    }
+    
+    // Last resort: create a basic location object from the raw data
+    if (typeof report.location === 'string') {
+      return {
+        address: report.location
+      };
+    }
+    
+    return report.location;
+  }, [report]);
+  
   useEffect(() => {
     // Log the report structure to help debug
     console.log('Report data:', report);
-    console.log('Location data:', report?.location);
+    console.log('Location data raw:', report?.location);
+    console.log('Location data type:', typeof report?.location);
+    console.log('Processed location:', locationObj);
     
     const loadImage = () => {
       // Check for both reportId and _id to ensure we can always find the report identifier
@@ -128,7 +271,7 @@ const ViewDamageReport = ({ report }) => {
         window.speechSynthesis.cancel();
       }
     };
-  }, [report]);
+  }, [report, locationObj]);
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
@@ -197,15 +340,78 @@ const ViewDamageReport = ({ report }) => {
               <Grid item xs={12} sm={6}>
                 <Typography variant="body2" color="text.secondary">Location</Typography>
                 <Typography variant="body1">
-                  {report.location && report.location.address ? report.location.address : formatLocation(report.location || (report.latitude && report.longitude ? { latitude: report.latitude, longitude: report.longitude } : null))}
+                  {(() => {
+                    // First check if locationObj has an address
+                    if (locationObj && locationObj.address) {
+                      return locationObj.address;
+                    }
+                    
+                    // Check if report has a location string
+                    if (typeof report.location === 'string') {
+                      // Remove any coordinate-like patterns to display just the address part
+                      const addressOnly = report.location.replace(/[-+]?\d+\.\d+[,\s]+[-+]?\d+\.\d+/, '').trim();
+                      if (addressOnly) {
+                        return addressOnly;
+                      }
+                      return report.location;
+                    }
+                    
+                    // Use the formatter as fallback
+                    return formatLocation(locationObj || (report.latitude && report.longitude ? { latitude: report.latitude, longitude: report.longitude } : null));
+                  })()}
                 </Typography>
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Typography variant="body2" color="text.secondary">Coordinates</Typography>
                 <Typography variant="body1">
-                  {report.location && report.location.coordinates && report.location.coordinates.length === 2 ? 
-                    `${typeof report.location.coordinates[1] === 'number' ? report.location.coordinates[1].toFixed(6) : 'N/A'}, ${typeof report.location.coordinates[0] === 'number' ? report.location.coordinates[0].toFixed(6) : 'N/A'}` : 
-                    getCoordinatesString(report.location || (report.latitude && report.longitude ? { latitude: report.latitude, longitude: report.longitude } : null))}
+                  {(() => {
+                    // Try to extract coordinates with our helper
+                    const coords = extractCoordinates(locationObj || report.location);
+                    if (coords) {
+                      return `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`;
+                    }
+                    
+                    // If report has direct coordinates
+                    if (report.latitude !== undefined && report.longitude !== undefined) {
+                      return `${report.latitude.toFixed(6)}, ${report.longitude.toFixed(6)}`;
+                    }
+                    
+                    // Fallback for older logic
+                    if (locationObj) {
+                      // Try to get coordinates from locationObj
+                      if (locationObj.coordinates && Array.isArray(locationObj.coordinates) && locationObj.coordinates.length === 2) {
+                        try {
+                          // In GeoJSON format, coordinates are [longitude, latitude]
+                          const longitude = locationObj.coordinates[0];
+                          const latitude = locationObj.coordinates[1];
+                          
+                          if (typeof longitude === 'number' && typeof latitude === 'number') {
+                            return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+                          } else if (longitude !== undefined && latitude !== undefined) {
+                            return `${latitude}, ${longitude}`;
+                          }
+                        } catch (e) {
+                          console.error('Error formatting coordinates:', e);
+                        }
+                      }
+                      
+                      // Try lat/lng or latitude/longitude properties
+                      if ((locationObj.lat !== undefined && locationObj.lng !== undefined) ||
+                          (locationObj.latitude !== undefined && locationObj.longitude !== undefined)) {
+                        const lat = locationObj.lat || locationObj.latitude;
+                        const lng = locationObj.lng || locationObj.longitude;
+                        
+                        if (typeof lat === 'number' && typeof lng === 'number') {
+                          return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                        } else if (lat !== undefined && lng !== undefined) {
+                          return `${lat}, ${lng}`;
+                        }
+                      }
+                    }
+                    
+                    // Last fallback - no coordinates available
+                    return 'Coordinates not available';
+                  })()}
                 </Typography>
               </Grid>
             </Grid>

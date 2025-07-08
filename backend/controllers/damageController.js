@@ -54,6 +54,38 @@ const uploadDamageReport = async (req, res) => {
     }
 
     const reportId = 'DR-' + Date.now();
+    // Process location data if possible
+    let processedLocation = location;
+    if (location) {
+      try {
+        // Check if it's already a JSON string or object
+        if (typeof location === 'string') {
+          try {
+            // Try to parse as JSON
+            JSON.parse(location);
+            // If no error, it's already valid JSON
+            processedLocation = location;
+          } catch (e) {
+            // Check if it contains coordinates
+            const coordMatch = location.match(/([-+]?\d+\.\d+)[,\s]+([-+]?\d+\.\d+)/);
+            if (coordMatch) {
+              // If it contains coordinates, structure it as a JSON string
+              processedLocation = JSON.stringify({
+                coordinates: [parseFloat(coordMatch[2]), parseFloat(coordMatch[1])],
+                address: location
+              });
+            }
+          }
+        } else if (typeof location === 'object') {
+          // Ensure it's stored as a JSON string
+          processedLocation = JSON.stringify(location);
+        }
+      } catch (e) {
+        console.error('Error processing location data:', e);
+        // Keep the original value if there's an error
+      }
+    }
+    
     const newReport = new DamageReport({
       reportId,
       // Add tenant reference from middleware
@@ -67,7 +99,7 @@ const uploadDamageReport = async (req, res) => {
       priority,
       action: action || 'Pending Review',
       region,
-      location,
+      location: processedLocation,
       description: finalDescription,
       reporter,
       status: 'Pending'
@@ -130,7 +162,40 @@ const getReports = async (req, res) => {
       .populate('assignedTo', 'name workerId specialization') // Populate assignedTo with worker details
       .sort({ createdAt: -1 });
       
-    res.status(200).json(reports);
+    // Process location data before sending response
+    const processedReports = reports.map(report => {
+      const reportObj = report.toObject();
+      
+      // Process location data if it exists
+      if (reportObj.location) {
+        try {
+          // Try to parse location as JSON if it's a string
+          if (typeof reportObj.location === 'string') {
+            try {
+              const parsedLocation = JSON.parse(reportObj.location);
+              reportObj.location = parsedLocation;
+            } catch (e) {
+              // Check if it contains coordinates
+              const coordMatch = reportObj.location.match(/([-+]?\d+\.\d+)[,\s]+([-+]?\d+\.\d+)/);
+              if (coordMatch) {
+                // If it contains coordinates, structure it as an object
+                reportObj.location = {
+                  coordinates: [parseFloat(coordMatch[2]), parseFloat(coordMatch[1])],
+                  address: reportObj.location
+                };
+              }
+              // Otherwise keep it as is
+            }
+          }
+        } catch (e) {
+          console.error('Error processing location data:', e);
+        }
+      }
+      
+      return reportObj;
+    });
+      
+    res.status(200).json(processedReports);
   } catch (err) {
     console.error('Error fetching reports:', err);
     res.status(500).json({ 
@@ -162,7 +227,36 @@ const getReportById = async (req, res) => {
       return res.status(404).json({ message: 'Report not found' });
     }
     
-    res.status(200).json(report);
+    // Process location data before sending response
+    const reportObj = report.toObject();
+    
+    // Process location data if it exists
+    if (reportObj.location) {
+      try {
+        // Try to parse location as JSON if it's a string
+        if (typeof reportObj.location === 'string') {
+          try {
+            const parsedLocation = JSON.parse(reportObj.location);
+            reportObj.location = parsedLocation;
+          } catch (e) {
+            // Check if it contains coordinates
+            const coordMatch = reportObj.location.match(/([-+]?\d+\.\d+)[,\s]+([-+]?\d+\.\d+)/);
+            if (coordMatch) {
+              // If it contains coordinates, structure it as an object
+              reportObj.location = {
+                coordinates: [parseFloat(coordMatch[2]), parseFloat(coordMatch[1])],
+                address: reportObj.location
+              };
+            }
+            // Otherwise keep it as is
+          }
+        }
+      } catch (e) {
+        console.error('Error processing location data:', e);
+      }
+    }
+    
+    res.status(200).json(reportObj);
   } catch (err) {
     console.error('Error fetching report:', err);
     res.status(500).json({ 

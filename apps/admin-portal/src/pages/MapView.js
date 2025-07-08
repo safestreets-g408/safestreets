@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Box, 
   Paper, 
@@ -73,6 +73,18 @@ function MapView() {
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [damageTypes, setDamageTypes] = useState([]);
   const [regions, setRegions] = useState([]);
+  
+  // Define the getSeverityColor function early
+  const getSeverityColor = useCallback((severity) => {
+    if (!severity) return theme.palette.primary.main;
+    const severityUpper = String(severity).toUpperCase();
+    switch(severityUpper) {
+      case 'HIGH': return theme.palette.error.main;
+      case 'MEDIUM': return theme.palette.warning.main;
+      case 'LOW': return theme.palette.info.main;
+      default: return theme.palette.primary.main;
+    }
+  }, [theme.palette.error.main, theme.palette.warning.main, theme.palette.info.main, theme.palette.primary.main]);
 
   // Map style options
   const mapStyles = [
@@ -81,6 +93,64 @@ function MapView() {
     { value: 'topo', label: 'Topographic', url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png' },
     { value: 'dark', label: 'Dark', url: 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png' }
   ];
+  
+  // Helper function to extract coordinates from any location format
+  const extractCoordinates = useCallback((location) => {
+    // If location is not defined, return null
+    if (!location) return null;
+    
+    // If it's already a valid pair of coordinates, return them
+    if (Array.isArray(location) && location.length === 2 &&
+        typeof location[0] === 'number' && typeof location[1] === 'number') {
+      return { latitude: location[1], longitude: location[0] };
+    }
+    
+    // If it's a string, try to parse it
+    if (typeof location === 'string') {
+      try {
+        // Try to parse as JSON
+        const parsed = JSON.parse(location);
+        return extractCoordinates(parsed);
+      } catch (e) {
+        // Not JSON, check for coordinate pattern in string
+        const coordMatch = location.match(/([-+]?\d+\.\d+)[,\s]+([-+]?\d+\.\d+)/);
+        if (coordMatch) {
+          return { 
+            latitude: parseFloat(coordMatch[1]), 
+            longitude: parseFloat(coordMatch[2])
+          };
+        }
+      }
+    }
+    
+    // Handle GeoJSON format
+    if (location.coordinates && Array.isArray(location.coordinates) && location.coordinates.length === 2) {
+      // GeoJSON format is [longitude, latitude]
+      return {
+        latitude: location.coordinates[1],
+        longitude: location.coordinates[0]
+      };
+    }
+    
+    // Handle lat/lng properties
+    if ((location.lat !== undefined && location.lng !== undefined) ||
+        (location.latitude !== undefined && location.longitude !== undefined)) {
+      return {
+        latitude: location.lat || location.latitude,
+        longitude: location.lng || location.longitude
+      };
+    }
+    
+    // Handle nested location object common in MongoDB GeoJSON responses
+    if (location.location && location.location.coordinates) {
+      return {
+        latitude: location.location.coordinates[1],
+        longitude: location.location.coordinates[0]
+      };
+    }
+    
+    return null;
+  }, []);
   
   // Fetch damage reports
   useEffect(() => {
@@ -120,48 +190,49 @@ function MapView() {
         // Process data from API
         const reports = Array.isArray(response) ? response : [];
         
+        console.log('API response reports:', reports);
+        
         // Extract coordinates from response, handling different location formats
         const processedReports = reports.map(report => {
-          let latitude = null;
-          let longitude = null;
+          // Log raw report data
+          console.log('Processing report:', report.reportId || report._id, 'location:', report.location);
           
-          // Handle different location formats from the API
-          if (report.location) {
-            if (typeof report.location === 'string') {
-              // Try to extract coordinates from string like "lat,lng" or any format containing coordinates
-              const coordMatch = report.location.match(/([-+]?\d+\.\d+)[,\s]+([-+]?\d+\.\d+)/);
-              if (coordMatch) {
-                latitude = parseFloat(coordMatch[1]);
-                longitude = parseFloat(coordMatch[2]);
-              }
-            } else if (typeof report.location === 'object') {
-              // Handle object with lat/lng or latitude/longitude properties
-              latitude = report.location.lat || report.location.latitude;
-              longitude = report.location.lng || report.location.longitude;
-              
-              // Handle GeoJSON format
-              if (!latitude && report.location.coordinates && Array.isArray(report.location.coordinates)) {
-                // GeoJSON coordinates are [lng, lat]
-                longitude = report.location.coordinates[0];
-                latitude = report.location.coordinates[1];
-              }
+          // Use the common extraction function
+          const coordinates = extractCoordinates(report.location);
+          
+          // Log extracted coordinates
+          console.log('Extracted coordinates:', coordinates);
+          
+          // If coordinates extraction failed, log and fall back to direct latitude/longitude properties
+          if (!coordinates) {
+            console.warn(`Failed to extract coordinates for report ${report.reportId || report._id}:`, report.location);
+            
+            // Try direct properties before giving up
+            if (report.latitude !== undefined && report.longitude !== undefined) {
+              console.log('Using direct lat/long properties:', report.latitude, report.longitude);
+              return {
+                ...report,
+                latitude: parseFloat(report.latitude),
+                longitude: parseFloat(report.longitude)
+              };
             }
-          }
-          
-          // If no valid coordinates, generate random ones for demo (should be removed in production)
-          if (!latitude || !longitude) {
-            const center = [17.3850, 78.4866];
-            const jitter = 0.1;
-            latitude = center[0] + (Math.random() - 0.5) * jitter;
-            longitude = center[1] + (Math.random() - 0.5) * jitter;
+            
+            // Fall back to default coordinates for display (with warning)
+            console.warn('Using fallback coordinates for report', report.reportId || report._id);
+            return {
+              ...report,
+              latitude: 17.3850 + (Math.random() - 0.5) * 0.1,
+              longitude: 78.4866 + (Math.random() - 0.5) * 0.1,
+              usingFallbackCoordinates: true
+            };
           }
           
           return {
             ...report,
-            latitude,
-            longitude
+            latitude: coordinates.latitude,
+            longitude: coordinates.longitude
           };
-        }).filter(report => report.latitude && report.longitude); // Only include reports with valid coordinates
+        });
         
         setDamageReports(processedReports);
         
@@ -181,7 +252,7 @@ function MapView() {
     };
     
     fetchDamageReports();
-  }, [filters]);
+  }, [filters, extractCoordinates]);
 
   // Initialize map
   useEffect(() => {
@@ -254,9 +325,29 @@ function MapView() {
       // Create points for heatmap
       const heatPoints = [];
       
+      // Log reports count for debugging
+      console.log(`Creating map markers for ${damageReports.length} reports`);
+      
+      // Check if we have any reports to display
+      if (damageReports.length === 0) {
+        console.error('No damage reports to display on map. Check API response and coordinate extraction.');
+        setError('No reports to display. Try adjusting filters or refreshing.');
+      }
+      
       // Add markers for each damage report
-      damageReports.forEach(report => {
+      damageReports.forEach((report, index) => {
+        console.log(`Creating marker ${index + 1}/${damageReports.length}:`, 
+                    report.reportId || report._id, 
+                    `at ${report.latitude}, ${report.longitude}`,
+                    report.usingFallbackCoordinates ? '(FALLBACK COORDINATES)' : '');
+                    
         const markerColor = getSeverityColor(report.severity);
+        
+        // Ensure we have valid coordinates
+        if (!report.latitude || !report.longitude) {
+          console.warn(`Skipping marker for report ${report.reportId || report._id} - invalid coordinates`);
+          return;
+        }
         
         // Create custom icon
         const icon = L.divIcon({
@@ -270,7 +361,7 @@ function MapView() {
           iconAnchor: [16, 32]
         });
         
-        // Create marker and popup
+        // Create marker with popup
         const marker = L.marker([report.latitude, report.longitude], { icon });
         
         // Popup content
@@ -318,6 +409,7 @@ function MapView() {
       
       // Create heatmap layer (but don't add to map yet)
       if (heatPoints.length > 0) {
+        console.log(`Creating heatmap with ${heatPoints.length} points`);
         heatLayerRef.current = L.heatLayer(heatPoints, {
           radius: 25,
           blur: 15,
@@ -334,40 +426,68 @@ function MapView() {
         if (showHeatmap) {
           heatLayerRef.current.addTo(mapInstanceRef.current);
         }
+      } else {
+        console.warn('No valid points found for heatmap');
       }
       
-      // Auto-fit bounds if we have reports
+      // Auto-fit bounds if we have reports with valid coordinates
       if (damageReports.length > 0) {
-        const bounds = L.latLngBounds(damageReports.map(report => [report.latitude, report.longitude]));
-        mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50] });
+        const reportsWithCoords = damageReports.filter(report => report.latitude && report.longitude);
+        if (reportsWithCoords.length > 0) {
+          const bounds = L.latLngBounds(reportsWithCoords.map(report => [report.latitude, report.longitude]));
+          mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50] });
+        } else {
+          console.warn('No reports with valid coordinates to fit bounds');
+        }
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [damageReports, showHeatmap]);
+  }, [damageReports, showHeatmap, getSeverityColor]);
 
   // Toggle heatmap layer when showHeatmap changes
   useEffect(() => {
     if (mapInstanceRef.current && heatLayerRef.current) {
+      console.log(`Toggling heatmap visibility: ${showHeatmap}`);
       if (showHeatmap) {
         heatLayerRef.current.addTo(mapInstanceRef.current);
       } else if (mapInstanceRef.current.hasLayer(heatLayerRef.current)) {
         mapInstanceRef.current.removeLayer(heatLayerRef.current);
       }
+    } else if (showHeatmap && !heatLayerRef.current) {
+      // Create points for heatmap if the user activates it but we don't have a heatmap yet
+      const heatPoints = damageReports
+        .filter(report => report.latitude && report.longitude)
+        .map(report => {
+          // Intensity based on severity
+          let intensity = 0.7; // default for Medium
+          if (report.severity === 'High' || report.severity === 'HIGH') intensity = 1.0;
+          else if (report.severity === 'Low' || report.severity === 'LOW') intensity = 0.3;
+          
+          return [report.latitude, report.longitude, intensity];
+        });
+      
+      if (heatPoints.length > 0 && mapInstanceRef.current) {
+        console.log(`Creating heatmap on toggle with ${heatPoints.length} points`);
+        heatLayerRef.current = L.heatLayer(heatPoints, {
+          radius: 25,
+          blur: 15,
+          maxZoom: 17,
+          gradient: {
+            0.3: '#3388ff',
+            0.5: '#ffaa00',
+            0.7: '#ff3300',
+            0.9: '#bd0026'
+          }
+        });
+        
+        heatLayerRef.current.addTo(mapInstanceRef.current);
+      } else {
+        console.warn('Cannot create heatmap: no valid points or map instance');
+      }
     }
-  }, [showHeatmap]);
+  }, [showHeatmap, damageReports]);
 
   const handleStyleChange = (event) => {
     setMapStyle(event.target.value);
-  };
-
-  const getSeverityColor = (severity) => {
-    const severityUpper = String(severity).toUpperCase();
-    switch(severityUpper) {
-      case 'HIGH': return theme.palette.error.main;
-      case 'MEDIUM': return theme.palette.warning.main;
-      case 'LOW': return theme.palette.info.main;
-      default: return theme.palette.primary.main;
-    }
   };
   
   const handleFilterChange = (field, value) => {
