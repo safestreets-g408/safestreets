@@ -226,7 +226,7 @@ const Hero = ({ isAuthenticated }) => {
             >
               <Box
                 component="img"
-                src="../../assets/images/dashboard.png" 
+                src="/assets/images/dashboard.png" 
                 alt="SafeStreets Dashboard"
                 sx={{
                   maxWidth: '100%',
