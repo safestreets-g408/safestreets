@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTheme, alpha } from '@mui/material/styles';
 import { 
   Dialog, 
   DialogTitle, 
@@ -36,6 +37,7 @@ const CreateDamageReportDialog = ({
   loading,
   error
 }) => {
+  const theme = useTheme();
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState(null);
 
@@ -113,21 +115,21 @@ const CreateDamageReportDialog = ({
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
-        borderBottom: '1px solid #e5e7eb',
-        backgroundColor: '#f8f9fa',
+        borderBottom: `1px solid ${theme.palette.divider}`,
+        backgroundColor: theme.palette.background.paper,
         py: 2.5
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <AssignmentIcon color="primary" />
-          <Typography variant="h5" sx={{ fontWeight: 600, color: '#1976d2' }}>
+          <Typography variant="h5" sx={{ fontWeight: 600, color: theme.palette.primary.main }}>
             Create Damage Report
           </Typography>
           {selectedAiReport && (
             <Typography 
               variant="caption" 
               sx={{ 
-                backgroundColor: '#e3f2fd', 
-                color: '#1976d2', 
+                backgroundColor: theme.palette.mode === 'dark' ? theme.palette.primary.dark : theme.palette.primary.lighter || alpha(theme.palette.primary.main, 0.1), 
+                color: theme.palette.primary.main, 
                 px: 1.5, 
                 py: 0.5, 
                 borderRadius: 1,
@@ -142,8 +144,8 @@ const CreateDamageReportDialog = ({
           onClick={onClose} 
           size="small"
           sx={{ 
-            backgroundColor: '#fff',
-            '&:hover': { backgroundColor: '#f5f5f5' }
+            backgroundColor: theme.palette.background.paper,
+            '&:hover': { backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.background.paper, 0.9) : theme.palette.grey[100] }
           }}
         >
           <CloseIcon fontSize="small" />
@@ -160,11 +162,11 @@ const CreateDamageReportDialog = ({
           <Box sx={{ 
             mb: 3, 
             p: 2, 
-            bgcolor: '#f8f9fa', 
+            bgcolor: theme.palette.mode === 'dark' ? alpha(theme.palette.background.paper, 0.6) : theme.palette.grey[50], 
             borderRadius: 2,
-            border: '1px solid #e9ecef'
+            border: `1px solid ${theme.palette.divider}`
           }}>
-            <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, color: '#1976d2' }}>
+            <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, color: theme.palette.primary.main }}>
               🤖 AI Detected Damage
             </Typography>
             <Box sx={{ textAlign: 'center', mb: 1 }}>
@@ -203,7 +205,7 @@ const CreateDamageReportDialog = ({
 
         {/* Form Section */}
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" sx={{ mb: 2, color: '#1976d2', fontWeight: 600 }}>
+          <Typography variant="h6" sx={{ mb: 2, color: theme.palette.primary.main, fontWeight: 600 }}>
             📋 Report Details
           </Typography>
           
@@ -253,8 +255,8 @@ const CreateDamageReportDialog = ({
                 sx={{ 
                   '& .MuiOutlinedInput-root': { borderRadius: 2 },
                   '& .MuiInputBase-input:disabled': { 
-                    backgroundColor: '#f5f5f5',
-                    color: '#666'
+                    backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.background.paper, 0.2) : theme.palette.action.disabledBackground,
+                    color: theme.palette.text.disabled
                   }
                 }}
               />
@@ -272,7 +274,7 @@ const CreateDamageReportDialog = ({
                   sx={{ 
                     borderRadius: 2,
                     '& .MuiSelect-select:disabled': { 
-                      backgroundColor: '#f5f5f5'
+                      backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.background.paper, 0.2) : theme.palette.action.disabledBackground
                     }
                   }}
                 >
@@ -284,7 +286,7 @@ const CreateDamageReportDialog = ({
                   <FormHelperText>Severity is required</FormHelperText>
                 )}
                 {selectedAiReport && !isFieldEmpty('severity') && (
-                  <FormHelperText sx={{ color: '#666' }}>Pre-filled by AI</FormHelperText>
+                  <FormHelperText sx={{ color: theme.palette.text.secondary }}>Pre-filled by AI</FormHelperText>
                 )}
               </FormControl>
             </Grid>
@@ -306,8 +308,8 @@ const CreateDamageReportDialog = ({
                 sx={{ 
                   '& .MuiOutlinedInput-root': { borderRadius: 2 },
                   '& .MuiInputBase-input:disabled': { 
-                    backgroundColor: '#f5f5f5',
-                    color: '#666'
+                    backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.background.paper, 0.2) : theme.palette.action.disabledBackground,
+                    color: theme.palette.text.disabled
                   }
                 }}
               />

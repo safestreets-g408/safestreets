@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useTheme } from '@mui/material/styles';
 import { 
   Box, 
   Typography, 
@@ -17,6 +18,7 @@ import { API_BASE_URL, API_ENDPOINTS, TOKEN_KEY } from '../../config/constants';
 import { formatLocation, getCoordinatesString } from '../../utils/formatters';
 
 const ViewDamageReport = ({ report }) => {
+  const theme = useTheme();
   const [imageUrl, setImageUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -259,7 +261,7 @@ const ViewDamageReport = ({ report }) => {
                   height: 300,
                   borderRadius: 1,
                   overflow: 'hidden',
-                  backgroundColor: '#f9fafb'
+                  backgroundColor: theme.palette.background.default
                 }}
               >
                 {loading ? (
@@ -294,7 +296,8 @@ const ViewDamageReport = ({ report }) => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      height: '100%'
+                      height: '100%',
+                      backgroundColor: theme.palette.background.paper
                     }}
                   >
                     <Typography color="text.secondary">

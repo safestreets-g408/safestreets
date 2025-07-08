@@ -106,11 +106,11 @@ const SearchResults = () => {
         py: 8
       }}
     >
-      <SearchOffIcon sx={{ fontSize: 64, color: '#9ca3af', mb: 2 }} />
-      <Typography variant="h5" sx={{ mb: 1, fontWeight: 600, color: '#4b5563' }}>
+      <SearchOffIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+      <Typography variant="h5" sx={{ mb: 1, fontWeight: 600, color: 'text.primary' }}>
         No results found
       </Typography>
-      <Typography variant="body1" sx={{ mb: 3, color: '#6b7280', maxWidth: 450, textAlign: 'center' }}>
+      <Typography variant="body1" sx={{ mb: 3, color: 'text.secondary', maxWidth: 450, textAlign: 'center' }}>
         We couldn't find any matches for "{searchTerm}"
       </Typography>
       <Button 
@@ -226,7 +226,7 @@ const SearchResults = () => {
                         <React.Fragment key={report._id || report.id || index}>
                           <ListItemButton>
                             <ListItemAvatar>
-                              <Avatar sx={{ bgcolor: getSeverityColor(report.severity) }}>
+                              <Avatar sx={{ bgcolor: getSeverityColor(report.severity, theme) }}>
                                 <ReportIcon />
                               </Avatar>
                             </ListItemAvatar>
@@ -243,20 +243,20 @@ const SearchResults = () => {
                                       label={report.status} 
                                       size="small" 
                                       sx={{ 
-                                        backgroundColor: getStatusColor(report.status),
+                                        backgroundColor: getStatusColor(report.status, theme),
                                         color: 'white',
                                         height: 20,
                                         fontSize: '0.75rem'
                                       }} 
                                     />
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                      <LocationOnIcon sx={{ fontSize: '0.875rem', color: '#6b7280' }} />
+                                      <LocationOnIcon sx={{ fontSize: '0.875rem', color: 'text.secondary' }} />
                                       <Typography variant="body2" color="text.secondary">
                                         {report.location}
                                       </Typography>
                                     </Box>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                      <TodayIcon sx={{ fontSize: '0.875rem', color: '#6b7280' }} />
+                                      <TodayIcon sx={{ fontSize: '0.875rem', color: 'text.secondary' }} />
                                       <Typography variant="body2" color="text.secondary">
                                         {new Date(report.createdAt).toLocaleDateString()}
                                       </Typography>
@@ -365,7 +365,7 @@ const SearchResults = () => {
                                       label={repair.status} 
                                       size="small" 
                                       sx={{ 
-                                        backgroundColor: getStatusColor(repair.status),
+                                        backgroundColor: getStatusColor(repair.status, theme),
                                         color: 'white',
                                         height: 20,
                                         fontSize: '0.75rem'
@@ -480,7 +480,7 @@ const SearchResults = () => {
                                 width: 64,
                                 height: 64,
                                 margin: '0 auto 12px',
-                                backgroundColor: getSpecializationColor(worker.specialization),
+                                backgroundColor: getSpecializationColor(worker.specialization, theme),
                                 fontSize: '1.5rem',
                                 fontWeight: 600,
                               }}
@@ -628,7 +628,7 @@ const SearchResults = () => {
                     <React.Fragment key={report._id || report.id || index}>
                       <ListItemButton onClick={() => navigate(`/reports/${report.reportId}`)}>
                         <ListItemAvatar>
-                          <Avatar sx={{ bgcolor: getSeverityColor(report.severity) }}>
+                          <Avatar sx={{ bgcolor: getSeverityColor(report.severity, theme) }}>
                             <WarningIcon />
                           </Avatar>
                         </ListItemAvatar>
@@ -644,7 +644,7 @@ const SearchResults = () => {
                                 label={report.status} 
                                 size="small" 
                                 sx={{ 
-                                  backgroundColor: getStatusColor(report.status),
+                                  backgroundColor: getStatusColor(report.status, theme),
                                   color: 'white',
                                   height: 20,
                                   fontSize: '0.75rem'
@@ -703,7 +703,7 @@ const SearchResults = () => {
                                 label={repair.status} 
                                 size="small" 
                                 sx={{ 
-                                  backgroundColor: getStatusColor(repair.status),
+                                  backgroundColor: getStatusColor(repair.status, theme),
                                   color: 'white',
                                   height: 20,
                                   fontSize: '0.75rem'
@@ -760,7 +760,7 @@ const SearchResults = () => {
                             width: 80,
                             height: 80,
                             margin: '0 auto 16px',
-                            backgroundColor: getSpecializationColor(worker.specialization),
+                            backgroundColor: getSpecializationColor(worker.specialization, theme),
                             fontSize: '2rem',
                             fontWeight: 600,
                           }}
@@ -846,7 +846,7 @@ const SearchResults = () => {
                               fontWeight: 500,
                             }} 
                           />
-                          <Typography variant="caption" sx={{ color: '#6b7280' }}>
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                             {item.date ? new Date(item.date).toLocaleDateString() : 'Recent'}
                           </Typography>
                         </Box>
@@ -863,41 +863,41 @@ const SearchResults = () => {
   );
 };
 
-// Helper functions for color coding
-const getSeverityColor = (severity) => {
+// Helper function for severity colors
+const getSeverityColor = (severity, theme) => {
   switch(severity) {
-    case 'Critical': return '#dc2626';
-    case 'High': return '#f97316';
-    case 'Medium': return '#f59e0b';
-    case 'Low': return '#22c55e';
-    default: return '#6b7280';
+    case 'Critical': return theme.palette.error.main;
+    case 'High': return theme.palette.error.light;
+    case 'Medium': return theme.palette.warning.main;
+    case 'Low': return theme.palette.success.main;
+    default: return theme.palette.text.secondary;
   }
 };
 
-const getStatusColor = (status) => {
+const getStatusColor = (status, theme) => {
   switch(status) {
-    case 'Pending': return '#f59e0b';
-    case 'Assigned': return '#3b82f6';
-    case 'In Progress': return '#8b5cf6';
-    case 'Completed': return '#10b981';
-    case 'Cancelled': return '#ef4444';
-    default: return '#6b7280';
+    case 'Pending': return theme.palette.warning.main;
+    case 'Assigned': return theme.palette.info.main;
+    case 'In Progress': return theme.palette.primary.main;
+    case 'Completed': return theme.palette.success.main;
+    case 'Cancelled': return theme.palette.error.main;
+    default: return theme.palette.text.secondary;
   }
 };
 
-const getSpecializationColor = (specialization) => {
-  if (!specialization) return '#6b7280';
+const getSpecializationColor = (specialization, theme) => {
+  if (!specialization) return theme.palette.text.secondary;
   
   const specializations = {
-    'Road Repair': '#3b82f6',
-    'Bridge Maintenance': '#8b5cf6',
-    'Drainage': '#06b6d4',
-    'Lighting': '#f59e0b',
-    'Signage': '#ef4444',
-    'Landscaping': '#10b981',
+    'Road Repair': theme.palette.info.main,
+    'Bridge Maintenance': theme.palette.primary.main,
+    'Drainage': theme.palette.info.dark,
+    'Lighting': theme.palette.warning.main,
+    'Signage': theme.palette.error.main,
+    'Landscaping': theme.palette.success.main,
   };
 
-  return specializations[specialization] || '#6b7280';
+  return specializations[specialization] || theme.palette.text.secondary;
 };
 
 const getAnalyticsColor = (type) => {

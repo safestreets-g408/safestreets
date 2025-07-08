@@ -97,60 +97,78 @@ const Landing = () => {
     { title: 'Operational Efficiency', value: '45%', description: 'Streamlined workflows and automated reporting' }
   ];
 
+  // Generate feature icon colors from the theme
+  const getFeatureColors = () => {
+    const mode = theme.palette.mode;
+    return {
+      green: mode === 'dark' ? '#66BB6A' : '#4CAF50',
+      blue: mode === 'dark' ? '#42A5F5' : '#2196F3',
+      orange: mode === 'dark' ? '#FFA726' : '#FF9800',
+      purple: mode === 'dark' ? '#AB47BC' : '#9C27B0',
+      red: mode === 'dark' ? '#EF5350' : '#F44336',
+      cyan: mode === 'dark' ? '#26C6DA' : '#00BCD4',
+      lightGreen: mode === 'dark' ? '#9CCC65' : '#8BC34A',
+      deepOrange: mode === 'dark' ? '#FF7043' : '#FF5722',
+      blueGrey: mode === 'dark' ? '#78909C' : '#607D8B'
+    };
+  };
+
+  const featureColors = getFeatureColors();
+
   const features = [
     {
       icon: <SmartToy />,
       title: 'AI-Powered Detection',
       description: 'Advanced Vision Transformer (ViT) models detect and classify road damages including potholes, cracks, and erosion with high accuracy.',
-      color: '#4CAF50'
+      color: featureColors.green
     },
     {
       icon: <CameraAlt />,
       title: 'Mobile Image Capture',
       description: 'Field workers can capture road damage images with automatic GPS tagging using our React Native mobile application.',
-      color: '#2196F3'
+      color: featureColors.blue
     },
     {
       icon: <Psychology />,
       title: 'AI Report Generation',
       description: 'Google Gemini integration automatically generates professional damage report summaries with severity assessment and priority rating.',
-      color: '#FF9800'
+      color: featureColors.orange
     },
     {
       icon: <Dashboard />,
       title: 'Admin Dashboard',
       description: 'Comprehensive React-based admin portal with Material-UI for managing reports, analytics, and repair assignments.',
-      color: '#9C27B0'
+      color: featureColors.purple
     },
     {
       icon: <MapOutlined />,
       title: 'Interactive Map View',
       description: 'Location-based heatmaps and visual representation of damage reports with filtering and search capabilities.',
-      color: '#F44336'
+      color: featureColors.red
     },
     {
       icon: <Analytics />,
       title: 'Advanced Analytics',
       description: 'Real-time data processing with trends, severity distribution, and insights to identify most-affected zones.',
-      color: '#00BCD4'
+      color: featureColors.cyan
     },
     {
       icon: <Assignment />,
       title: 'Task Management',
       description: 'Assign repair tasks to field teams, track progress, and manage the entire repair workflow efficiently.',
-      color: '#8BC34A'
+      color: featureColors.lightGreen
     },
     {
       icon: <NotificationsActive />,
       title: 'Smart Notifications',
       description: 'Email alerts for high-priority damages, push notifications for field teams, and automated repair reminders.',
-      color: '#FF5722'
+      color: featureColors.deepOrange
     },
     {
       icon: <Security />,
       title: 'Secure Authentication',
       description: 'JWT-based authentication with role-based access control for administrators and field workers.',
-      color: '#607D8B'
+      color: featureColors.blueGrey
     }
   ];
 

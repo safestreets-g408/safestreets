@@ -348,20 +348,27 @@ const Historical = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+  // Using theme colors for charts
+  const COLORS = [
+    theme.palette.primary.main,
+    theme.palette.success.main,
+    theme.palette.warning.main,
+    theme.palette.error.main
+  ];
+  
   const STATUS_COLORS = {
-    'Repaired': '#4caf50',
-    'Completed': '#4caf50',
-    'Pending': '#ff9800',
-    'Assigned': '#2196f3',
-    'In Progress': '#2196f3',
-    'In-Progress': '#2196f3'
+    'Repaired': theme.palette.success.main,
+    'Completed': theme.palette.success.main,
+    'Pending': theme.palette.warning.main,
+    'Assigned': theme.palette.info.main,
+    'In Progress': theme.palette.info.main,
+    'In-Progress': theme.palette.info.main
   };
   
   const SEVERITY_COLORS = {
-    'High': '#f44336',
-    'Medium': '#ff9800',
-    'Low': '#4caf50'
+    'High': theme.palette.error.main,
+    'Medium': theme.palette.warning.main,
+    'Low': theme.palette.success.main
   };
 
   const getStatusChip = (status) => {

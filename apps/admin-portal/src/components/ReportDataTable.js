@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTheme } from '@mui/material/styles';
 import { 
   Table, TableBody, TableCell, TableContainer, TableHead, 
   TableRow, TablePagination, Chip, IconButton, Tooltip, Box,
@@ -9,6 +10,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 function ReportDataTable({ filters }) {
+  const theme = useTheme();
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
@@ -48,13 +50,13 @@ function ReportDataTable({ filters }) {
 
   const getSeverityChip = (severity) => {
     const severityConfig = {
-      'Low': { backgroundColor: '#10b981', color: '#ffffff' },
-      'Medium': { backgroundColor: '#f59e0b', color: '#ffffff' },
-      'High': { backgroundColor: '#ef4444', color: '#ffffff' },
-      'Critical': { backgroundColor: '#dc2626', color: '#ffffff' },
+      'Low': { backgroundColor: theme.palette.success.main, color: theme.palette.success.contrastText },
+      'Medium': { backgroundColor: theme.palette.warning.main, color: theme.palette.warning.contrastText },
+      'High': { backgroundColor: theme.palette.error.main, color: theme.palette.error.contrastText },
+      'Critical': { backgroundColor: theme.palette.error.dark, color: theme.palette.error.contrastText },
     };
     
-    const config = severityConfig[severity] || { backgroundColor: '#6b7280', color: '#ffffff' };
+    const config = severityConfig[severity] || { backgroundColor: theme.palette.grey[500], color: theme.palette.getContrastText(theme.palette.grey[500]) };
     
     return (
       <Chip 
@@ -73,13 +75,13 @@ function ReportDataTable({ filters }) {
 
   const getStatusChip = (status) => {
     const statusConfig = {
-      'Completed': { backgroundColor: '#10b981', color: '#ffffff' },
-      'In Progress': { backgroundColor: '#3b82f6', color: '#ffffff' },
-      'Assigned': { backgroundColor: '#2563eb', color: '#ffffff' },
-      'Pending': { backgroundColor: '#f59e0b', color: '#ffffff' },
+      'Completed': { backgroundColor: theme.palette.success.main, color: theme.palette.success.contrastText },
+      'In Progress': { backgroundColor: theme.palette.info.main, color: theme.palette.info.contrastText },
+      'Assigned': { backgroundColor: theme.palette.primary.main, color: theme.palette.primary.contrastText },
+      'Pending': { backgroundColor: theme.palette.warning.main, color: theme.palette.warning.contrastText },
     };
     
-    const config = statusConfig[status] || { backgroundColor: '#6b7280', color: '#ffffff' };
+    const config = statusConfig[status] || { backgroundColor: theme.palette.grey[500], color: theme.palette.getContrastText(theme.palette.grey[500]) };
     
     return (
       <Chip 
@@ -101,7 +103,7 @@ function ReportDataTable({ filters }) {
       elevation={0} 
       sx={{ 
         borderRadius: 1,
-        border: '1px solid #e5e7eb',
+        border: `1px solid ${theme.palette.divider}`,
         overflow: 'hidden',
       }}
     >
@@ -111,9 +113,9 @@ function ReportDataTable({ filters }) {
             <TableRow>
               <TableCell sx={{ 
                 fontWeight: 600, 
-                backgroundColor: '#f8f9fa',
-                borderBottom: '2px solid #e5e7eb',
-                color: '#374151',
+                backgroundColor: theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.grey[50],
+                borderBottom: `2px solid ${theme.palette.divider}`,
+                color: theme.palette.text.primary,
               }}>Report ID</TableCell>
               <TableCell sx={{ 
                 fontWeight: 600,
@@ -168,12 +170,12 @@ function ReportDataTable({ filters }) {
                   sx={{
                     transition: 'background-color 0.15s ease',
                     '&:hover': {
-                      backgroundColor: '#f9fafb',
+                      backgroundColor: theme.palette.mode === 'dark' ? theme.palette.action.hover : theme.palette.grey[50],
                     },
-                    backgroundColor: index % 2 === 0 ? '#ffffff' : '#fafbfc'
+                    backgroundColor: index % 2 === 0 ? theme.palette.background.paper : theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.grey[50]
                   }}
                 >
-                  <TableCell sx={{ fontWeight: 500, color: '#2563eb' }}>
+                  <TableCell sx={{ fontWeight: 500, color: theme.palette.primary.main }}>
                     {report.id}
                   </TableCell>
                   <TableCell sx={{ color: '#374151' }}>{report.location}</TableCell>
@@ -192,9 +194,9 @@ function ReportDataTable({ filters }) {
                         <IconButton 
                           size="small"
                           sx={{ 
-                            color: '#2563eb',
+                            color: theme.palette.primary.main,
                             '&:hover': { 
-                              backgroundColor: 'rgba(37, 99, 235, 0.04)',
+                              backgroundColor: theme.palette.mode === 'dark' ? theme.palette.action.hover : theme.palette.primary.lighter || theme.palette.primary.light + '14',
                             }
                           }}
                         >

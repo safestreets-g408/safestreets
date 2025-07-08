@@ -910,16 +910,16 @@ function Reports() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Report ID</th>
+              <th style={{ padding: 8, borderBottom: `1px solid ${theme.palette.divider}` }}>Report ID</th>
               {isSuperAdmin && allTenantsReports && (
-                <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Tenant</th>
+                <th style={{ padding: 8, borderBottom: `1px solid ${theme.palette.divider}` }}>Tenant</th>
               )}
-              <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Date</th>
-              <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Region</th>
-              <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Type</th>
-              <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Severity</th>
-              <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Status</th>
-              <th style={{ padding: 8, borderBottom: '1px solid #eee' }}>Actions</th>
+              <th style={{ padding: 8, borderBottom: `1px solid ${theme.palette.divider}` }}>Date</th>
+              <th style={{ padding: 8, borderBottom: `1px solid ${theme.palette.divider}` }}>Region</th>
+              <th style={{ padding: 8, borderBottom: `1px solid ${theme.palette.divider}` }}>Type</th>
+              <th style={{ padding: 8, borderBottom: `1px solid ${theme.palette.divider}` }}>Severity</th>
+              <th style={{ padding: 8, borderBottom: `1px solid ${theme.palette.divider}` }}>Status</th>
+              <th style={{ padding: 8, borderBottom: `1px solid ${theme.palette.divider}` }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -929,7 +929,7 @@ function Reports() {
                   backgroundColor: index % 2 === 0 
                     ? theme.palette.mode === 'dark' 
                       ? alpha(theme.palette.background.default, 0.5) 
-                      : '#f8fafc' 
+                      : theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.grey[50] 
                     : 'inherit'
                 }} onClick={() => handleViewReport(report)}>
                 <td style={{ padding: 8, fontWeight: 500, color: colors.primary }}>

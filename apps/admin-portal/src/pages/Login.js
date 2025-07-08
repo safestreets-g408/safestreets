@@ -75,7 +75,7 @@ const Login = () => {
           position: 'absolute',
           top: 20,
           left: 20,
-          color: '#2563eb'
+          color: 'primary.main'
         }}
       >
         <HomeIcon sx={{ fontSize: 32 }} />
@@ -89,8 +89,9 @@ const Login = () => {
           overflow: 'hidden',
           minHeight: '600px',
           width: '100%',
-          background: '#ffffff',
-          border: '1px solid #e5e7eb',
+          bgcolor: 'background.paper',
+          border: '1px solid',
+          borderColor: 'divider',
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
         }}
       >
@@ -99,8 +100,8 @@ const Login = () => {
           sx={{
             flex: '1 1 50%',
             p: 6,
-            background: '#2563eb',
-            color: 'white',
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center'
@@ -143,7 +144,7 @@ const Login = () => {
             justifyContent: 'center'
           }}
         >
-          <Typography variant="h4" sx={{ mb: 4, fontWeight: 600, color: '#111827' }}>
+          <Typography variant="h4" sx={{ mb: 4, fontWeight: 600, color: 'text.primary' }}>
             Sign In
           </Typography>
 
@@ -198,12 +199,12 @@ const Login = () => {
                   fontSize: '1rem',
                   textTransform: 'none',
                   fontWeight: 600,
-                  backgroundColor: '#2563eb',
+                  bgcolor: 'primary.main',
                   '&:hover': {
-                    backgroundColor: '#1d4ed8',
+                    bgcolor: 'primary.dark',
                   },
                   '&:disabled': {
-                    backgroundColor: '#9ca3af',
+                    bgcolor: 'action.disabledBackground',
                   }
                 }}
               >
