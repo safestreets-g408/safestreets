@@ -28,9 +28,7 @@ import ErrorIcon from '@mui/icons-material/Error';
 import WarningIcon from '@mui/icons-material/Warning';
 import InfoIcon from '@mui/icons-material/Info';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import axios from 'axios';
-
-const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5030';
+import api from '../../services/apiService';
 
 const ReportSelectorDialog = ({ open, onClose, onSelectReport, tenantId }) => {
   const [loading, setLoading] = useState(true);
@@ -51,12 +49,7 @@ const ReportSelectorDialog = ({ open, onClose, onSelectReport, tenantId }) => {
       setError(null);
       
       try {
-        const token = localStorage.getItem('admin_auth_token');
-        
-        const response = await axios.get(`${API_URL}/api/damage/reports`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          },
+        const response = await api.get(`/damage/reports`, {
           params: {
             tenant: tenantId
           }

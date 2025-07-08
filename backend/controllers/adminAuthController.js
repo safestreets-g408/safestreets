@@ -153,4 +153,26 @@ const logoutAdmin = async (req, res) => {
   }
 };
 
-module.exports = { registerAdmin, loginAdmin, logoutAdmin };
+// Validate token endpoint - simply returns 200 if token is valid, 401 otherwise
+// The actual validation is done by the auth middleware
+const validateToken = async (req, res) => {
+  // If this endpoint is reached, it means the auth middleware passed
+  // and the token is valid
+  return res.status(200).json({ 
+    valid: true,
+    message: 'Token is valid',
+    admin: {
+      id: req.admin._id,
+      name: req.admin.name,
+      email: req.admin.email,
+      role: req.admin.role
+    }
+  });
+};
+
+module.exports = {
+  registerAdmin,
+  loginAdmin,
+  logoutAdmin,
+  validateToken
+};
