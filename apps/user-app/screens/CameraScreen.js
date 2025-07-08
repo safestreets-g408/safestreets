@@ -355,10 +355,14 @@ const CameraScreen = ({ navigation }) => {
           (location?.coords ? [location.coords.longitude, location.coords.latitude] : undefined)
       };
       
+      // Use YOLOv8 directly through the analyzeRoadDamage function
+      // which now uses YOLOv8 internally instead of the VIT model
       const analysis = await aiServices.analyzeRoadDamage(imageUri, locationToUse);
       
+      // Store the analysis result
       setAiAnalysis(analysis);
-      console.log('AI analysis completed:', {
+      
+      console.log('YOLOv8 AI analysis completed:', {
         damageClass: analysis?.classification?.damageClass,
         damageType: analysis?.classification?.damageType,
         severity: analysis?.classification?.severity,
@@ -762,7 +766,7 @@ const CameraScreen = ({ navigation }) => {
             coordinates: locationData.coordinates
           });
           
-          // Create AI report object
+          // Create AI report object with YOLOv8 results directly
           const aiReport = {
             imageId: submittedReport?._id || new Date().toISOString(), // Use the report ID or timestamp as reference
             tenant: fieldWorker.tenant,
@@ -775,7 +779,7 @@ const CameraScreen = ({ navigation }) => {
             createdAt: new Date().toISOString()
           };
 
-          console.log('AI Report data preparing to submit:', {
+          console.log('YOLOv8 AI Report data preparing to submit:', {
             hasAnnotatedImage: !!annotatedImage,
             imageSize: annotatedImage ? `${Math.round(annotatedImage.length / 1024)}KB` : 'N/A',
             predictionClass: aiReport.predictionClass,
@@ -826,7 +830,7 @@ const CameraScreen = ({ navigation }) => {
       Alert.alert(
         'Success',
         aiAnalysis 
-          ? `Your report has been submitted with AI analysis. Detected: ${aiAnalysis.classification.damageType} (${aiAnalysis.classification.severity} severity)`
+          ? `Your report has been submitted with YOLOv8 AI analysis. Detected: ${aiAnalysis.classification.damageType} (${aiAnalysis.classification.severity} severity)`
           : 'Your report has been submitted successfully',
         [
           {

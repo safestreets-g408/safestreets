@@ -335,3 +335,65 @@ export const submitNewReport = async (reportData, imageUri) => {
     return localReport;
   }
 };
+
+// Submit AI report with YOLOv8 detection results
+export const submitAiReport = async (aiReportData) => {
+  try {
+    const token = await getAuthToken();
+    const baseUrl = await getBaseUrl();
+
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+
+    // Process YOLOv8 results if available
+    let yoloDetections = [];
+    let yoloDetectionCount = 0;
+    
+    if (aiReportData.yoloResults) {
+      // Extract YOLOv8 detection results
+      yoloDetections = aiReportData.yoloResults.detections || [];
+      yoloDetectionCount = aiReportData.yoloResults.detectionCount || yoloDetections.length;
+      
+      console.log(`Including ${yoloDetectionCount} YOLOv8 detections in report`);
+      
+      // Remove the temporary yoloResults field and add proper schema fields
+      delete aiReportData.yoloResults;
+    }
+    
+    // Add YOLOv8 results to the request body
+    const requestBody = {
+      ...aiReportData,
+      yoloDetections,
+      yoloDetectionCount
+    };
+
+    console.log('Submitting AI report with structure:', {
+      damageType: requestBody.damageType,
+      severity: requestBody.severity,
+      predictionClass: requestBody.predictionClass,
+      hasAnnotatedImage: !!requestBody.annotatedImageBase64,
+      yoloDetectionCount: requestBody.yoloDetectionCount
+    });
+
+    const response = await fetch(`${baseUrl}/fieldworker/damage/ai-reports`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Server error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.report;
+  } catch (error) {
+    console.error('Error submitting AI report:', error);
+    throw error;
+  }
+};

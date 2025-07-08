@@ -47,6 +47,7 @@ router.get('/reports/:reportId', protectFieldWorker, getDamageReportById);
 router.patch('/reports/:reportId/status', protectFieldWorker, updateRepairStatus);
 router.post('/reports/:reportId/after-image', protectFieldWorker, upload.single('afterImage'), uploadAfterImage);
 router.get('/ai-reports', protectFieldWorker, getFieldWorkerAiReports);
+router.post('/ai-reports', protectFieldWorker, uploadDamageReportByFieldWorker); // New standard endpoint
 router.post('/ai-reports/upload', protectFieldWorker, uploadDamageReportByFieldWorker);
 router.post('/reports/upload', protectFieldWorker, uploadDamageReportByFieldWorker);
 router.get('/nearby', protectFieldWorker, getNearbyReports);

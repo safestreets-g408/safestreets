@@ -76,9 +76,39 @@ class ModelManager:
     def _load_yolo_model(self):
         """Load YOLO model"""
         try:
+            # Try YOLOv8 first
+            try:
+                print("Attempting to load YOLOv8 model...")
+                from ..utils.yolov8_utils import detect_road_damage, load_yolo_model, YOLO_MODEL, get_model_info
+                
+                # Attempt to load the YOLOv8 model
+                model_loaded = load_yolo_model()
+                
+                if model_loaded and YOLO_MODEL is not None:
+                    self.models['yolo'] = detect_road_damage
+                    self.models['yolo_model'] = YOLO_MODEL
+                    self.models['yolo_info'] = get_model_info
+                    self.model_status['yolo'] = {
+                        'loaded': True,
+                        'error': None,
+                        'fallback': False,
+                        'version': 'v8'
+                    }
+                    print("✅ YOLOv8 model loaded successfully")
+                    return
+                else:
+                    print("⚠️ YOLOv8 model loading failed, trying YOLOv5")
+            except ImportError as e:
+                print(f"YOLOv8 not available: {e}")
+                print("Falling back to YOLOv5")
+            except Exception as e:
+                print(f"Error loading YOLOv8: {e}")
+                print("Falling back to YOLOv5")
+            
+            # Fall back to YOLOv5
             from ..utils.yolo_utils import detect_road_damage, load_yolo_model, YOLO_MODEL
             
-            # Attempt to load the YOLO model
+            # Attempt to load the YOLOv5 model
             model_loaded = load_yolo_model()
             
             self.models['yolo'] = detect_road_damage
@@ -86,11 +116,12 @@ class ModelManager:
             self.model_status['yolo'] = {
                 'loaded': model_loaded and YOLO_MODEL is not None,
                 'error': None if (model_loaded and YOLO_MODEL is not None) else "Model loading failed",
-                'fallback': not model_loaded or YOLO_MODEL is None
+                'fallback': not model_loaded or YOLO_MODEL is None,
+                'version': 'v5'
             }
             
             if model_loaded and YOLO_MODEL is not None:
-                print("✅ YOLO model loaded successfully")
+                print("✅ YOLOv5 model loaded successfully")
             else:
                 print("⚠️ YOLO model loading failed, will use fallback detection")
         except Exception as e:
@@ -100,17 +131,25 @@ class ModelManager:
             self.model_status['yolo'] = {
                 'loaded': False,
                 'error': str(e),
-                'fallback': True
+                'fallback': True,
+                'version': None
             }
     
     def _load_road_classifier(self):
         """Load Road Classifier"""
         try:
-            from ..utils.road_classifier import validate_road_image, load_road_classifier, ROAD_CLASSIFIER
+            # Try loading the simple CNN road classifier first
+            try:
+                from ..utils.simple_road_classifier import validate_road_image, load_road_classifier, ROAD_CLASSIFIER
+                print("Using simple CNN road classifier")
+                model_loaded = load_road_classifier()
+            except ImportError:
+                # Fall back to original classifier if simple one not available
+                print("Simple road classifier not available, trying original")
+                from ..utils.road_classifier import validate_road_image, load_road_classifier, ROAD_CLASSIFIER
+                model_loaded = load_road_classifier()
             
-            # Attempt to load the road classifier model
-            model_loaded = load_road_classifier()
-            
+            # Set up model in manager
             self.models['road_classifier'] = validate_road_image
             self.model_status['road_classifier'] = {
                 'loaded': model_loaded and ROAD_CLASSIFIER is not None,

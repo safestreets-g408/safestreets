@@ -8,4 +8,5 @@ model/
 *.pth
 *.pt
 static/uploads/
+static/results/
 .venv/

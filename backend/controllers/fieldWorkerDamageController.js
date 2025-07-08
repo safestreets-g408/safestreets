@@ -498,7 +498,9 @@ const uploadDamageReportByFieldWorker = async (req, res) => {
       description,
       predictionClass,
       annotatedImageBase64,
-      imageData: frontendImageData // Frontend sends this instead of annotatedImageBase64
+      imageData: frontendImageData, // Frontend sends this instead of annotatedImageBase64
+      yoloDetections, // New field for YOLOv8 detections
+      yoloDetectionCount // New field for YOLOv8 detection count
     } = req.body;
 
     console.log('Upload request received from field worker:', fieldWorkerId);
@@ -506,6 +508,8 @@ const uploadDamageReportByFieldWorker = async (req, res) => {
     console.log('Request body keys:', Object.keys(req.body));
     console.log('Has frontendImageData:', !!frontendImageData);
     console.log('Has annotatedImageBase64:', !!annotatedImageBase64);
+    console.log('Has YOLOv8 detections:', !!yoloDetections);
+    console.log('YOLO detection count:', yoloDetectionCount);
     console.log('Location data received:', JSON.stringify(location, null, 2));
     console.log('Location type:', typeof location);
     console.log('Description received:', description);
@@ -600,6 +604,10 @@ const uploadDamageReportByFieldWorker = async (req, res) => {
     });
     const savedImage = await tempImage.save();
 
+    // Process YOLOv8 detections if available
+    const finalYoloDetections = Array.isArray(yoloDetections) ? yoloDetections : [];
+    const finalYoloCount = yoloDetectionCount || finalYoloDetections.length || 0;
+
     // Create AI report with proper schema fields
     const newAiReport = new AiReport({
       imageId: savedImage._id,
@@ -609,7 +617,10 @@ const uploadDamageReportByFieldWorker = async (req, res) => {
       severity: severity.toUpperCase(),
       priority: typeof priority === 'number' ? Math.max(1, Math.min(10, priority)) : 5, // Ensure priority is 1-10
       location: locationData,
-      annotatedImageBase64: imageData
+      annotatedImageBase64: imageData,
+      // Add YOLOv8 fields
+      yoloDetections: finalYoloDetections,
+      yoloDetectionCount: finalYoloCount
     });
 
     const savedReport = await newAiReport.save();

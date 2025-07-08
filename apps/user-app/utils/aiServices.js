@@ -86,65 +86,7 @@ class AIServices {
     }
   }
 
-  async classifyDamage(imageUri) {
-    try {
-      console.log('Starting damage classification...');
-      
-      // Ensure AI server URL is initialized
-      if (!this.aiServerBaseUrl) {
-        this.aiServerBaseUrl = await this.getAiServerUrl();
-      }
-      
-      // Convert image to base64
-      const base64Image = await this.imageToBase64(imageUri);
-      
-      const response = await fetch(`${this.aiServerBaseUrl}/predict`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image: base64Image
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`AI server error: ${response.status}`);
-      }
-
-      const result = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.error || 'AI analysis failed');
-      }
-
-      console.log('Damage classification successful:', result.prediction);
-      
-      // Validate annotated image if it exists
-      let validatedAnnotatedImage = null;
-      if (result.annotated_image) {
-        if (typeof result.annotated_image === 'string' && 
-            result.annotated_image.length > 500 &&
-            !/[^A-Za-z0-9+/=]/.test(result.annotated_image)) {
-          validatedAnnotatedImage = result.annotated_image;
-          console.log('Valid annotated image received, length:', validatedAnnotatedImage.length);
-        } else {
-          console.warn('Invalid annotated image format received from server');
-        }
-      } else {
-        console.log('No annotated image received from server');
-      }
-      
-      return {
-        damageClass: result.prediction,
-        annotatedImage: validatedAnnotatedImage,
-        success: true
-      };
-    } catch (error) {
-      console.error('Error in damage classification:', error);
-      throw error;
-    }
-  }
+  // The classifyDamage method has been removed as we now use YOLOv8 for all detection
 
 
   async generateDamageSummary(damageDetails) {
@@ -232,12 +174,36 @@ class AIServices {
 
   async analyzeRoadDamage(imageUri, locationDetails) {
     try {
-      console.log('Starting complete AI analysis...');
+      console.log('Starting complete AI analysis using YOLOv8...');
       
-      // Step 1: Classify the damage
-      const classificationResult = await this.classifyDamage(imageUri);
+      // Step 1: Use YOLOv8 for damage detection instead of the VIT model
+      const yoloResult = await this.detectWithYolov8(imageUri);
       
-      // Step 2: Map damage class to readable format
+      // Step 2: Map detected objects to damage classes
+      // Use the first detection with highest confidence or a fallback
+      let damageClass = 'D00'; // Default to Longitudinal Crack
+      let highestConfidence = 0;
+      
+      if (yoloResult && yoloResult.detections && yoloResult.detections.length > 0) {
+        // Find detection with highest confidence
+        for (const detection of yoloResult.detections) {
+          if (detection.confidence > highestConfidence) {
+            highestConfidence = detection.confidence;
+            // Use the class as damage class if it starts with D (damage class format)
+            if (detection.class.startsWith('D')) {
+              damageClass = detection.class;
+            }
+          }
+        }
+      }
+      
+      const classificationResult = {
+        damageClass: damageClass,
+        annotatedImage: yoloResult.annotatedImage,
+        success: true
+      };
+      
+      // Step 3: Map damage class to readable format
       const damageMapping = {
         'D00': { type: 'Longitudinal Crack', severity: 'Low' },
         'D10': { type: 'Transverse Crack', severity: 'Low' },
@@ -297,6 +263,56 @@ class AIServices {
       };
     } catch (error) {
       console.error('Error in complete AI analysis:', error);
+      throw error;
+    }
+  }
+
+  // New method to use YOLOv8 model for detection
+  async detectWithYolov8(imageUri) {
+    try {
+      console.log('Starting YOLOv8 object detection...');
+      
+      // Ensure AI server URL is initialized
+      if (!this.aiServerBaseUrl) {
+        this.aiServerBaseUrl = await this.getAiServerUrl();
+      }
+      
+      // Convert image to base64
+      const base64Image = await this.imageToBase64(imageUri);
+      
+      const response = await fetch(`${this.aiServerBaseUrl}/detect-yolo`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image: base64Image
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`AI server error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'YOLOv8 detection failed');
+      }
+
+      console.log('YOLOv8 detection successful:', {
+        detectionCount: result.detections?.length || 0,
+        hasAnnotatedImage: !!result.annotated_image
+      });
+      
+      return {
+        detections: result.detections || [],
+        annotatedImage: result.annotated_image,
+        count: result.detections?.length || 0,
+        success: true
+      };
+    } catch (error) {
+      console.error('Error in YOLOv8 detection:', error);
       throw error;
     }
   }

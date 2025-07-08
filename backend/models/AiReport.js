@@ -41,6 +41,16 @@ const aiReportSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    // Add YOLOv8 detection results
+    yoloDetections: [{
+        class: String,
+        confidence: Number,
+        bbox: [Number] // [x1, y1, x2, y2]
+    }],
+    yoloDetectionCount: {
+        type: Number,
+        default: 0
+    },
     createdAt: {
         type: Date,
         default: Date.now
