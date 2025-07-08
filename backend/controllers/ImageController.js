@@ -387,11 +387,125 @@ const getReportById = async (req, res) => {
     }
 };
 
+// Save AI report (for both ViT and YOLO models)
+const saveReport = async (req, res) => {
+  try {
+    console.log('Save report request received:', req.body);
+    
+    // Validate request
+    if (!req.body.damageType || !req.body.severity || !req.body.priority) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields'
+      });
+    }
+    
+    // Create a placeholder image if no image exists yet
+    let imageId;
+    if (req.body.imageId) {
+      imageId = req.body.imageId;
+    } else {
+      // Create a placeholder image document
+      const newImage = new Image({
+        tenant: req.tenantId,
+        contentType: 'image/jpeg',
+        result: 'Manual Report'
+      });
+      
+      if (req.body.annotatedImage) {
+        // If annotated image is already base64, store it directly
+        if (req.body.annotatedImage.startsWith('data:image')) {
+          // Extract base64 portion from data URL
+          const base64Data = req.body.annotatedImage.split(',')[1];
+          newImage.data = Buffer.from(base64Data, 'base64');
+        } else {
+          // Store base64 directly
+          newImage.data = Buffer.from(req.body.annotatedImage, 'base64');
+        }
+      }
+      
+      const savedImage = await newImage.save();
+      imageId = savedImage._id;
+      console.log('Created placeholder image with ID:', imageId);
+    }
+    
+    // Prepare the location data if available
+    const locationData = {};
+    if (req.body.location) {
+      if (req.body.location.latitude && req.body.location.longitude) {
+        locationData.coordinates = [
+          parseFloat(req.body.location.longitude), 
+          parseFloat(req.body.location.latitude)
+        ];
+      }
+      
+      if (req.body.location.address) {
+        locationData.address = req.body.location.address;
+      }
+    }
+    
+    // Process annotated image if present
+    let annotatedImageBase64 = null;
+    if (req.body.annotatedImage) {
+      if (req.body.annotatedImage.startsWith('data:image')) {
+        // Extract base64 portion from data URL
+        annotatedImageBase64 = req.body.annotatedImage.split(',')[1];
+      } else {
+        // Use as is
+        annotatedImageBase64 = req.body.annotatedImage;
+      }
+    }
+    
+    // Create report data based on model type
+    let reportData = {
+      imageId: imageId,
+      tenant: req.tenantId,
+      predictionClass: req.body.model === 'yolo' ? 'YOLO_DETECTION' : req.body.predictionClass || 'MANUAL',
+      damageType: req.body.damageType,
+      severity: req.body.severity,
+      priority: parseInt(req.body.priority),
+      location: locationData,
+      annotatedImageBase64: annotatedImageBase64,
+      createdAt: new Date()
+    };
+    
+    // Add YOLO-specific data if present
+    if (req.body.model === 'yolo' && req.body.detections && Array.isArray(req.body.detections)) {
+      reportData.yoloDetections = req.body.detections.map(d => ({
+        class: d.class || d.name,
+        confidence: d.confidence || d.score || 0,
+        bbox: d.bbox || []
+      }));
+      reportData.yoloDetectionCount = req.body.detections.length;
+    }
+    
+    // Create and save the AI report
+    const aiReport = new AiReport(reportData);
+    const savedReport = await aiReport.save();
+    
+    console.log('AI report saved with ID:', savedReport._id);
+    
+    return res.status(201).json({
+      success: true,
+      message: 'Report saved successfully',
+      reportId: savedReport._id
+    });
+  } catch (error) {
+    console.error('Error saving AI report:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error saving AI report',
+      error: error.message
+    });
+  }
+};
+
 module.exports = { 
     uploadImage, 
     getImage, 
     getImageById, 
     getReports, 
     getReportById,
-    testAiServer 
+    testAiServer,
+    saveReport 
 };

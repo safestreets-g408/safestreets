@@ -138,13 +138,30 @@ export const api = {
         headers['Authorization'] = `Bearer ${token}`;
       }
       // Don't set Content-Type here - browser will set it with boundary parameter
-
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'POST',
-        headers: headers,
-        body: formData,
-      });
-      return handleResponse(response);
+      
+      // Add timeout handling for specific endpoints
+      const timeoutMs = endpoint.includes('yolo') ? 60000 : 30000; // 60 seconds for YOLO, 30 for others
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      
+      try {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+          method: 'POST',
+          headers: headers,
+          body: formData,
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        return handleResponse(response);
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          throw new Error(`Request timed out after ${timeoutMs/1000} seconds. The server might be overloaded or the image too large.`);
+        }
+        throw fetchError;
+      }
     } catch (error) {
       console.error(`API FormData POST error for ${endpoint}:`, error);
       if (error instanceof TypeError && error.message.includes('fetch')) {
@@ -204,14 +221,25 @@ export const api = {
   // Check if the AI server is accessible
   checkAiServer: async () => {
     try {
+      console.log('Checking AI server health status...');
       const response = await fetch(`${API_BASE_URL}/ai/health-check`, {
         method: 'GET',
         headers: getHeaders(),
+        // Add a timeout to avoid hanging if the AI server is down
+        signal: AbortSignal.timeout(5000) // 5 seconds timeout
       });
-      return handleResponse(response);
+      
+      const result = await handleResponse(response);
+      console.log('AI server health check response:', result);
+      return result;
     } catch (error) {
       console.error('Error checking AI server:', error);
-      return { success: false, message: 'Could not connect to AI server' };
+      return { 
+        success: false, 
+        message: error.name === 'AbortError' 
+          ? 'Connection to AI server timed out' 
+          : 'Could not connect to AI server'
+      };
     }
   },
 };

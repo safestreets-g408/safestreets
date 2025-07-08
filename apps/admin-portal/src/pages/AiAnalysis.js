@@ -97,10 +97,14 @@ const AiAnalysis = () => {
     if (selectedModel === 'yolo') {
       const checkServer = async () => {
         try {
+          console.log('Checking AI server status for YOLO model...');
           const status = await api.checkAiServer();
+          console.log('AI server status check result:', status);
+          
           if (!status.success) {
             setError('AI server may not be accessible. YOLO model might not work correctly.');
           } else {
+            console.log('AI server is accessible');
             // Clear any previous errors about the server
             if (error && error.includes('AI server')) {
               setError(null);
@@ -108,6 +112,7 @@ const AiAnalysis = () => {
           }
         } catch (err) {
           console.warn('Could not check AI server status:', err);
+          setError('Could not verify AI server status. YOLO detection may not work properly.');
         }
       };
       
@@ -228,15 +233,17 @@ const AiAnalysis = () => {
     // Check if AI server is accessible first
     if (selectedModel === 'yolo') {
       try {
+        console.log('Verifying AI server connection before YOLO analysis...');
         const serverStatus = await api.checkAiServer();
         if (!serverStatus.success) {
           setLoading(false);
           setError('AI server is not accessible. Please ensure the AI server is running before analyzing images with YOLO.');
           return;
         }
+        console.log('AI server is online, proceeding with analysis');
       } catch (err) {
         console.warn('Could not check AI server status:', err);
-        // Continue anyway, the main operation will handle errors
+        // We'll continue anyway and let the main operation handle errors
       }
     }
 
@@ -258,9 +265,26 @@ const AiAnalysis = () => {
 
       if (selectedModel === 'yolo') {
         // Create form data for YOLO model
+        // Check if the image is too large
+        const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+        if (selectedImage.size > MAX_IMAGE_SIZE) {
+          throw new Error(`Image size (${(selectedImage.size / 1024 / 1024).toFixed(2)}MB) exceeds the 5MB limit. Please select a smaller image.`);
+        }
+
+        // Check if the image is in a supported format
+        const supportedFormats = ['image/jpeg', 'image/jpg', 'image/png'];
+        if (!supportedFormats.includes(selectedImage.type)) {
+          throw new Error(`Image format ${selectedImage.type} is not supported. Please use JPEG or PNG images.`);
+        }
+
+        console.log('Creating form data for YOLO analysis with image:', {
+          name: selectedImage.name,
+          type: selectedImage.type,
+          size: `${(selectedImage.size / 1024).toFixed(2)} KB`
+        });
+        
         const formData = new FormData();
         formData.append('image', selectedImage);
-        formData.append('model', 'yolo');
         
         // Add location data if available
         if (locationInfo) {
@@ -278,17 +302,57 @@ const AiAnalysis = () => {
           
           console.log('Response from YOLO analysis:', response);
           
-          if (response.success) {
+          // Check if we have any detections, even if success is false
+          const hasDetections = response.detections && Array.isArray(response.detections);
+          const hasAnnotatedImage = response.annotated_image || response.annotatedImage;
+          
+          if (response.success || hasDetections || hasAnnotatedImage) {
             // Format YOLO detection results for display
+            const detectionCount = response.detections?.length || 0;
+            
+            // Determine severity and priority based on number and types of detections
+            let severity = 'LOW';
+            let priority = 3;
+            
+            if (detectionCount > 5) {
+              severity = 'HIGH';
+              priority = 8;
+            } else if (detectionCount > 0) {
+              severity = 'MEDIUM';
+              priority = 5;
+            }
+            
+            // Find the most significant detection (highest confidence)
+            let primaryDetection = 'None';
+            let highestConfidence = 0;
+            
+            if (response.detections && response.detections.length > 0) {
+              response.detections.forEach(detection => {
+                const confidence = detection.confidence || detection.score || 0;
+                if (confidence > highestConfidence) {
+                  highestConfidence = confidence;
+                  primaryDetection = detection.class || detection.name;
+                }
+              });
+            }
+            
             setPrediction({
-              damageType: 'YOLO Detection',
-              severity: `${response.detections?.length || 0} object(s)`,
-              priority: 'Medium',
-              annotatedImage: response.annotated_image,
+              damageType: primaryDetection !== 'None' ? `Object: ${primaryDetection}` : 'YOLO Detection',
+              severity: severity,
+              priority: priority,
+              annotatedImage: response.annotated_image || response.annotatedImage,
               detections: response.detections || [],
-              model: 'yolo'
+              detectionCount: detectionCount,
+              model: 'yolo',
+              fallback: !!response.fallback
             });
-            console.log('YOLO Response processed successfully:', response);
+            
+            // Show warning if fallback was used
+            if (response.fallback) {
+              setError('Using fallback detection. Some features may be limited.');
+            } else {
+              console.log('YOLO Response processed successfully:', response);
+            }
           } else {
             console.error('YOLO API returned error:', response);
             throw new Error(response.message || 'Failed to process image with YOLO');
@@ -296,13 +360,63 @@ const AiAnalysis = () => {
         } catch (yoloErr) {
           console.error('Error with YOLO analysis:', yoloErr);
           
+          // Check if the error response contains any usable data
+          if (yoloErr.data && (yoloErr.data.detections || yoloErr.data.annotated_image)) {
+            console.log('Found usable data in error response, attempting to display it');
+            
+            // Determine severity and priority based on number and types of detections
+            const detectionCount = yoloErr.data.detections?.length || 0;
+            let severity = 'LOW';
+            let priority = 3;
+            
+            if (detectionCount > 5) {
+              severity = 'HIGH';
+              priority = 8;
+            } else if (detectionCount > 0) {
+              severity = 'MEDIUM';
+              priority = 5;
+            }
+            
+            // Find the most significant detection
+            let primaryDetection = 'None';
+            let highestConfidence = 0;
+            
+            if (yoloErr.data.detections && yoloErr.data.detections.length > 0) {
+              yoloErr.data.detections.forEach(detection => {
+                const confidence = detection.confidence || detection.score || 0;
+                if (confidence > highestConfidence) {
+                  highestConfidence = confidence;
+                  primaryDetection = detection.class || detection.name;
+                }
+              });
+            }
+            
+            setPrediction({
+              damageType: primaryDetection !== 'None' ? `Object: ${primaryDetection}` : 'YOLO Detection (Partial)',
+              severity: severity,
+              priority: priority,
+              annotatedImage: yoloErr.data.annotated_image || yoloErr.data.annotatedImage,
+              detections: yoloErr.data.detections || [],
+              detectionCount: detectionCount,
+              model: 'yolo',
+              fallback: true
+            });
+            
+            // Show warning but don't throw error
+            setError(`Warning: ${yoloErr.message}. Displaying partial results.`);
+            return; // Don't throw error since we have something to show
+          }
+          
           // Check if the error might be related to the AI server being down
           if (yoloErr.message.includes('connect') || 
               yoloErr.message.includes('ECONNREFUSED') ||
-              yoloErr.message.includes('Network Error')) {
-            throw new Error('Could not connect to the AI server. Please ensure it is running.');
+              yoloErr.message.includes('Network Error') ||
+              yoloErr.message.includes('timeout')) {
+            throw new Error('Could not connect to the AI server. Please ensure it is running and try again.');
           } else if (yoloErr.status === 404) {
             throw new Error('YOLO API endpoint not found. Please check server configuration.');
+          } else if (yoloErr.message.includes('413') || yoloErr.status === 413) {
+            throw new Error('Image is too large. Please try a smaller image (under 5MB).');
           } else {
             throw new Error(`YOLO processing error: ${yoloErr.message}`);
           }
@@ -351,6 +465,55 @@ const AiAnalysis = () => {
   };
 
   // Reports are now rendered directly in the JSX of TabPanel with index 1
+
+  // Add saveReport function for both ViT and YOLO models
+  const saveReport = async () => {
+    if (!prediction) return;
+    
+    setLoading(true);
+    try {
+      let reportData = {};
+      
+      if (prediction.model === 'yolo') {
+        // YOLO report data
+        reportData = {
+          damageType: prediction.damageType,
+          severity: prediction.severity,
+          priority: prediction.priority,
+          annotatedImage: prediction.annotatedImage,
+          detections: prediction.detections,
+          model: 'yolo',
+          location: locationData
+        };
+      } else {
+        // ViT report data
+        reportData = {
+          damageType: prediction.damageType,
+          severity: prediction.severity,
+          priority: prediction.priority,
+          location: locationData,
+          model: 'vit'
+        };
+      }
+      
+      const response = await api.post('/images/save-report', reportData);
+      if (response.success) {
+        setError(null);
+        alert('Report saved successfully!');
+        // Refresh reports list if we're on that tab
+        if (tabValue === 1) {
+          fetchReports();
+        }
+      } else {
+        throw new Error(response.message || 'Failed to save report');
+      }
+    } catch (err) {
+      console.error('Error saving report:', err);
+      setError(`Failed to save report: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Container maxWidth="lg">
@@ -452,12 +615,12 @@ const AiAnalysis = () => {
                           <FormControlLabel 
                             value="vit" 
                             control={<Radio />} 
-                            label="ViT (Classification)" 
+                            label="ViT" 
                           />
                           <FormControlLabel 
                             value="yolo" 
                             control={<Radio />} 
-                            label="YOLO (Object Detection)" 
+                            label="YOLO v8" 
                           />
                         </RadioGroup>
                         
@@ -534,8 +697,10 @@ const AiAnalysis = () => {
                     <Typography variant="h6" gutterBottom>
                       Analysis Results 
                       <Chip 
-                        label={prediction.model === 'yolo' ? 'YOLO Detection' : 'ViT Classification'} 
-                        color="info" 
+                        label={prediction.model === 'yolo' 
+                          ? (prediction.fallback ? 'YOLO Fallback Detection' : 'YOLO Detection') 
+                          : 'ViT Classification'} 
+                        color={prediction.fallback ? "warning" : "info"}
                         size="small" 
                         sx={{ ml: 1 }}
                       />
@@ -547,7 +712,9 @@ const AiAnalysis = () => {
                         <Typography variant="subtitle2" gutterBottom>Annotated Image</Typography>
                         <Box
                           component="img"
-                          src={`data:image/jpeg;base64,${prediction.annotatedImage}`}
+                          src={typeof prediction.annotatedImage === 'string' && prediction.annotatedImage.startsWith('data:') 
+                            ? prediction.annotatedImage 
+                            : `data:image/jpeg;base64,${prediction.annotatedImage}`}
                           alt="Annotated"
                           sx={{
                             maxWidth: '100%',
@@ -561,26 +728,53 @@ const AiAnalysis = () => {
                     )}
                     
                     {/* YOLO specific results */}
-                    {prediction.model === 'yolo' && prediction.detections && (
-                      <Box sx={{ mt: 2 }}>
-                        <Typography variant="subtitle1" gutterBottom>
-                          {prediction.detections.length} Objects Detected
-                        </Typography>
-                        <Paper variant="outlined" sx={{ p: 1, maxHeight: '200px', overflow: 'auto' }}>
-                          {prediction.detections.map((detection, index) => (
-                            <Box key={index} sx={{ p: 1, mb: 1, borderBottom: '1px solid #eee' }}>
-                              <Grid container spacing={1}>
-                                <Grid item xs={6}>
-                                  <Typography variant="body2">Class: <Chip label={detection.class} size="small" color="primary" /></Typography>
-                                </Grid>
-                                <Grid item xs={6}>
-                                  <Typography variant="body2">Confidence: {(detection.confidence * 100).toFixed(1)}%</Typography>
-                                </Grid>
-                              </Grid>
-                            </Box>
-                          ))}
-                        </Paper>
-                      </Box>
+                    {prediction.model === 'yolo' && (
+                      <>
+                        <Grid container spacing={2} sx={{ mb: 2 }}>
+                          <Grid item xs={12} sm={6}>
+                            <Typography variant="body1">
+                              Damage Type: <Chip label={prediction.damageType} color="primary" size="small" />
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <Typography variant="body1">
+                              Severity: <Chip label={prediction.severity} color={prediction.severity === 'HIGH' ? "error" : prediction.severity === 'MEDIUM' ? "warning" : "success"} size="small" />
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <Typography variant="body1">
+                              Priority: <Chip label={prediction.priority} color="warning" size="small" />
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <Typography variant="body1">
+                              Objects Detected: <Chip label={prediction.detectionCount || 0} color="info" size="small" />
+                            </Typography>
+                          </Grid>
+                        </Grid>
+                        
+                        {prediction.detections && prediction.detections.length > 0 && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle1" gutterBottom>
+                              Detection Details
+                            </Typography>
+                            <Paper variant="outlined" sx={{ p: 1, maxHeight: '200px', overflow: 'auto' }}>
+                              {prediction.detections.map((detection, index) => (
+                                <Box key={index} sx={{ p: 1, mb: 1, borderBottom: '1px solid #eee' }}>
+                                  <Grid container spacing={1}>
+                                    <Grid item xs={6}>
+                                      <Typography variant="body2">Class: <Chip label={detection.class || detection.name} size="small" color="primary" /></Typography>
+                                    </Grid>
+                                    <Grid item xs={6}>
+                                      <Typography variant="body2">Confidence: {((detection.confidence || detection.score || 0) * 100).toFixed(1)}%</Typography>
+                                    </Grid>
+                                  </Grid>
+                                </Box>
+                              ))}
+                            </Paper>
+                          </Box>
+                        )}
+                      </>
                     )}
                     
                     {/* ViT specific results */}
@@ -604,9 +798,24 @@ const AiAnalysis = () => {
                       </Grid>
                     )}
                     
-                    <Box sx={{ mt: 2 }}>
+                    <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
                       <Button
                         variant="contained"
+                        color="primary"
+                        onClick={saveReport}
+                        disabled={loading}
+                      >
+                        {loading ? (
+                          <>
+                            <CircularProgress size={20} sx={{ mr: 1 }} />
+                            Saving...
+                          </>
+                        ) : (
+                          'Save Report'
+                        )}
+                      </Button>
+                      <Button
+                        variant="outlined"
                         color="secondary"
                         onClick={() => {
                           handleTabChange(null, 1);

@@ -6,7 +6,8 @@ const {
     getImageById, 
     getReports,
     getReportById,
-    testAiServer 
+    testAiServer,
+    saveReport
 } = require('../controllers/ImageController');
 const { analyzeWithYolo } = require('../controllers/aiModelController');
 const { protectAdmin, ensureTenantIsolation } = require('../middleware/adminAuthMiddleware');
@@ -24,5 +25,6 @@ router.get('/id/:imageId', protectAdmin, ensureTenantIsolation(), getImageById);
 // Report routes with tenant isolation
 router.get('/reports', protectAdmin, ensureTenantIsolation(), getReports);
 router.get('/reports/:reportId', protectAdmin, ensureTenantIsolation(), getReportById);
+router.post('/save-report', protectAdmin, ensureTenantIsolation(), saveReport);
 
 module.exports = router;
