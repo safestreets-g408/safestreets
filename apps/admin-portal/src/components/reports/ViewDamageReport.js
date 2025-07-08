@@ -65,6 +65,10 @@ const ViewDamageReport = ({ report }) => {
   };
 
   useEffect(() => {
+    // Log the report structure to help debug
+    console.log('Report data:', report);
+    console.log('Location data:', report?.location);
+    
     const loadImage = () => {
       // Check for both reportId and _id to ensure we can always find the report identifier
       const id = report?.reportId || report?._id;
@@ -192,11 +196,17 @@ const ViewDamageReport = ({ report }) => {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Typography variant="body2" color="text.secondary">Location</Typography>
-                <Typography variant="body1">{formatLocation(report.location)}</Typography>
+                <Typography variant="body1">
+                  {report.location && report.location.address ? report.location.address : formatLocation(report.location || (report.latitude && report.longitude ? { latitude: report.latitude, longitude: report.longitude } : null))}
+                </Typography>
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Typography variant="body2" color="text.secondary">Coordinates</Typography>
-                <Typography variant="body1">{getCoordinatesString(report.location)}</Typography>
+                <Typography variant="body1">
+                  {report.location && report.location.coordinates && report.location.coordinates.length === 2 ? 
+                    `${typeof report.location.coordinates[1] === 'number' ? report.location.coordinates[1].toFixed(6) : 'N/A'}, ${typeof report.location.coordinates[0] === 'number' ? report.location.coordinates[0].toFixed(6) : 'N/A'}` : 
+                    getCoordinatesString(report.location || (report.latitude && report.longitude ? { latitude: report.latitude, longitude: report.longitude } : null))}
+                </Typography>
               </Grid>
             </Grid>
           </Paper>

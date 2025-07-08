@@ -931,7 +931,13 @@ function Reports() {
                       ? alpha(theme.palette.background.default, 0.5) 
                       : theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.grey[50] 
                     : 'inherit'
-                }} onClick={() => handleViewReport(report)}>
+                }} onClick={(e) => {
+                  // Only trigger handleViewReport if not clicking on the actions cell
+                  // This prevents conflicts with button click handlers
+                  if (!e.target.closest('td:last-child')) {
+                    handleViewReport(report);
+                  }
+                }}>
                 <td style={{ padding: 8, fontWeight: 500, color: colors.primary }}>
                   {report.reportId}
                 </td>
