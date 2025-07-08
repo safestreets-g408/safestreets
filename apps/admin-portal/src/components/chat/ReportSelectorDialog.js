@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTheme, alpha } from '@mui/material/styles';
 import {
   Dialog,
   DialogTitle,
@@ -31,6 +32,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import api from '../../services/apiService';
 
 const ReportSelectorDialog = ({ open, onClose, onSelectReport, tenantId }) => {
+  const theme = useTheme();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [reports, setReports] = useState([]);
@@ -115,19 +117,19 @@ const ReportSelectorDialog = ({ open, onClose, onSelectReport, tenantId }) => {
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case 'completed':
-        return '#10b981';
+        return theme.palette.success.main;
       case 'pending':
-        return '#f59e0b';
+        return theme.palette.warning.main;
       case 'in progress':
       case 'in_progress':
-        return '#3b82f6';
+        return theme.palette.info.main;
       case 'cancelled':
-        return '#ef4444';
+        return theme.palette.error.main;
       case 'on_hold':
       case 'on hold':
-        return '#6b7280';
+        return theme.palette.grey[500];
       default:
-        return '#6b7280';
+        return theme.palette.grey[500];
     }
   };
   
@@ -135,13 +137,13 @@ const ReportSelectorDialog = ({ open, onClose, onSelectReport, tenantId }) => {
   const getSeverityIcon = (severity) => {
     switch (severity?.toLowerCase()) {
       case 'high':
-        return <ErrorIcon fontSize="small" sx={{ color: '#ef4444' }} />;
+        return <ErrorIcon fontSize="small" sx={{ color: theme.palette.error.main }} />;
       case 'medium':
-        return <WarningIcon fontSize="small" sx={{ color: '#f59e0b' }} />;
+        return <WarningIcon fontSize="small" sx={{ color: theme.palette.warning.main }} />;
       case 'low':
-        return <InfoIcon fontSize="small" sx={{ color: '#3b82f6' }} />;
+        return <InfoIcon fontSize="small" sx={{ color: theme.palette.info.main }} />;
       default:
-        return <InfoIcon fontSize="small" sx={{ color: '#6b7280' }} />;
+        return <InfoIcon fontSize="small" sx={{ color: theme.palette.grey[500] }} />;
     }
   };
   
@@ -163,8 +165,12 @@ const ReportSelectorDialog = ({ open, onClose, onSelectReport, tenantId }) => {
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
-        background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%)',
-        borderBottom: '1px solid rgba(139, 92, 246, 0.15)',
+        background: theme.palette.mode === 'dark'
+          ? `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.secondary.main || theme.palette.primary.light, 0.05)} 100%)`
+          : 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%)',
+        borderBottom: `1px solid ${theme.palette.mode === 'dark'
+          ? alpha(theme.palette.primary.main, 0.2)
+          : 'rgba(139, 92, 246, 0.15)'}`,
         py: 2
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -203,8 +209,14 @@ const ReportSelectorDialog = ({ open, onClose, onSelectReport, tenantId }) => {
                   sx: {
                     borderRadius: 3,
                     bgcolor: 'background.paper',
-                    boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-                    '& fieldset': { borderColor: 'rgba(0,0,0,0.1)' },
+                    boxShadow: theme.palette.mode === 'dark'
+                      ? `0 2px 5px ${alpha(theme.palette.common.black, 0.15)}`
+                      : '0 2px 5px rgba(0,0,0,0.05)',
+                    '& fieldset': { 
+                      borderColor: theme.palette.mode === 'dark'
+                        ? alpha(theme.palette.divider, 0.7)
+                        : 'rgba(0,0,0,0.1)' 
+                    },
                   }
                 }}
                 size="small"
@@ -280,13 +292,19 @@ const ReportSelectorDialog = ({ open, onClose, onSelectReport, tenantId }) => {
                   width: '8px',
                 },
                 '&::-webkit-scrollbar-track': {
-                  background: 'rgba(0, 0, 0, 0.03)',
+                  background: theme.palette.mode === 'dark'
+                    ? alpha(theme.palette.action.hover, 0.1)
+                    : 'rgba(0, 0, 0, 0.03)',
                 },
                 '&::-webkit-scrollbar-thumb': {
-                  background: 'rgba(139, 92, 246, 0.3)',
+                  background: theme.palette.mode === 'dark'
+                    ? alpha(theme.palette.primary.main, 0.3)
+                    : 'rgba(139, 92, 246, 0.3)',
                   borderRadius: '4px',
                   '&:hover': {
-                    background: 'rgba(139, 92, 246, 0.5)',
+                    background: theme.palette.mode === 'dark'
+                      ? alpha(theme.palette.primary.main, 0.5)
+                      : 'rgba(139, 92, 246, 0.5)',
                   },
                 },
               }}>
@@ -302,13 +320,17 @@ const ReportSelectorDialog = ({ open, onClose, onSelectReport, tenantId }) => {
                       cursor: 'pointer',
                       transition: 'all 0.2s',
                       border: selectedReport?._id === report._id 
-                        ? '2px solid #8b5cf6' 
-                        : '1px solid rgba(0,0,0,0.08)',
+                        ? `2px solid ${theme.palette.primary.main}` 
+                        : `1px solid ${theme.palette.mode === 'dark' ? alpha(theme.palette.divider, 0.6) : 'rgba(0,0,0,0.08)'}`,
                       boxShadow: selectedReport?._id === report._id
-                        ? '0 4px 12px rgba(139, 92, 246, 0.15)'
-                        : '0 2px 5px rgba(0,0,0,0.03)',
+                        ? `0 4px 12px ${alpha(theme.palette.primary.main, 0.15)}`
+                        : theme.palette.mode === 'dark' 
+                          ? `0 2px 5px ${alpha(theme.palette.common.black, 0.15)}`
+                          : '0 2px 5px rgba(0,0,0,0.03)',
                       '&:hover': {
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        boxShadow: theme.palette.mode === 'dark'
+                          ? `0 4px 12px ${alpha(theme.palette.common.black, 0.3)}`
+                          : '0 4px 12px rgba(0,0,0,0.1)',
                         transform: 'translateY(-2px)',
                       },
                     }}
@@ -380,7 +402,7 @@ const ReportSelectorDialog = ({ open, onClose, onSelectReport, tenantId }) => {
       
       <DialogActions sx={{ 
         p: 2, 
-        borderTop: '1px solid rgba(0,0,0,0.06)',
+        borderTop: `1px solid ${theme.palette.divider}`,
         justifyContent: 'space-between',
       }}>
         <Button 
@@ -390,7 +412,7 @@ const ReportSelectorDialog = ({ open, onClose, onSelectReport, tenantId }) => {
           sx={{ 
             borderRadius: 2,
             px: 3,
-            borderColor: 'rgba(0,0,0,0.2)',
+            borderColor: theme.palette.mode === 'dark' ? theme.palette.divider : 'rgba(0,0,0,0.2)',
             color: 'text.secondary'
           }}
         >
@@ -403,7 +425,9 @@ const ReportSelectorDialog = ({ open, onClose, onSelectReport, tenantId }) => {
           sx={{ 
             borderRadius: 2,
             px: 3,
-            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+            background: theme.palette.mode === 'dark'
+              ? `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`
+              : 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
             boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
             '&:hover': {
               boxShadow: '0 6px 15px rgba(139, 92, 246, 0.4)',

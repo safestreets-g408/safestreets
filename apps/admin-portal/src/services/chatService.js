@@ -28,11 +28,25 @@ export const chatService = {
   },
 
   // Get messages for a specific chat room
-  getChatMessages: async (tenantId, params = {}) => {
-    const response = await api.get(`${CHAT_ENDPOINT}/room/${tenantId}/messages`, {
-      params
-    });
-    return response.data;
+  getChatMessages: async (tenantId, page = 1, limit = 20) => {
+    try {
+      // Validate tenantId
+      if (!tenantId) {
+        throw new Error('Invalid tenant ID');
+      }
+      
+      const response = await api.get(`${CHAT_ENDPOINT}/room/${tenantId}/messages`, {
+        params: { page, limit }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to load messages:', error.response?.data || error.message);
+      const errorMessage = 
+        error.response?.data?.message || 
+        error.message || 
+        'Failed to load messages. Please check your connection and try again.';
+      throw new Error(errorMessage);
+    }
   },
 
   // Send a message with better error handling

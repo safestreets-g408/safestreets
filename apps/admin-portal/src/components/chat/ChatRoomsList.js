@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useTheme } from '@mui/material/styles';
+import { useTheme, alpha } from '@mui/material/styles';
 import {
   Box,
   Paper,
@@ -148,10 +148,16 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
         flexDirection: 'column',
         borderRadius: 3,
         overflow: 'hidden',
-        border: '1px solid rgba(255, 255, 255, 0.8)',
-        bgcolor: 'rgba(255, 255, 255, 0.8)',
+        border: `1px solid ${theme.palette.mode === 'dark' 
+          ? alpha(theme.palette.background.paper, 0.8) 
+          : 'rgba(255, 255, 255, 0.8)'}`,
+        bgcolor: theme.palette.mode === 'dark' 
+          ? alpha(theme.palette.background.paper, 0.8)
+          : 'rgba(255, 255, 255, 0.8)',
         backdropFilter: 'blur(10px)',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
+        boxShadow: theme.palette.mode === 'dark' 
+          ? `0 8px 32px ${alpha(theme.palette.common.black, 0.2)}`
+          : '0 8px 32px rgba(0, 0, 0, 0.08)',
       }}
     >
       <Box sx={{ 
@@ -214,10 +220,16 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
         justifyContent: 'center',
         p: 4,
         borderRadius: 3,
-        border: '1px solid rgba(255, 255, 255, 0.8)',
-        bgcolor: 'rgba(255, 255, 255, 0.8)',
+        border: `1px solid ${theme.palette.mode === 'dark' 
+          ? alpha(theme.palette.background.paper, 0.8)
+          : 'rgba(255, 255, 255, 0.8)'}`,
+        bgcolor: theme.palette.mode === 'dark'
+          ? alpha(theme.palette.background.paper, 0.8)
+          : 'rgba(255, 255, 255, 0.8)',
         backdropFilter: 'blur(10px)',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
+        boxShadow: theme.palette.mode === 'dark'
+          ? `0 8px 32px ${alpha(theme.palette.common.black, 0.2)}`
+          : '0 8px 32px rgba(0, 0, 0, 0.08)',
       }}
     >
       <Box
@@ -229,9 +241,15 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
           px: 3,
           py: 4,
           borderRadius: 3,
-          background: 'rgba(239, 68, 68, 0.05)',
-          border: '1px solid rgba(239, 68, 68, 0.2)',
-          boxShadow: '0 4px 15px rgba(239, 68, 68, 0.1)',
+          background: theme.palette.mode === 'dark'
+            ? alpha(theme.palette.error.dark, 0.1)
+            : 'rgba(239, 68, 68, 0.05)',
+          border: `1px solid ${theme.palette.mode === 'dark'
+            ? alpha(theme.palette.error.main, 0.3)
+            : 'rgba(239, 68, 68, 0.2)'}`,
+          boxShadow: theme.palette.mode === 'dark'
+            ? `0 4px 15px ${alpha(theme.palette.error.dark, 0.15)}`
+            : '0 4px 15px rgba(239, 68, 68, 0.1)',
           maxWidth: 320,
         }}
       >
@@ -243,14 +261,20 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            bgcolor: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid rgba(239, 68, 68, 0.2)',
-            boxShadow: '0 2px 10px rgba(239, 68, 68, 0.1)',
+            bgcolor: theme.palette.mode === 'dark'
+              ? alpha(theme.palette.error.dark, 0.15)
+              : 'rgba(239, 68, 68, 0.1)',
+            border: `1px solid ${theme.palette.mode === 'dark'
+              ? alpha(theme.palette.error.main, 0.3)
+              : 'rgba(239, 68, 68, 0.2)'}`,
+            boxShadow: theme.palette.mode === 'dark'
+              ? `0 2px 10px ${alpha(theme.palette.error.dark, 0.15)}`
+              : '0 2px 10px rgba(239, 68, 68, 0.1)',
           }}
         >
           <RefreshIcon 
             sx={{ 
-              color: '#ef4444', 
+              color: theme.palette.error.main, 
               fontSize: 32,
             }} 
           />
@@ -262,7 +286,7 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
             sx={{ 
               fontWeight: 600, 
               mb: 1,
-              color: '#dc2626',
+              color: theme.palette.error.main,
             }}
           >
             Connection Error
@@ -281,15 +305,23 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
             size="large"
             onClick={() => loadChatRooms()}
             sx={{ 
-              bgcolor: 'rgba(239, 68, 68, 0.1)',
-              color: '#dc2626',
+              bgcolor: theme.palette.mode === 'dark'
+                ? alpha(theme.palette.error.dark, 0.15)
+                : 'rgba(239, 68, 68, 0.1)',
+              color: theme.palette.error.main,
               width: 54,
               height: 54,
-              border: '1px solid rgba(239, 68, 68, 0.2)',
+              border: `1px solid ${theme.palette.mode === 'dark'
+                ? alpha(theme.palette.error.main, 0.3)
+                : 'rgba(239, 68, 68, 0.2)'}`,
               '&:hover': { 
-                bgcolor: 'rgba(239, 68, 68, 0.15)',
+                bgcolor: theme.palette.mode === 'dark'
+                  ? alpha(theme.palette.error.dark, 0.25)
+                  : 'rgba(239, 68, 68, 0.15)',
                 transform: 'scale(1.05)',
-                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.15)',
+                boxShadow: theme.palette.mode === 'dark'
+                  ? `0 4px 12px ${alpha(theme.palette.error.dark, 0.2)}`
+                  : '0 4px 12px rgba(239, 68, 68, 0.15)',
               },
               transition: 'all 0.2s ease-in-out'
             }}
@@ -313,10 +345,16 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
         flexDirection: 'column',
         borderRadius: 3,
         overflow: 'hidden',
-        border: '1px solid rgba(255, 255, 255, 0.8)',
-        bgcolor: 'rgba(255, 255, 255, 0.8)',
+        border: `1px solid ${theme.palette.mode === 'dark' 
+          ? alpha(theme.palette.background.paper, 0.8) 
+          : 'rgba(255, 255, 255, 0.8)'}`,
+        bgcolor: theme.palette.mode === 'dark' 
+          ? alpha(theme.palette.background.paper, 0.8)
+          : 'rgba(255, 255, 255, 0.8)',
         backdropFilter: 'blur(10px)',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
+        boxShadow: theme.palette.mode === 'dark' 
+          ? `0 8px 32px ${alpha(theme.palette.common.black, 0.2)}`
+          : '0 8px 32px rgba(0, 0, 0, 0.08)',
       }}
     >
       {/* Enhanced Header */}
@@ -348,10 +386,16 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
             onClick={() => loadChatRooms(true)}
             disabled={refreshing}
             sx={{ 
-              bgcolor: 'rgba(255, 255, 255, 0.8)',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+              bgcolor: theme.palette.mode === 'dark' 
+                ? alpha(theme.palette.background.paper, 0.8) 
+                : 'rgba(255, 255, 255, 0.8)',
+              boxShadow: theme.palette.mode === 'dark'
+                ? `0 2px 8px ${alpha(theme.palette.common.black, 0.2)}`
+                : '0 2px 8px rgba(0, 0, 0, 0.05)',
               '&:hover': { 
-                bgcolor: 'rgba(255, 255, 255, 0.95)',
+                bgcolor: theme.palette.mode === 'dark'
+                  ? alpha(theme.palette.background.paper, 0.95)
+                  : 'rgba(255, 255, 255, 0.95)',
                 transform: 'scale(1.05)'
               },
               transition: 'all 0.2s ease-in-out'
@@ -360,7 +404,9 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
           >
             <RefreshIcon sx={{ 
               fontSize: 18,
-              color: '#6d28d9',
+              color: theme.palette.mode === 'dark'
+                ? theme.palette.primary.light
+                : '#6d28d9',
               animation: refreshing ? 'spin 1s linear infinite' : 'none',
               '@keyframes spin': {
                 '0%': { transform: 'rotate(0deg)' },
@@ -387,12 +433,20 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
           sx={{
             '& .MuiOutlinedInput-root': {
               borderRadius: 2.5,
-              bgcolor: 'rgba(255, 255, 255, 0.8)',
-              boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)',
-              border: '1px solid rgba(139, 92, 246, 0.2)',
+              bgcolor: theme.palette.mode === 'dark' 
+                ? alpha(theme.palette.background.paper, 0.8)
+                : 'rgba(255, 255, 255, 0.8)',
+              boxShadow: theme.palette.mode === 'dark'
+                ? `0 2px 10px ${alpha(theme.palette.common.black, 0.1)}`
+                : '0 2px 10px rgba(0, 0, 0, 0.03)',
+              border: `1px solid ${theme.palette.mode === 'dark'
+                ? alpha(theme.palette.primary.main, 0.2)
+                : 'rgba(139, 92, 246, 0.2)'}`,
               transition: 'all 0.2s ease-in-out',
               '&:hover': {
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+                boxShadow: theme.palette.mode === 'dark'
+                  ? `0 4px 12px ${alpha(theme.palette.common.black, 0.15)}`
+                  : '0 4px 12px rgba(0, 0, 0, 0.05)',
               },
               '&:hover fieldset': {
                 borderColor: theme.palette.primary.main,
@@ -454,18 +508,32 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderRadius: '20px',
-                  background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
-                  boxShadow: '0 5px 15px rgba(139, 92, 246, 0.1)',
+                  background: theme.palette.mode === 'dark'
+                  ? alpha(theme.palette.primary.dark, 0.1)
+                  : 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
+                  boxShadow: theme.palette.mode === 'dark'
+                    ? `0 5px 15px ${alpha(theme.palette.primary.dark, 0.1)}`
+                    : '0 5px 15px rgba(139, 92, 246, 0.1)',
                   mb: 3,
-                  border: '1px solid rgba(139, 92, 246, 0.2)',
+                  border: `1px solid ${theme.palette.mode === 'dark'
+                    ? alpha(theme.palette.primary.main, 0.2)
+                    : 'rgba(139, 92, 246, 0.2)'}`,
                 }}>
-                  <ChatIcon sx={{ fontSize: 36, color: '#8b5cf6', opacity: 0.8 }} />
+                  <ChatIcon sx={{ 
+                    fontSize: 36, 
+                    color: theme.palette.mode === 'dark'
+                      ? theme.palette.primary.light
+                      : '#8b5cf6', 
+                    opacity: 0.8 
+                  }} />
                 </Box>
               </motion.div>
               <Typography variant="h6" textAlign="center" sx={{ 
                 fontWeight: 600, 
                 mb: 1,
-                color: '#6d28d9', 
+                color: theme.palette.mode === 'dark'
+                  ? theme.palette.primary.light
+                  : '#6d28d9', 
               }}>
                 {searchTerm ? 'No conversations found' : 'No conversations yet'}
               </Typography>
@@ -473,7 +541,9 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
                 opacity: 0.8, 
                 maxWidth: 250,
                 lineHeight: 1.6,
-                color: '#6b7280',
+                color: theme.palette.mode === 'dark'
+                  ? theme.palette.text.secondary
+                  : '#6b7280',
               }}>
                 {searchTerm 
                   ? 'Try adjusting your search terms'
@@ -719,7 +789,7 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
               </Box>
             </Badge>
             <Typography variant="body2" sx={{ 
-              color: '#6d28d9',
+              color: theme.palette.mode === 'dark' ? theme.palette.primary.light : '#6d28d9',
               fontSize: '0.85rem',
               fontWeight: 600,
               flex: 1

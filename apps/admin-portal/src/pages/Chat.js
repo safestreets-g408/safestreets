@@ -11,6 +11,7 @@ import {
   Drawer,
   Fade
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import {
   Chat as ChatIcon,
   AutoAwesome as AutoAwesomeIcon,
@@ -60,12 +61,18 @@ const Chat = () => {
           color: 'text.secondary', 
           p: { xs: 3, md: 5 },
           borderRadius: 3,
-          background: 'rgba(255, 255, 255, 0.8)',
+          background: theme.palette.mode === 'dark' 
+            ? alpha(theme.palette.background.paper, 0.8)
+            : 'rgba(255, 255, 255, 0.8)',
           backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.8)',
+          border: `1px solid ${theme.palette.mode === 'dark' 
+            ? alpha(theme.palette.background.paper, 0.9) 
+            : 'rgba(255, 255, 255, 0.8)'}`,
           position: 'relative',
           overflow: 'hidden',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
+          boxShadow: theme.palette.mode === 'dark'
+            ? `0 8px 32px ${alpha(theme.palette.common.black, 0.2)}`
+            : '0 8px 32px rgba(0, 0, 0, 0.08)',
           '&::after': {
             content: '""',
             position: 'absolute',
@@ -73,7 +80,9 @@ const Chat = () => {
             left: '-50%',
             width: '200%',
             height: '200%',
-            background: 'radial-gradient(circle, rgba(59, 130, 246, 0.03) 0%, transparent 70%)',
+            background: theme.palette.mode === 'dark'
+              ? `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.05)} 0%, transparent 70%)`
+              : 'radial-gradient(circle, rgba(59, 130, 246, 0.03) 0%, transparent 70%)',
             zIndex: 0,
           },
         }}
@@ -158,14 +167,21 @@ const Chat = () => {
             py: 1.5,
             px: 3,
             borderRadius: 3,
-            background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%)',
-            border: '1px solid rgba(139, 92, 246, 0.2)',
+            background: theme.palette.mode === 'dark'
+              ? `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.15)} 0%, ${alpha(theme.palette.secondary.main || theme.palette.primary.light, 0.15)} 100%)`
+              : 'linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%)',
+            border: theme.palette.mode === 'dark'
+              ? `1px solid ${alpha(theme.palette.primary.main, 0.3)}`
+              : '1px solid rgba(139, 92, 246, 0.2)',
           }}>
-            <AutoAwesomeIcon sx={{ fontSize: 20, color: '#8b5cf6' }} />
+            <AutoAwesomeIcon sx={{ 
+              fontSize: 20, 
+              color: theme.palette.mode === 'dark' ? theme.palette.primary.light : '#8b5cf6' 
+            }} />
             <Typography 
               variant="body2" 
               sx={{ 
-                color: '#6d28d9',
+                color: theme.palette.mode === 'dark' ? theme.palette.primary.light : '#6d28d9',
                 fontWeight: 600
               }}
             >
@@ -175,7 +191,7 @@ const Chat = () => {
         </motion.div>
       </Paper>
     </motion.div>
-  ), []);
+  ), [theme.palette.mode, theme.palette.background.paper, theme.palette.common.black, theme.palette.primary.main, theme.palette.primary.light, theme.palette.secondary.main]);
 
   return (
     <Container 
@@ -185,7 +201,9 @@ const Chat = () => {
         height: '100vh', 
         display: 'flex', 
         flexDirection: 'column',
-        background: 'linear-gradient(180deg, rgba(249, 250, 251, 0.8) 0%, rgba(242, 244, 247, 0.8) 100%)',
+        background: theme.palette.mode === 'dark' 
+          ? `linear-gradient(180deg, ${alpha(theme.palette.background.default, 0.8)} 0%, ${alpha(theme.palette.background.paper, 0.8)} 100%)`
+          : 'linear-gradient(180deg, rgba(249, 250, 251, 0.8) 0%, rgba(242, 244, 247, 0.8) 100%)',
       }}
     >
       {/* Header with enhanced styling */}
@@ -201,9 +219,15 @@ const Chat = () => {
             borderRadius: 3,
             py: 2,
             px: { xs: 2, md: 3 },
-            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%)',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-            border: '1px solid rgba(255, 255, 255, 0.8)',
+            background: theme.palette.mode === 'dark'
+              ? `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.9)} 0%, ${alpha(theme.palette.background.paper, 0.8)} 100%)`
+              : 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%)',
+            boxShadow: theme.palette.mode === 'dark'
+              ? `0 4px 20px ${alpha(theme.palette.common.black, 0.2)}`
+              : '0 4px 20px rgba(0, 0, 0, 0.08)',
+            border: `1px solid ${theme.palette.mode === 'dark'
+              ? alpha(theme.palette.background.paper, 0.9)
+              : 'rgba(255, 255, 255, 0.8)'}`,
           }}
         >
           {isMobile && (

@@ -629,43 +629,51 @@ const Dashboard = () => {
                 </Box>
                 
                 {/* Tenants Overview Tab Panel */}
-                {selectedTab === 0 && (
-                  <Box sx={{ py: 2 }}>
-                    <Button 
-                      variant="contained" 
-                      color="primary" 
-                      startIcon={<BusinessIcon />}
-                      onClick={() => window.location.href = '/tenants'}
-                      sx={{ mb: 3 }}
-                    >
-                      Manage Tenants
-                    </Button>
-                    
-                    <List>
-                      {tenants.map(tenant => (
-                        <ListItem 
-                          key={tenant._id} 
-                          sx={{ 
-                            border: '1px solid #e0e0e0', 
-                            borderRadius: 1, 
-                            mb: 1,
-                            backgroundColor: tenant.active ? '#f5f9ff' : '#f5f5f5'
-                          }}
-                        >
-                          <ListItemIcon>
-                            <BusinessIcon color={tenant.active ? 'primary' : 'disabled'} />
-                          </ListItemIcon>
-                          <ListItemText 
-                            primary={tenant.name} 
-                            secondary={`Code: ${tenant.code} | Status: ${tenant.active ? 'Active' : 'Inactive'}`}
-                          />
-                        </ListItem>
-                      ))}
-                    </List>
-                  </Box>
-                )}
-                
-                {/* System Statistics Tab Panel */}
+                        {selectedTab === 0 && (
+                          <Box sx={{ py: 2 }}>
+                          <Button 
+                            variant="contained" 
+                            color="primary" 
+                            startIcon={<BusinessIcon />}
+                            onClick={() => window.location.href = '/tenants'}
+                            sx={{ mb: 3 }}
+                          >
+                            Manage Tenants
+                          </Button>
+                          
+                          <List>
+                            {tenants.map(tenant => (
+                            <ListItem 
+                              key={tenant._id} 
+                              sx={{ 
+                              border: '1px solid',
+                              borderColor: theme => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.12)' : '#e0e0e0', 
+                              borderRadius: 1, 
+                              mb: 1,
+                              backgroundColor: theme => tenant.active 
+                                ? (theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.15) : '#f5f9ff')
+                                : (theme.palette.mode === 'dark' ? alpha('#424242', 0.5) : '#f5f5f5')
+                              }}
+                            >
+                              <ListItemIcon>
+                              <BusinessIcon color={tenant.active ? 'primary' : 'disabled'} />
+                              </ListItemIcon>
+                              <ListItemText 
+                              primary={tenant.name} 
+                              secondary={
+                                <Typography variant="body2" 
+                                color={theme => theme.palette.mode === 'dark' ? 'text.secondary' : 'inherit'}>
+                                {`Code: ${tenant.code} | Status: ${tenant.active ? 'Active' : 'Inactive'}`}
+                                </Typography>
+                              }
+                              />
+                            </ListItem>
+                            ))}
+                          </List>
+                          </Box>
+                        )}
+                        
+                        {/* System Statistics Tab Panel */}
                 {selectedTab === 1 && (
                   <Box sx={{ py: 2 }}>
                     {/* Show the same stats cards but in a different layout */}

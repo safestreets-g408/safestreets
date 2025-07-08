@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useTheme } from '@mui/material/styles';
+import { useTheme, alpha } from '@mui/material/styles';
 import {
   Box,
   Paper,
@@ -23,7 +23,8 @@ import {
   AdminPanelSettings as AdminIcon,
   Close as CloseIcon,
   Assignment as AssignmentIcon,
-  MoreVert as MoreVertIcon
+  MoreVert as MoreVertIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { format, isToday, isYesterday } from 'date-fns';
 import { useSocket } from '../../context/SocketContext';
@@ -119,6 +120,8 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
     try {
       if (pageNum === 1) setLoading(true);
       else setLoadingMore(true);
+      
+      setError(null); // Clear previous errors
 
       const response = await chatService.getChatMessages(tenantId, pageNum);
       
@@ -133,7 +136,7 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
       setPage(pageNum);
     } catch (err) {
       console.error('Error loading messages:', err);
-      setError('Failed to load messages');
+      setError(err.message || 'Failed to load messages. Please try again.');
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -294,7 +297,123 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
     return 'Unknown User';
   }, []);
 
-
+  // Error state component
+  const renderErrorState = () => (
+    <Box 
+      sx={{ 
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        p: 3,
+        bgcolor: theme.palette.mode === 'dark'
+          ? alpha(theme.palette.background.paper, 0.8)
+          : 'rgba(255, 255, 255, 0.9)',
+      }}
+    >
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 3,
+          px: 4,
+          py: 5,
+          borderRadius: 3,
+          maxWidth: 400,
+          background: theme.palette.mode === 'dark'
+            ? alpha(theme.palette.error.dark, 0.1)
+            : 'rgba(239, 68, 68, 0.05)',
+          border: `1px solid ${theme.palette.mode === 'dark'
+            ? alpha(theme.palette.error.main, 0.3)
+            : 'rgba(239, 68, 68, 0.2)'}`,
+          boxShadow: theme.palette.mode === 'dark'
+            ? `0 4px 15px ${alpha(theme.palette.error.dark, 0.15)}`
+            : '0 4px 15px rgba(239, 68, 68, 0.1)',
+        }}
+      >
+        <Box
+          sx={{
+            width: 70,
+            height: 70,
+            borderRadius: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: theme.palette.mode === 'dark'
+              ? alpha(theme.palette.error.dark, 0.15)
+              : 'rgba(239, 68, 68, 0.1)',
+            border: `1px solid ${theme.palette.mode === 'dark'
+              ? alpha(theme.palette.error.main, 0.3)
+              : 'rgba(239, 68, 68, 0.2)'}`,
+            boxShadow: theme.palette.mode === 'dark'
+              ? `0 2px 10px ${alpha(theme.palette.error.dark, 0.15)}`
+              : '0 2px 10px rgba(239, 68, 68, 0.1)',
+          }}
+        >
+          <RefreshIcon 
+            sx={{ 
+              color: theme.palette.error.main, 
+              fontSize: 36,
+            }} 
+          />
+        </Box>
+        
+        <Box sx={{ textAlign: 'center' }}>
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              fontWeight: 600, 
+              mb: 1.5,
+              color: theme.palette.error.main,
+            }}
+          >
+            Failed to Load Messages
+          </Typography>
+          <Typography 
+            variant="body2" 
+            color="text.secondary"
+            sx={{
+              mb: 3,
+              lineHeight: 1.6,
+              maxWidth: 320,
+            }}
+          >
+            {error || 'Unable to load chat messages. This could be due to a network issue or server problem.'}
+          </Typography>
+          
+          <IconButton
+            size="large"
+            onClick={() => loadMessages()}
+            sx={{ 
+              bgcolor: theme.palette.mode === 'dark'
+                ? alpha(theme.palette.primary.dark, 0.15)
+                : 'rgba(139, 92, 246, 0.1)',
+              color: '#6d28d9',
+              width: 60,
+              height: 60,
+              border: `1px solid ${theme.palette.mode === 'dark'
+                ? alpha(theme.palette.primary.main, 0.3)
+                : 'rgba(139, 92, 246, 0.2)'}`,
+              '&:hover': { 
+                bgcolor: theme.palette.mode === 'dark'
+                  ? alpha(theme.palette.primary.dark, 0.25)
+                  : 'rgba(139, 92, 246, 0.15)',
+                transform: 'scale(1.05)',
+                boxShadow: theme.palette.mode === 'dark'
+                  ? `0 4px 12px ${alpha(theme.palette.primary.dark, 0.2)}`
+                  : '0 4px 12px rgba(139, 92, 246, 0.15)',
+              },
+              transition: 'all 0.2s ease-in-out'
+            }}
+          >
+            <RefreshIcon sx={{ fontSize: 28 }} />
+          </IconButton>
+        </Box>
+      </Box>
+    </Box>
+  );
 
   if (loading) {
     return (
@@ -316,8 +435,12 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
         {/* Header Skeleton */}
         <Box sx={{ 
           p: 3, 
-          background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%)',
-          borderBottom: '1px solid rgba(139, 92, 246, 0.15)',
+          background: theme.palette.mode === 'dark'
+            ? alpha(theme.palette.primary.dark, 0.1)
+            : 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%)',
+          borderBottom: `1px solid ${theme.palette.mode === 'dark'
+            ? alpha(theme.palette.primary.dark, 0.2)
+            : 'rgba(139, 92, 246, 0.15)'}`,
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'space-between' 
@@ -338,7 +461,9 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
           p: 3,
           display: 'flex',
           flexDirection: 'column',
-          background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(249, 250, 251, 0.95) 100%)',
+          background: theme.palette.mode === 'dark'
+            ? alpha(theme.palette.background.default, 0.5)
+            : 'linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(249, 250, 251, 0.95) 100%)',
         }}>
           <Box 
             sx={{ 
@@ -395,6 +520,29 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
     );
   }
 
+  // Show error state if there is an error and not currently loading
+  if (error && !loading) {
+    return (
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          height: '100%', 
+          display: 'flex', 
+          flexDirection: 'column',
+          borderRadius: 3,
+          overflow: 'hidden',
+          border: '1px solid rgba(255, 255, 255, 0.8)',
+          bgcolor: 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(10px)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
+          position: 'relative',
+        }}
+      >
+        {renderErrorState()}
+      </Paper>
+    );
+  }
+
   return (
     <Paper 
       elevation={0} 
@@ -404,17 +552,27 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
         flexDirection: 'column',
         borderRadius: 3,
         overflow: 'hidden',
-        border: '1px solid rgba(255, 255, 255, 0.8)',
-        bgcolor: 'rgba(255, 255, 255, 0.8)',
+        border: `1px solid ${theme.palette.mode === 'dark' 
+          ? alpha(theme.palette.background.paper, 0.8) 
+          : 'rgba(255, 255, 255, 0.8)'}`,
+        bgcolor: theme.palette.mode === 'dark' 
+          ? alpha(theme.palette.background.paper, 0.8)
+          : 'rgba(255, 255, 255, 0.8)',
         backdropFilter: 'blur(10px)',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
+        boxShadow: theme.palette.mode === 'dark' 
+          ? `0 8px 32px ${alpha(theme.palette.common.black, 0.2)}`
+          : '0 8px 32px rgba(0, 0, 0, 0.08)',
       }}
     >
       {/* Enhanced Header */}
       <Box sx={{ 
         p: 3, 
-        background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%)',
-        borderBottom: '1px solid rgba(139, 92, 246, 0.15)',
+        background: theme.palette.mode === 'dark'
+          ? alpha(theme.palette.primary.dark, 0.1)
+          : 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%)',
+        borderBottom: `1px solid ${theme.palette.mode === 'dark'
+          ? alpha(theme.palette.primary.dark, 0.2)
+          : 'rgba(139, 92, 246, 0.15)'}`,
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'space-between' 
@@ -442,7 +600,7 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
               height: 14,
               borderRadius: '50%',
               bgcolor: theme.palette.success.main,
-              border: '2px solid white',
+              border: `2px solid ${theme.palette.mode === 'dark' ? theme.palette.background.paper : 'white'}`,
               boxShadow: '0 2px 5px rgba(16, 185, 129, 0.3)',
             }} />
           </Box>
@@ -477,10 +635,16 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
         <IconButton 
           onClick={onClose}
           sx={{ 
-            bgcolor: 'rgba(255, 255, 255, 0.8)',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+            bgcolor: theme.palette.mode === 'dark' 
+              ? alpha(theme.palette.background.paper, 0.8) 
+              : 'rgba(255, 255, 255, 0.8)',
+            boxShadow: theme.palette.mode === 'dark'
+              ? `0 2px 8px ${alpha(theme.palette.common.black, 0.2)}`
+              : '0 2px 8px rgba(0, 0, 0, 0.05)',
             '&:hover': { 
-              bgcolor: 'rgba(255, 255, 255, 0.95)',
+              bgcolor: theme.palette.mode === 'dark'
+                ? alpha(theme.palette.background.paper, 0.95)
+                : 'rgba(255, 255, 255, 0.95)',
               transform: 'scale(1.05)'
             },
             transition: 'all 0.2s ease-in-out'
@@ -499,7 +663,9 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
           p: 3,
           display: 'flex',
           flexDirection: 'column',
-          background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(249, 250, 251, 0.95) 100%)',
+          background: theme.palette.mode === 'dark'
+            ? alpha(theme.palette.background.default, 0.5)
+            : 'linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(249, 250, 251, 0.95) 100%)',
           '&::-webkit-scrollbar': {
             width: '6px',
           },
@@ -561,7 +727,7 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
                     <Typography 
                       variant="caption" 
                       sx={{ 
-                        color: '#6b7280', 
+                        color: theme.palette.mode === 'dark' ? theme.palette.text.secondary : '#6b7280', 
                         mb: 0,
                         fontSize: '0.75rem',
                         fontWeight: 500,
@@ -581,7 +747,9 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
                     maxWidth: '75%',
                     bgcolor: isOwn 
                       ? 'primary.main'
-                      : 'rgba(255, 255, 255, 0.9)',
+                      : theme.palette.mode === 'dark' 
+                        ? alpha(theme.palette.background.paper, 0.7)
+                        : 'rgba(255, 255, 255, 0.9)',
                     color: isOwn ? 'white' : 'text.primary',
                     p: 2,
                     borderRadius: isOwn ? '20px 4px 20px 20px' : '4px 20px 20px 20px',
@@ -589,12 +757,22 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
                     flexDirection: 'column',
                     gap: 1,
                     boxShadow: isOwn 
-                      ? '0 5px 15px rgba(139, 92, 246, 0.25)'
-                      : '0 3px 10px rgba(0, 0, 0, 0.05)',
-                    border: isOwn ? 'none' : '1px solid rgba(226, 232, 240, 0.8)',
+                      ? theme.palette.mode === 'dark'
+                        ? `0 5px 15px ${alpha(theme.palette.primary.main, 0.3)}`
+                        : '0 5px 15px rgba(139, 92, 246, 0.25)'
+                      : theme.palette.mode === 'dark'
+                        ? `0 3px 10px ${alpha(theme.palette.common.black, 0.2)}`
+                        : '0 3px 10px rgba(0, 0, 0, 0.05)',
+                    border: isOwn 
+                      ? 'none' 
+                      : `1px solid ${theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.divider, 0.5)
+                          : 'rgba(226, 232, 240, 0.8)'}`,
                     background: isOwn 
                       ? 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)' 
-                      : 'rgba(255, 255, 255, 0.9)',
+                      : theme.palette.mode === 'dark'
+                        ? alpha(theme.palette.background.paper, 0.7)
+                        : 'rgba(255, 255, 255, 0.9)',
                     backdropFilter: 'blur(10px)',
                     position: 'relative',
                   }}
@@ -608,7 +786,9 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
                       )}
                       <Typography variant="caption" sx={{ 
                         fontWeight: 700, 
-                        color: message.senderRole === 'super_admin' ? '#8b5cf6' : '#3b82f6',
+                        color: message.senderRole === 'super_admin' 
+                          ? theme.palette.mode === 'dark' ? theme.palette.primary.light : '#8b5cf6' 
+                          : theme.palette.mode === 'dark' ? theme.palette.primary.light : '#3b82f6',
                         fontSize: '0.8rem',
                       }}>
                         {renderSenderName(message.senderName)}
@@ -619,9 +799,15 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
                         sx={{ 
                           height: 20, 
                           fontSize: '0.65rem',
-                          bgcolor: message.senderRole === 'super_admin' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                          color: message.senderRole === 'super_admin' ? '#8b5cf6' : '#3b82f6',
-                          border: `1px solid ${message.senderRole === 'super_admin' ? 'rgba(139, 92, 246, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`,
+                          bgcolor: message.senderRole === 'super_admin' 
+                            ? theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.15) : 'rgba(139, 92, 246, 0.1)'
+                            : theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.15) : 'rgba(59, 130, 246, 0.1)',
+                          color: message.senderRole === 'super_admin'
+                            ? theme.palette.mode === 'dark' ? theme.palette.primary.light : '#8b5cf6'
+                            : theme.palette.mode === 'dark' ? theme.palette.primary.light : '#3b82f6',
+                          border: `1px solid ${message.senderRole === 'super_admin' 
+                            ? theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.3) : 'rgba(139, 92, 246, 0.3)'
+                            : theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.3) : 'rgba(59, 130, 246, 0.3)'}`,
                           fontWeight: 600,
                           '& .MuiChip-label': {
                             px: 1,
@@ -782,14 +968,21 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
           sx={{ 
             m: 2,
             borderRadius: 3,
-            border: '1px solid rgba(239, 68, 68, 0.2)',
-            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.1)',
+            border: `1px solid ${theme.palette.mode === 'dark' 
+              ? alpha(theme.palette.error.main, 0.3) 
+              : 'rgba(239, 68, 68, 0.2)'}`,
+            boxShadow: theme.palette.mode === 'dark'
+              ? `0 4px 12px ${alpha(theme.palette.error.main, 0.2)}`
+              : '0 4px 12px rgba(239, 68, 68, 0.1)',
+            backgroundColor: theme.palette.mode === 'dark' 
+              ? alpha(theme.palette.error.dark, 0.2)
+              : undefined,
             '& .MuiAlert-message': {
               fontSize: '0.9rem',
               fontWeight: 500,
             },
             '& .MuiAlert-icon': {
-              color: '#ef4444'
+              color: theme.palette.error.main
             }
           }}
         >
@@ -800,8 +993,12 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
       {/* Enhanced Message input */}
       <Box sx={{ 
         p: 3, 
-        borderTop: '1px solid rgba(226, 232, 240, 0.8)',
-        background: 'rgba(249, 250, 251, 0.8)',
+        borderTop: `1px solid ${theme.palette.mode === 'dark' 
+          ? alpha(theme.palette.divider, 0.6) 
+          : 'rgba(226, 232, 240, 0.8)'}`,
+        background: theme.palette.mode === 'dark'
+          ? alpha(theme.palette.background.paper, 0.8)
+          : 'rgba(249, 250, 251, 0.8)',
         backdropFilter: 'blur(10px)',
       }}>
         <TextField
@@ -824,9 +1021,15 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
           sx={{
             '& .MuiOutlinedInput-root': {
               borderRadius: '24px',
-              bgcolor: 'white',
-              boxShadow: '0 2px 12px rgba(0, 0, 0, 0.04)',
-              border: '1px solid rgba(226, 232, 240, 0.8)',
+              bgcolor: theme.palette.mode === 'dark' 
+                ? alpha(theme.palette.background.default, 0.6) 
+                : 'white',
+              boxShadow: theme.palette.mode === 'dark'
+                ? `0 2px 12px ${alpha(theme.palette.common.black, 0.15)}`
+                : '0 2px 12px rgba(0, 0, 0, 0.04)',
+              border: `1px solid ${theme.palette.mode === 'dark'
+                ? alpha(theme.palette.divider, 0.6)
+                : 'rgba(226, 232, 240, 0.8)'}`,
               '& fieldset': {
                 borderColor: 'transparent',
               },
@@ -858,7 +1061,7 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
                   size="small"
                   sx={{
                     color: '#6b7280',
-                    '&:hover': { color: '#8b5cf6' },
+                    '&:hover': { color: '#8bcf6' },
                   }}
                 >
                   <MoreVertIcon />
