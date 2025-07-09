@@ -677,35 +677,12 @@ const CameraScreen = ({ navigation }) => {
         tenantId: fieldWorker.tenant
       });
 
-      // Submit the report to the database with retries if needed
+      // Prepare final submission data based on whether we have AI analysis or not
       let submittedReport = null;
       let retryCount = 0;
       const maxRetries = 2;
       
-      while (retryCount <= maxRetries) {
-        try {
-          submittedReport = await submitNewReport(reportData, capturedImage.uri);
-          
-          if (submittedReport && submittedReport._id) {
-            console.log('Report submitted successfully with ID:', submittedReport._id);
-            break; // Success, exit the retry loop
-          } else {
-            throw new Error('Server returned empty response');
-          }
-        } catch (submitError) {
-          console.error(`Report submission attempt ${retryCount + 1} failed:`, submitError.message);
-          
-          if (retryCount === maxRetries) {
-            throw new Error(`Failed to submit report after ${maxRetries + 1} attempts: ${submitError.message}`);
-          }
-          
-          // Wait before retrying (exponential backoff)
-          await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount)));
-          retryCount++;
-        }
-      }
-
-      // Save AI analysis data into AiReports collection
+      // If we have AI analysis, submit directly as an AI report with the annotated image
       if (aiAnalysis) {
         try {
           // Validate that annotated image is a proper base64 string
@@ -719,19 +696,18 @@ const CameraScreen = ({ navigation }) => {
               annotatedImage = aiAnalysis.classification.annotatedImage;
               console.log('Valid annotated image detected, length:', annotatedImage.length);
               
-              // Check if image is too large, log warning but still try to submit
               if (annotatedImage.length > 900000) {
                 console.warn('Annotated image is large:', Math.round(annotatedImage.length/1024), 'KB, may cause issues');
               }
             } else {
-              console.log('Invalid annotated image detected, not sending to server');
+              console.log('Invalid annotated image detected, using original image instead');
             }
           }
           
           // Prepare location data carefully - use the actual address from location data
           let locationData = {};
           if (location?.coords) {
-            // Use the proper formatted address from location.addressDetails, not currentAddress which might be contaminated
+            // Use the proper formatted address from location.addressDetails
             let actualAddress = location?.addressDetails?.formattedAddress || locationAddress || 'Location data available without address';
             
             // Safety check: ensure the address doesn't contain AI analysis text
@@ -745,7 +721,7 @@ const CameraScreen = ({ navigation }) => {
               address: actualAddress
             };
           } else {
-            // Fallback to locationAddress (the reverse geocoded address) not currentAddress
+            // Fallback to locationAddress (the reverse geocoded address)
             let fallbackAddress = locationAddress || 'Address not available';
             
             // Safety check for fallback address too
@@ -763,67 +739,92 @@ const CameraScreen = ({ navigation }) => {
             locationAddress,
             formattedAddress: location?.addressDetails?.formattedAddress,
             finalAddress: locationData.address,
-            coordinates: locationData.coordinates
+            hasCoordinates: !!locationData.coordinates
           });
           
-          // Create AI report object with YOLOv8 results directly
+          // Create AI report object with all the necessary data
           const aiReport = {
-            imageId: submittedReport?._id || new Date().toISOString(), // Use the report ID or timestamp as reference
+            // Required core fields for AiReport model
             tenant: fieldWorker.tenant,
             predictionClass: aiAnalysis?.classification?.damageClass || 'Unknown',
             damageType: aiAnalysis?.classification?.damageType || 'Road Damage',
             severity: aiAnalysis?.classification?.severity || 'Medium',
             priority: aiAnalysis?.classification?.severity === 'High' ? 8 : aiAnalysis?.classification?.severity === 'Medium' ? 5 : 3,
-            annotatedImageBase64: annotatedImage,
+            
+            // Use the annotated image if available, otherwise use the original image
+            annotatedImageBase64: annotatedImage || imageBase64 || '',
+            
+            // Location data structured as expected by the model
             location: locationData,
+            
+            // Additional fields for compatibility
+            description: reportData.description || '',
+            region: reportData.region || 'Default Region',
             createdAt: new Date().toISOString()
           };
-
-          console.log('YOLOv8 AI Report data preparing to submit:', {
-            hasAnnotatedImage: !!annotatedImage,
-            imageSize: annotatedImage ? `${Math.round(annotatedImage.length / 1024)}KB` : 'N/A',
-            predictionClass: aiReport.predictionClass,
+          
+          console.log('Report data prepared for submission:', {
             damageType: aiReport.damageType,
             severity: aiReport.severity,
-            reportId: submittedReport?._id
+            hasAnnotatedImage: !!(aiReport.annotatedImageBase64),
+            imageSize: aiReport.annotatedImageBase64 ? `${Math.round(aiReport.annotatedImageBase64.length / 1024)}KB` : 'N/A'
           });
-
-          // Submit the AI report immediately with retries
-          let aiRetryCount = 0;
-          const maxAiRetries = 2;
           
-          const submitAiReportWithRetry = async () => {
+          // Submit the AI report with retries
+          while (retryCount <= maxRetries) {
             try {
-              const savedAiReport = await submitAiReport(aiReport);
-              if (savedAiReport) {
-                console.log('AI report saved successfully:', savedAiReport?._id);
-                return true;
+              // Use the submitAiReport function which properly formats the data for the /ai-reports endpoint
+              submittedReport = await submitAiReport(aiReport);
+              
+              if (submittedReport && (submittedReport._id || submittedReport.id)) {
+                console.log('AI report submitted successfully with ID:', submittedReport._id || submittedReport.id);
+                break; // Success, exit the retry loop
               } else {
-                console.log('AI report submission returned no data');
-                return false;
+                throw new Error('Server returned empty response');
               }
-            } catch (aiError) {
-              console.error(`AI report submission attempt ${aiRetryCount + 1} failed:`, aiError.message);
-              return false;
-            }
-          };
-          
-          // Try to submit AI report with retries
-          while (aiRetryCount <= maxAiRetries) {
-            const success = await submitAiReportWithRetry();
-            if (success) break;
-            
-            aiRetryCount++;
-            if (aiRetryCount <= maxAiRetries) {
+            } catch (submitError) {
+              console.error(`AI report submission attempt ${retryCount + 1} failed:`, submitError.message);
+              
+              if (retryCount === maxRetries) {
+                throw new Error(`Failed to submit report after ${maxRetries + 1} attempts: ${submitError.message}`);
+              }
+              
               // Wait before retrying (exponential backoff)
-              const delay = 1000 * Math.pow(2, aiRetryCount - 1);
-              console.log(`Retrying AI report submission in ${delay/1000}s...`);
-              await new Promise(resolve => setTimeout(resolve, delay));
+              await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount)));
+              retryCount++;
             }
           }
-        } catch (aiReportError) {
-          console.log('AI report submission failed but continuing:', aiReportError.message);
-          // Non-critical error, continue with user flow
+        } catch (aiError) {
+          console.error('Error submitting AI report, falling back to standard report:', aiError.message);
+          // Reset retry count to try standard submission
+          retryCount = 0;
+          // Fall through to standard report submission as backup
+        }
+      } 
+      
+      // If no AI analysis or AI submission failed, submit as a standard damage report
+      if (!submittedReport) {
+        while (retryCount <= maxRetries) {
+          try {
+            submittedReport = await submitNewReport(reportData, capturedImage.uri);
+            
+            if (submittedReport && (submittedReport._id || submittedReport.id)) {
+              console.log('Standard report submitted successfully with ID:', submittedReport._id || submittedReport.id);
+              break; // Success, exit the retry loop
+            } else {
+              throw new Error('Server returned empty response');
+            }
+          } catch (submitError) {
+            console.error(`Standard report submission attempt ${retryCount + 1} failed:`, submitError.message);
+            
+            if (retryCount === maxRetries) {
+              throw new Error(`Failed to submit report after ${maxRetries + 1} attempts: ${submitError.message}`);
+            }
+            
+            // Wait before retrying (exponential backoff)
+            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount)));
+            retryCount++;
+          }
         }
       }
 
