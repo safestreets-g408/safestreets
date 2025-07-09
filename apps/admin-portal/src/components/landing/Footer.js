@@ -113,7 +113,7 @@ const Footer = () => {
             </Typography>
             
             <Stack spacing={1.5}>
-              {['Features', 'Benefits', 'Pricing', 'Demo', 'Documentation'].map((item) => (
+              {['Features', 'Benefits', 'Pricing', 'Demo'].map((item) => (
                 <Typography
                   key={item}
                   variant="body2"
@@ -131,6 +131,23 @@ const Footer = () => {
                   {item}
                 </Typography>
               ))}
+              <Typography
+                variant="body2"
+                component="a"
+                href="https://safestreets.gitbook.io/safestreets"
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{
+                  color: 'text.secondary',
+                  textDecoration: 'none',
+                  transition: 'color 0.2s',
+                  '&:hover': {
+                    color: 'primary.main',
+                  },
+                }}
+              >
+                Documentation
+              </Typography>
             </Stack>
           </Grid>
           
