@@ -18,46 +18,81 @@ from .model_compatibility import RobustModelLoader
 
 
 class ViTClassifier(torch.nn.Module):
-    """Vision Transformer classifier for road damage detection"""
+    """Vision Transformer classifier for road damage detection using HuggingFace ViT model"""
     
-    def __init__(self, num_classes: int):
+    def __init__(self, num_classes: int, pretrained_model_name="google/vit-base-patch16-224-in21k"):
         super(ViTClassifier, self).__init__()
-        from torchvision.models.vision_transformer import vit_b_16
-        self.vit = vit_b_16(pretrained=True)
-        # Get the original classifier input features
-        original_in_features = self.vit.heads.head.in_features
-        # Replace the original classifier with our custom one
-        self.vit.heads.head = torch.nn.Linear(original_in_features, num_classes)
-        self.bbox_regressor = torch.nn.Linear(original_in_features, 4)  # x, y, width, height
+        try:
+            # Try to import the transformers package
+            from transformers import ViTForImageClassification
+            # Load pretrained ViT
+            self.vit = ViTForImageClassification.from_pretrained(
+                pretrained_model_name,
+                num_labels=num_classes,
+                ignore_mismatched_sizes=True
+            )
+            # Use transformers implementation
+            self.using_transformers = True
+        except ImportError:
+            # Fallback to torchvision implementation if transformers not available
+            from torchvision.models.vision_transformer import vit_b_16
+            self.vit = vit_b_16(pretrained=True)
+            # Get the original classifier input features
+            original_in_features = self.vit.heads.head.in_features
+            # Replace the original classifier with our custom one
+            self.vit.heads.head = torch.nn.Linear(original_in_features, num_classes)
+            self.using_transformers = False
+
+        # Get hidden size based on implementation
+        if self.using_transformers:
+            hidden_size = self.vit.config.hidden_size
+        else:
+            hidden_size = self.vit.heads.head.in_features
+
+        # Bbox regression head
+        self.bbox_regressor = torch.nn.Sequential(
+            torch.nn.Linear(hidden_size, 256),
+            torch.nn.ReLU(),
+            torch.nn.Linear(256, 4)  # 4 outputs for [x_min, y_min, x_max, y_max]
+        )
 
     def forward(self, x):
-        # Use the standard forward pass
-        batch_size = x.shape[0]
-        # Reshape and permute the input tensor
-        x = self.vit._process_input(x)
-        n = x.shape[0]
-
-        # Expand the class token to the full batch
-        batch_class_token = self.vit.class_token.expand(n, -1, -1)
-        x = torch.cat([batch_class_token, x], dim=1)
-
-        # Apply encoder
-        x = self.vit.encoder(x)
-
-        # Classifier "token" as used by standard language architectures
-        cls_token = x[:, 0]
+        if self.using_transformers:
+            # Forward pass through transformers ViT
+            outputs = self.vit(
+                pixel_values=x,
+                output_hidden_states=True
+            )
+            # Get classification logits
+            class_logits = outputs.logits
+            # Extract hidden state from the [CLS] token
+            cls_token = outputs.hidden_states[-1][:, 0]
+        else:
+            # Use the standard torchvision forward pass
+            x = self.vit._process_input(x)
+            n = x.shape[0]
+            # Expand the class token to the full batch
+            batch_class_token = self.vit.class_token.expand(n, -1, -1)
+            x = torch.cat([batch_class_token, x], dim=1)
+            # Apply encoder
+            x = self.vit.encoder(x)
+            # Classifier "token" as used by standard language architectures
+            cls_token = x[:, 0]
+            # Get classification output
+            class_logits = self.vit.heads.head(cls_token)
         
-        # Get classification output
-        class_output = self.vit.heads.head(cls_token)
-        # Get bounding box output
-        bbox_output = self.bbox_regressor(cls_token)
+        # Bbox prediction
+        bbox_pred = self.bbox_regressor(cls_token)
+        # Apply sigmoid to ensure predictions are between 0 and 1
+        bbox_pred = torch.sigmoid(bbox_pred)
         
-        return class_output, bbox_output
+        return class_logits, bbox_pred
 
 
 # Global model variables
 MODEL = None
 CLASS_NAMES = []
+FEATURE_EXTRACTOR = None
 TRANSFORM = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
@@ -67,19 +102,28 @@ TRANSFORM = transforms.Compose([
 
 def load_vit_model() -> bool:
     """Load the ViT model and class names"""
-    global MODEL, CLASS_NAMES
+    global MODEL, CLASS_NAMES, FEATURE_EXTRACTOR
     
     try:
         print("Loading ViT model...")
         start_time = time.time()
         
-        # Load class names
+        # Load damage type class names
         if os.path.exists(CLASS_NAMES_PATH):
             with open(CLASS_NAMES_PATH, 'r') as f:
                 CLASS_NAMES = f.read().splitlines()
         else:
             print(f"Warning: Class names file not found at {CLASS_NAMES_PATH}")
-            CLASS_NAMES = ["D00", "D10", "D20", "D40", "D50", "D60"]  # Default classes
+            CLASS_NAMES = ["D00", "D01", "D10", "D11", "D20", "D40", "D43", "D44"]  # Default damage classes
+        
+        # Initialize feature extractor
+        try:
+            from transformers import ViTFeatureExtractor
+            FEATURE_EXTRACTOR = ViTFeatureExtractor.from_pretrained("google/vit-base-patch16-224-in21k")
+            print("Using HuggingFace feature extractor")
+        except ImportError:
+            print("Transformers package not available, using standard transforms")
+            FEATURE_EXTRACTOR = None
         
         # Create model instance
         model = ViTClassifier(num_classes=len(CLASS_NAMES))
@@ -88,34 +132,59 @@ def load_vit_model() -> bool:
         if not os.path.exists(VIT_MODEL_PATH):
             print(f"Error: ViT model file not found at {VIT_MODEL_PATH}")
             return False
-            
+        
         try:
-            # Try to load as TorchScript first
-            MODEL = torch.jit.load(VIT_MODEL_PATH)
-            print("ViT model loaded as TorchScript")
-        except Exception as e:
-            print(f"TorchScript loading failed: {e}, trying state dict...")
-            # Try to load as state dict
+            # Try loading the model
+            print(f"Loading model from {VIT_MODEL_PATH}")
             checkpoint = torch.load(VIT_MODEL_PATH, map_location="cpu")
             
+            # Handle different checkpoint formats
             if isinstance(checkpoint, dict):
-                if 'model_state_dict' in checkpoint:
+                # Extract the state dict
+                if 'model' in checkpoint:
+                    state_dict = checkpoint['model']
+                elif 'model_state_dict' in checkpoint:
                     state_dict = checkpoint['model_state_dict']
                 elif 'state_dict' in checkpoint:
                     state_dict = checkpoint['state_dict']
                 else:
                     state_dict = checkpoint
+                
+                # Check if we need to map keys for transformers models
+                for key in list(state_dict.keys()):
+                    # Adapt keys if needed for DamageViTModel structure from notebook
+                    if key.startswith('vit.vit.'):
+                        fixed_key = key.replace('vit.vit.', 'vit.')
+                        state_dict[fixed_key] = state_dict.pop(key)
+                    if key.startswith('bbox_regressor.') and 'bbox_regressor' not in dir(model):
+                        # For compatibility with the notebook model structure
+                        state_dict.pop(key)
             else:
                 state_dict = checkpoint
-                
+            
             # Try to load state dict with flexible key matching
             try:
                 model.load_state_dict(state_dict, strict=False)
-                MODEL = model
                 print("ViT model loaded from state dict")
-            except Exception as e2:
-                print(f"State dict loading failed: {e2}")
-                return False
+            except Exception as e:
+                print(f"Initial state dict loading failed: {e}")
+                print("Attempting to load with model compatibility layer...")
+                
+                # Try using a compatibility layer for more flexible loading
+                loader = RobustModelLoader(model)
+                success = loader.load_state_dict(state_dict)
+                
+                if not success:
+                    print("Failed to load the model with compatibility layer")
+                    return False
+                else:
+                    print("Model loaded successfully with compatibility layer")
+            
+            MODEL = model
+        except Exception as e:
+            print(f"Error loading model: {e}")
+            print(traceback.format_exc())
+            return False
         
         # Set to evaluation mode
         MODEL.eval()
@@ -123,6 +192,7 @@ def load_vit_model() -> bool:
         return True
     except Exception as e:
         print(f"Error loading ViT model: {e}")
+        print(traceback.format_exc())
         return False
 
 
@@ -136,7 +206,7 @@ def predict_from_base64(base64_string: str) -> Dict[str, Any]:
     Returns:
         Dictionary containing prediction results
     """
-    global MODEL
+    global MODEL, FEATURE_EXTRACTOR
     
     # Ensure model is loaded
     if MODEL is None:
@@ -155,22 +225,42 @@ def predict_from_base64(base64_string: str) -> Dict[str, Any]:
         if ',' in base64_string:
             base64_string = base64_string.split(',')[1]
             
-        # Decode and transform image
+        # Decode image
         img_bytes = base64.b64decode(base64_string)
         img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
         original_size = img.size
-        input_tensor = TRANSFORM(img).unsqueeze(0)
+        
+        # Transform image based on available tools
+        if FEATURE_EXTRACTOR is not None:
+            # Use Hugging Face feature extractor
+            inputs = FEATURE_EXTRACTOR(images=img, return_tensors="pt")
+            input_tensor = inputs['pixel_values']
+        else:
+            # Use traditional PyTorch transform
+            input_tensor = TRANSFORM(img).unsqueeze(0)
 
         with torch.no_grad():
             try:
+                # Get model predictions
                 outputs = MODEL(input_tensor)
-                # Unpack outputs
-                if hasattr(outputs, 'logits'):
+                
+                # Handle different output formats
+                if hasattr(outputs, 'logits') and hasattr(outputs, 'bbox_pred'):
+                    # For notebook model format (dictionary output)
+                    logits = outputs['class_logits']
+                    bbox_output = outputs['bbox_pred']
+                elif hasattr(outputs, 'logits'):
+                    # For HuggingFace models
                     logits = outputs.logits
-                    bbox_output = torch.zeros((1, 4))
+                    if hasattr(outputs, 'bbox_pred'):
+                        bbox_output = outputs.bbox_pred
+                    else:
+                        bbox_output = torch.zeros((1, 4))
                 elif isinstance(outputs, tuple) and len(outputs) == 2:
+                    # For our custom model with tuple output
                     logits, bbox_output = outputs
                 else:
+                    # Fallback
                     logits = outputs
                     bbox_output = torch.zeros((1, 4))
 
@@ -186,46 +276,48 @@ def predict_from_base64(base64_string: str) -> Dict[str, Any]:
                 pred_class = CLASS_NAMES[pred_idx] if pred_idx < len(CLASS_NAMES) else "Unknown"
                 confidence_score = float(confidence.item())
 
-                # Advanced bounding box processing
-                # First, normalize model outputs for better bounding box prediction
+                # Process bounding box output
                 bbox_arr = bbox_output[0].cpu().numpy()
                 w, h = original_size
                 
-                # Get raw coordinates from model output
-                x_center, y_center, box_w, box_h = bbox_arr.tolist()
-                
-                # Apply sigmoid to center coordinates to constrain them to [0, 1]
-                x_center = 1 / (1 + np.exp(-x_center))
-                y_center = 1 / (1 + np.exp(-y_center))
-                
-                # Ensure positive box dimensions using exponential function for width/height
-                # This gives a better spread of values and avoids very small boxes
-                box_w = np.exp(min(box_w, 2))  # Limit max box size 
-                box_h = np.exp(min(box_h, 2))  # Limit max box size
-                
-                # Scale box size based on confidence (higher confidence = larger box)
-                # This helps for cases where the model is uncertain
-                conf_scaling = max(0.5, min(1.5, confidence_score * 2))
-                box_w = min(0.8, box_w * conf_scaling / 10)  # Limit to 80% of image width
-                box_h = min(0.8, box_h * conf_scaling / 10)  # Limit to 80% of image height
-                
-                # Use damage class to adjust box size (certain damages tend to be larger/smaller)
-                if pred_class in ["D40", "D43", "D44"]:  # Large damage classes
-                    box_w *= 1.2
-                    box_h *= 1.2
-                elif pred_class in ["D00", "D10"]:  # Small damage classes
-                    box_w *= 0.8
-                    box_h *= 0.8
+                # The new model outputs direct normalized coordinates [x_min, y_min, x_max, y_max]
+                # instead of [x_center, y_center, width, height]
+                if len(bbox_arr) == 4:
+                    x_min, y_min, x_max, y_max = bbox_arr.tolist()
+                    
+                    # Convert normalized coordinates to pixel values
+                    x1 = max(0, int(x_min * w))
+                    y1 = max(0, int(y_min * h))
+                    x2 = min(w, int(x_max * w))
+                    y2 = min(h, int(y_max * h))
+                    
+                    # Ensure box size is reasonable
+                    if x2 <= x1:
+                        x2 = min(w, x1 + w//10)
+                    if y2 <= y1:
+                        y2 = min(h, y1 + h//10)
+                else:
+                    # Fallback to center-based calculation
+                    # Get raw coordinates from model output (center format)
+                    x_center, y_center, box_w, box_h = bbox_arr.tolist()
+                    
+                    # Apply sigmoid to center coordinates to constrain them to [0, 1]
+                    x_center = 1 / (1 + np.exp(-x_center))
+                    y_center = 1 / (1 + np.exp(-y_center))
+                    
+                    # Ensure positive box dimensions
+                    box_w = np.exp(min(box_w, 2)) / 10  # Scaled for better defaults
+                    box_h = np.exp(min(box_h, 2)) / 10
+                    
+                    # Calculate box coordinates with normalized values
+                    x1 = max(0, int((x_center - box_w / 2) * w))
+                    y1 = max(0, int((y_center - box_h / 2) * h))
+                    x2 = min(w, int((x_center + box_w / 2) * w))
+                    y2 = min(h, int((y_center + box_h / 2) * h))
                 
                 # Ensure minimum box size relative to image dimensions
                 min_box_w = w * 0.1  # At least 10% of image width
                 min_box_h = h * 0.1  # At least 10% of image height
-                
-                # Calculate box coordinates with normalized values
-                x1 = max(0, int((x_center - box_w / 2) * w))
-                y1 = max(0, int((y_center - box_h / 2) * h))
-                x2 = min(w, int((x_center + box_w / 2) * w))
-                y2 = min(h, int((y_center + box_h / 2) * h))
                 
                 # Enforce minimum box size
                 if x2 - x1 < min_box_w:

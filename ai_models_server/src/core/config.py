@@ -23,7 +23,7 @@ CORS_ORIGINS = os.getenv('CORS_ORIGINS', '*').split(',')
 API_VERSION = "2.0.0"
 
 # Model file paths
-VIT_MODEL_PATH = "models/vit_model.pth"
+VIT_MODEL_PATH = "models/vit_model.pt"
 YOLO_MODEL_PATH = "models/yolo_model.pt"
 CNN_ROAD_CLASSIFIER_PATH = "models/cnn_road_classifier.pth"  # Updated to use available .pth file
 CLASS_NAMES_PATH = "models/class_names.txt"
