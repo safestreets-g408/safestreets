@@ -9,6 +9,7 @@ Ensure you have the following installed on your system:
 - **Node.js** (v14.x or higher) - [Download here](https://nodejs.org/)
 - **MongoDB** (v4.x or higher) - [Installation guide](https://docs.mongodb.com/manual/installation/)
 - **Python** (v3.8 or higher) - [Download here](https://python.org/)
+- **Redis** (for caching) - [Download here](https://redis.io/download)
 - **Expo CLI** - Install with `npm install -g @expo/cli`
 - **Git** - [Installation guide](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 
@@ -34,13 +35,19 @@ cp .env.example .env
 # Configure your environment variables in .env:
 # MONGODB_URI=mongodb://localhost:27017/safestreets
 # JWT_SECRET=your-super-secret-jwt-key
-# PORT=5000
+# PORT=5030
 # NODE_ENV=development
+# REDIS_URL=redis://localhost:6379
 
 # Start MongoDB service (if not running)
 # On macOS with Homebrew: brew services start mongodb-community
 # On Linux: sudo systemctl start mongod
 # On Windows: net start MongoDB
+
+# Start Redis service (if not running)
+# On macOS with Homebrew: brew services start redis
+# On Linux: sudo systemctl start redis
+# On Windows: net start Redis
 
 # Start the backend server
 npm start
@@ -76,8 +83,8 @@ npx expo start
 
 ### 5. AI Model Server Setup
 ```bash
-# Open new terminal and navigate to model server
-cd vit_model_server
+# Open new terminal and navigate to AI model server
+cd ai_models_server
 
 # Create virtual environment
 python -m venv .venv
@@ -91,10 +98,35 @@ source .venv/bin/activate
 # Install Python dependencies
 pip install -r requirements.txt
 
+# Download required model files
+./scripts/download_models.sh
+
 # Start the model server
 python app.py
 
 # Model server will be available at http://localhost:5000
+```
+
+### 6. Automated Setup (Alternative)
+
+Alternatively, you can use the provided start script to launch all services:
+
+```bash
+# Make the script executable
+chmod +x start-services.sh
+
+# Run the script
+./start-services.sh
+```
+
+This script will:
+- Start the backend API server on port 5030
+- Start the AI model server on port 5000
+- Start the admin portal on port 3000
+
+You'll still need to start the mobile app separately:
+```bash
+cd apps/user-app && npx expo start
 ```
 
 ## Configuration Details

@@ -28,22 +28,27 @@ The SafeStreets platform consists of five interconnected components:
 - 📝 Task assignment and tracking for repair teams
 - 📱 Cross-platform mobile app for field workers
 - 🖥️ Feature-rich admin web portal
+- 🏢 Multi-tenant architecture for multiple organizations
+
 ## 🛠️ Technology Stack
 
 ### Core Technologies
 - **Frontend**: React.js, React Native, Material-UI, Expo
-- **Backend**: Node.js, Express.js, MongoDB
-- **AI/ML**: PyTorch, Vision Transformer (ViT), Flask, Google Gemini
+- **Backend**: Node.js, Express.js, MongoDB, Redis
+- **AI/ML**: PyTorch, Vision Transformer (ViT), YOLO, CNN, Flask, Google Gemini
 - **Authentication**: JWT, bcryptjs
 - **DevOps**: Git, npm/yarn, Nodemon, dotenv
 
 ## 🤖 AI Features
 
 ### Vision Transformer (ViT) for Image Classification
-The system uses a Vision Transformer model to detect and classify road damage from uploaded images.
+The system uses a Vision Transformer model to detect and classify road damage from uploaded images into 8 different damage categories.
 
 ### CNN-based Road Classification
 The platform features a CNN-based road classification service that validates if submitted images contain road surfaces before processing them for damage analysis, ensuring higher quality reports.
+
+### YOLO Object Detection
+The system uses YOLO (You Only Look Once) for precise localization of damage areas within road images, providing bounding box information for better visualization and analysis.
 
 ### Google Gemini Integration
 SafeStreets integrates Google's Gemini 1.5 Flash model to automatically generate professional damage report summaries based on:
@@ -61,6 +66,7 @@ This feature helps standardize report descriptions and saves time for field work
 - **Node.js** (v14.x or higher)
 - **MongoDB** (v4.x or higher)
 - **Python** (v3.8 or higher)
+- **Redis** (for caching)
 - **Expo CLI** - `npm install -g @expo/cli`
 
 ### 📦 Installation
@@ -70,7 +76,16 @@ This feature helps standardize report descriptions and saves time for field work
 
 ### 🏃‍♂️ Running the System
 
-#### Development Mode
+#### Using the Start Script
+```bash
+# Start all services (backend, admin portal, AI model server)
+./start-services.sh
+
+# Terminal 2: Mobile app (needs to be started separately)
+cd apps/user-app && npx expo start
+```
+
+#### Manual Startup
 ```bash
 # Terminal 1: Backend server
 cd backend && npm start
@@ -82,22 +97,29 @@ cd apps/admin-portal && npm start
 cd apps/user-app && npx expo start
 
 # Terminal 4: AI model server
-cd vit_model_server && python app.py
+cd ai_models_server && python app.py
 ```
 
 #### Using VS Code Tasks
 ```bash
 # Open Command Palette (Cmd+Shift+P / Ctrl+Shift+P)
 # Type "Tasks: Run Task"
-# Select "Run Backend"
+# Select "Start User App"
 ```
 
 ## 📚 Documentation
 
 For detailed documentation on various aspects of the project, please refer to:
 
+- [Architecture Overview](./docs/architecture-overview.md) - Comprehensive system architecture
 - [Setup Guide](./docs/setup-guide.md) - Detailed installation instructions
+- [Developer Guide](./docs/developer-guide.md) - Guide for developers working on the project
 - [API Documentation](./docs/api-documentation.md) - API endpoints and usage
+- [AI Model Documentation](./docs/ai-model-documentation.md) - Details on the AI/ML models
+- [Mobile App Guide](./docs/mobile-app-guide.md) - User guide for field workers
+- [Admin Portal Guide](./docs/admin-portal-guide.md) - User guide for administrators
+- [Tenant Architecture](./docs/tenant-architecture.md) - Multi-tenant implementation details
+- [Super Admin Setup](./docs/super-admin-setup.md) - Instructions for setting up super admin accounts
 - [Mobile App Guide](./docs/mobile-app-guide.md) - Field worker app documentation
 - [Admin Portal Guide](./docs/admin-portal-guide.md) - Admin dashboard documentation
 - [AI Model Documentation](./docs/ai-model-documentation.md) - ML model details
