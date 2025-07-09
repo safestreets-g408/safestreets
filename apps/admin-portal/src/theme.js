@@ -111,12 +111,14 @@ const createAppTheme = (mode) => createTheme({
     body1: {
       fontSize: '1rem',
       lineHeight: 1.5,
-      color: '#1e293b',
+      // Use theme-aware color that adjusts for dark mode
+      color: mode === 'dark' ? '#f3f4f6' : '#1e293b',
     },
     body2: {
       fontSize: '0.875rem',
       lineHeight: 1.6,
-      color: '#475569',
+      // Use theme-aware color that adjusts for dark mode
+      color: mode === 'dark' ? '#d1d5db' : '#475569',
     },
     button: {
       textTransform: 'none',
@@ -126,7 +128,7 @@ const createAppTheme = (mode) => createTheme({
     caption: {
       fontSize: '0.75rem',
       lineHeight: 1.4,
-      color: '#64748b',
+      color: mode === 'dark' ? '#a1a1aa' : '#64748b',
     },
   },
   components: {

@@ -473,10 +473,10 @@ const Dashboard = () => {
                   <ChatIcon sx={{ color: 'white', fontSize: 24 }} />
                 </Box>
                 <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5, color: '#111827' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
                     New Messages Available
                   </Typography>
-                  <Typography variant="body2" sx={{ color: '#4b5563' }}>
+                  <Typography variant="body2">
                     You have {totalUnreadMessages} unread message{totalUnreadMessages > 1 ? 's' : ''}. Click to view and respond.
                   </Typography>
                 </Box>

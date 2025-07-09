@@ -348,7 +348,7 @@ const SearchResults = () => {
                         <React.Fragment key={repair._id || repair.id || index}>
                           <ListItemButton>
                             <ListItemAvatar>
-                              <Avatar sx={{ bgcolor: '#3b82f6' }}>
+                              <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
                                 <BuildIcon />
                               </Avatar>
                             </ListItemAvatar>
@@ -373,7 +373,7 @@ const SearchResults = () => {
                                     />
                                     {repair.assignedTo && (
                                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                        <PersonIcon sx={{ fontSize: '0.875rem', color: '#6b7280' }} />
+                                        <PersonIcon sx={{ fontSize: '0.875rem', color: theme.palette.text.secondary }} />
                                         <Typography variant="body2" color="text.secondary">
                                           {typeof repair.assignedTo === 'object' ? repair.assignedTo.name : 'Assigned'}
                                         </Typography>
@@ -579,7 +579,7 @@ const SearchResults = () => {
                                   fontWeight: 500,
                                 }} 
                               />
-                              <Typography variant="caption" sx={{ color: '#6b7280' }}>
+                              <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
                                 {item.date ? new Date(item.date).toLocaleDateString() : 'Recent'}
                               </Typography>
                             </Box>
@@ -651,13 +651,13 @@ const SearchResults = () => {
                                 }} 
                               />
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <LocationOnIcon sx={{ fontSize: '0.875rem', color: '#6b7280' }} />
+                                <LocationOnIcon sx={{ fontSize: '0.875rem', color: theme.palette.text.secondary }} />
                                 <Typography variant="body2" color="text.secondary">
                                   {report.location}
                                 </Typography>
                               </Box>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <TodayIcon sx={{ fontSize: '0.875rem', color: '#6b7280' }} />
+                                <TodayIcon sx={{ fontSize: '0.875rem', color: theme.palette.text.secondary }} />
                                 <Typography variant="body2" color="text.secondary">
                                   {new Date(report.createdAt).toLocaleDateString()}
                                 </Typography>
@@ -687,7 +687,7 @@ const SearchResults = () => {
                     <React.Fragment key={repair._id || repair.id || index}>
                       <ListItemButton onClick={() => navigate(`/repairs/${repair.repairId || repair._id}`)}>
                         <ListItemAvatar>
-                          <Avatar sx={{ bgcolor: '#3b82f6' }}>
+                          <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
                             <BuildIcon />
                           </Avatar>
                         </ListItemAvatar>
@@ -711,7 +711,7 @@ const SearchResults = () => {
                               />
                               {repair.assignedTo && (
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                  <PersonIcon sx={{ fontSize: '0.875rem', color: '#6b7280' }} />
+                                  <PersonIcon sx={{ fontSize: '0.875rem', color: theme.palette.text.secondary }} />
                                   <Typography variant="body2" color="text.secondary">
                                     {typeof repair.assignedTo === 'object' ? repair.assignedTo.name : 'Assigned'}
                                   </Typography>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useTheme } from '@mui/material/styles';
+import { useTheme, alpha } from '@mui/material/styles';
 import { 
   Table, TableBody, TableCell, TableContainer, TableHead, 
   TableRow, TablePagination, Chip, IconButton, Tooltip, Box,
@@ -119,25 +119,25 @@ function ReportDataTable({ filters }) {
               }}>Report ID</TableCell>
               <TableCell sx={{ 
                 fontWeight: 600,
-                backgroundColor: '#f8f9fa',
-                borderBottom: '2px solid #e5e7eb',
-                color: '#374151',
+                backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.background.default, 0.6) : '#f8f9fa',
+                borderBottom: `2px solid ${theme.palette.divider}`,
+                color: theme.palette.text.primary,
               }}>Location</TableCell>
               <TableCell sx={{ 
                 fontWeight: 600,
-                backgroundColor: '#f8f9fa',
-                borderBottom: '2px solid #e5e7eb',
-                color: '#374151',
+                backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.background.default, 0.6) : '#f8f9fa',
+                borderBottom: `2px solid ${theme.palette.divider}`,
+                color: theme.palette.text.primary,
               }}>Region</TableCell>
               <TableCell sx={{ 
                 fontWeight: 600,
-                backgroundColor: '#f8f9fa',
-                borderBottom: '2px solid #e5e7eb',
-                color: '#374151',
+                backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.background.default, 0.6) : '#f8f9fa',
+                borderBottom: `2px solid ${theme.palette.divider}`,
+                color: theme.palette.text.primary,
               }}>Damage Type</TableCell>
               <TableCell sx={{ 
                 fontWeight: 600,
-                backgroundColor: '#f8f9fa',
+                backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.background.default, 0.6) : '#f8f9fa',
                 borderBottom: '2px solid #e5e7eb',
                 color: '#374151',
               }}>Severity</TableCell>

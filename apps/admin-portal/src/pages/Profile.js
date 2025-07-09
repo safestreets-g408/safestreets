@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTheme, alpha } from '@mui/material/styles';
 import {
   Box,
   Container,
@@ -52,6 +53,7 @@ const colors = {
 };
 
 const Profile = () => {
+  const theme = useTheme();
   const [tabValue, setTabValue] = useState(0);
   const [editMode, setEditMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -156,7 +158,7 @@ const Profile = () => {
   };
 
   return (
-    <Box sx={{ flexGrow: 1, minHeight: "100vh", bgcolor: "#f8fafc", py: 4 }}>
+    <Box sx={{ flexGrow: 1, minHeight: "100vh", py: 4 }}>
       <Container maxWidth="lg">
         {/* Error Snackbar */}
         <Snackbar 
@@ -245,7 +247,7 @@ const Profile = () => {
                           sx={{
                             bgcolor: colors.border,
                             "&:hover": {
-                              bgcolor: "#e2e8f0",
+                              bgcolor: theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.1) : "#e2e8f0",
                             },
                           }}
                         >

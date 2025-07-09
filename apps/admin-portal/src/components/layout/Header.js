@@ -294,7 +294,7 @@ const Header = ({ onDrawerToggle }) => {
             </Typography>
             
             <Breadcrumbs
-              separator={<NavigateNextIcon fontSize="small" sx={{ color: '#9ca3af' }} />}
+              separator={<NavigateNextIcon fontSize="small" sx={{ color: theme.palette.text.secondary }} />}
               sx={{ fontSize: '0.875rem' }}
             >
               {getBreadcrumbs().map((breadcrumb, index) => (
@@ -302,7 +302,7 @@ const Header = ({ onDrawerToggle }) => {
                   <Typography 
                     key={breadcrumb.path}
                     color="text.secondary" 
-                    sx={{ fontSize: '0.875rem', fontWeight: 500, color: '#6b7280' }}
+                    sx={{ fontSize: '0.875rem', fontWeight: 500, color: theme.palette.text.secondary }}
                   >
                     {breadcrumb.label}
                   </Typography>
@@ -363,7 +363,7 @@ const Header = ({ onDrawerToggle }) => {
               }
             }}
           >
-            <SearchIcon sx={{ color: '#6b7280', mr: 1 }} />
+            <SearchIcon sx={{ color: theme.palette.text.secondary, mr: 1 }} />
             <InputBase
               placeholder="Search across all pages..."
               value={searchValue}
@@ -448,7 +448,7 @@ const Header = ({ onDrawerToggle }) => {
                   {/* Damage Reports Preview */}
                   {quickSearchResults.reports.length > 0 && (
                     <>
-                      <Typography variant="caption" sx={{ fontWeight: 600, color: '#4b5563', display: 'flex', alignItems: 'center', mt: 1 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 600, color: theme.palette.text.secondary, display: 'flex', alignItems: 'center', mt: 1 }}>
                         <ReportIcon fontSize="inherit" sx={{ mr: 0.5 }} /> DAMAGE REPORTS
                       </Typography>
                       <List dense disablePadding>
@@ -476,7 +476,7 @@ const Header = ({ onDrawerToggle }) => {
                   {/* Field Workers Preview */}
                   {quickSearchResults.fieldWorkers.length > 0 && (
                     <>
-                      <Typography variant="caption" sx={{ fontWeight: 600, color: '#4b5563', display: 'flex', alignItems: 'center', mt: 1 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 600, color: theme.palette.text.secondary, display: 'flex', alignItems: 'center', mt: 1 }}>
                         <PersonIcon fontSize="inherit" sx={{ mr: 0.5 }} /> FIELD WORKERS
                       </Typography>
                       <List dense disablePadding>
@@ -506,7 +506,7 @@ const Header = ({ onDrawerToggle }) => {
                   {/* Repairs Preview */}
                   {quickSearchResults.repairs.length > 0 && (
                     <>
-                      <Typography variant="caption" sx={{ fontWeight: 600, color: '#4b5563', display: 'flex', alignItems: 'center', mt: 1 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 600, color: theme.palette.text.secondary, display: 'flex', alignItems: 'center', mt: 1 }}>
                         <BuildIcon fontSize="inherit" sx={{ mr: 0.5 }} /> REPAIRS
                       </Typography>
                       <List dense disablePadding>
@@ -675,7 +675,7 @@ const Header = ({ onDrawerToggle }) => {
             >
               <Avatar 
                 sx={{ 
-                  backgroundColor: '#2563eb',
+                  backgroundColor: theme.palette.primary.main,
                   width: 32,
                   height: 32,
                   fontSize: '0.875rem',
@@ -752,10 +752,10 @@ const Header = ({ onDrawerToggle }) => {
             handleProfileMenuClose();
             navigate('/profile');
           }} sx={{ py: 1.5, px: 3 }}>
-            <ListItemIcon sx={{ color: '#6b7280' }}>
+            <ListItemIcon sx={{ color: theme.palette.text.secondary }}>
               <AccountCircleIcon />
             </ListItemIcon>
-            <Typography sx={{ color: '#374151' }}>My Profile</Typography>
+            <Typography sx={{ color: theme.palette.text.primary }}>My Profile</Typography>
           </MenuItem>
           
           <MenuItem onClick={() => {
