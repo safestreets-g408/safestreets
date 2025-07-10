@@ -58,8 +58,8 @@ const Landing = () => {
 
   // Statistics data
   const stats = [
-    { label: 'Roads Monitored', value: 15000, suffix: '+', icon: <MapOutlined /> },
-    { label: 'Damages Detected', value: 25000, suffix: '+', icon: <Visibility /> },
+    { label: 'Roads Monitored', value: 1500, suffix: '+', icon: <MapOutlined /> },
+    { label: 'Damages Detected', value: 250, suffix: '+', icon: <Visibility /> },
     { label: 'AI Accuracy', value: 94, suffix: '%', icon: <SmartToy /> },
     { label: 'Response Time', value: 2, suffix: 'hrs', icon: <Speed /> },
   ];
