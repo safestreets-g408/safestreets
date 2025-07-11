@@ -5,6 +5,11 @@ import { getAuthToken } from '../utils/auth';
 import { API_BASE_URL } from '../config';
 
 const SocketContext = createContext();
+// Singleton socket reference for external access
+let socketInstance = null;
+
+// Function to get socket instance from outside React context
+export const getSocket = () => socketInstance;
 
 export const useSocket = () => {
   const context = useContext(SocketContext);
@@ -20,7 +25,21 @@ export const SocketProvider = ({ children }) => {
   const { isAuthenticated, fieldWorker } = useAuth();
   
   useEffect(() => {
-    let socketInstance = null;
+    // Reset reference on unmount
+    return () => {
+      if (socketInstance) {
+        socketInstance.disconnect();
+        socketInstance = null;
+      }
+    };
+  }, []);
+  
+  useEffect(() => {
+    // Clear any existing socket
+    if (socketInstance) {
+      socketInstance.disconnect();
+      socketInstance = null;
+    }
     
     const initializeSocket = async () => {
       if (!isAuthenticated || !fieldWorker) return;
@@ -29,15 +48,27 @@ export const SocketProvider = ({ children }) => {
         const token = await getAuthToken();
         if (!token) return;
         
-        socketInstance = io(API_BASE_URL.replace('/api', ''), {
+        // Determine the socket server URL
+        let socketUrl = API_BASE_URL;
+        // If the URL ends with /api, remove it to get the socket server URL
+        if (socketUrl.endsWith('/api')) {
+          socketUrl = socketUrl.replace('/api', '');
+        }
+        
+        console.log('Initializing socket connection to:', socketUrl);
+        
+        socketInstance = io(socketUrl, {
           auth: {
             token,
-            userType: 'fieldworker'
+            userType: 'fieldworker',
+            userId: fieldWorker._id
           },
           transports: ['websocket', 'polling'],
           reconnection: true,
-          reconnectionAttempts: 5,
-          reconnectionDelay: 1000
+          reconnectionAttempts: 10,  // Increase retry attempts
+          reconnectionDelay: 1000,
+          reconnectionDelayMax: 5000,
+          timeout: 20000  // Increase timeout for slow connections
         });
         
         socketInstance.on('connect', () => {
@@ -55,29 +86,45 @@ export const SocketProvider = ({ children }) => {
           setConnected(false);
         });
         
+        // Add ping-pong for connection testing
+        socketInstance.on('ping_server', () => {
+          console.log('Ping received from server');
+          socketInstance.emit('pong_client');
+        });
+        
+        socketInstance.on('pong_server', () => {
+          console.log('Server responded to ping');
+          setConnected(true);
+        });
+        
         setSocket(socketInstance);
       } catch (error) {
         console.error('Error initializing socket:', error);
+        socketInstance = null;
       }
     };
     
     initializeSocket();
     
     return () => {
-      if (socketInstance) {
-        socketInstance.disconnect();
-        setSocket(null);
-        setConnected(false);
-      }
+      // Don't disconnect on component unmount,
+      // we'll keep the socket reference for the app lifecycle
     };
   }, [isAuthenticated, fieldWorker]);
   
   const joinChat = useCallback((adminId, chatRoomId) => {
     if (socket && connected && fieldWorker?.tenant) {
+      console.log('Joining chat rooms with adminId:', adminId, 'and chatRoomId:', chatRoomId);
+      
       // Join tenant-wide chat room
       const tenantRoom = `tenant_${fieldWorker.tenant}`;
       socket.emit('join_room', { room: tenantRoom });
       console.log(`Joined tenant chat room: ${tenantRoom}`);
+      
+      // Also join the tenant chat room using the chat_ prefix for consistency
+      const tenantChatRoom = `chat_${fieldWorker.tenant}`;
+      socket.emit('join_room', { room: tenantChatRoom });
+      console.log(`Joined tenant chat room with chat_ prefix: ${tenantChatRoom}`);
       
       // Join specific admin chat room if provided
       if (adminId) {
@@ -99,6 +146,11 @@ export const SocketProvider = ({ children }) => {
         socket.emit('join_room', { room: specificChatRoom });
         console.log(`Joined specific chat room: ${specificChatRoom}`);
       }
+      
+      // Force reconnect to ensure connection is fresh
+      socket.emit('ping_server');
+    } else {
+      console.warn('Cannot join chat: socket not connected or missing fieldworker data');
     }
   }, [socket, connected, fieldWorker]);
   
@@ -129,13 +181,35 @@ export const SocketProvider = ({ children }) => {
     }
   }, [socket, connected, fieldWorker]);
   
+  // Explicitly reconnect socket if needed
+  const reconnectSocket = useCallback(() => {
+    console.log('Explicitly reconnecting socket...');
+    if (socketInstance) {
+      // If socket exists but is disconnected, try to reconnect
+      if (!socketInstance.connected) {
+        console.log('Socket disconnected. Attempting to reconnect...');
+        socketInstance.connect();
+        return true;
+      } else {
+        console.log('Socket already connected.');
+        return false;
+      }
+    } else {
+      console.log('No socket instance. Initializing new socket...');
+      // Reinitialize the socket
+      initializeSocket();
+      return true;
+    }
+  }, [socketInstance]);
+
   const value = {
     socket,
     connected,
     joinChat,
     markAsRead,
     startTyping,
-    stopTyping
+    stopTyping,
+    reconnectSocket
   };
   
   return (

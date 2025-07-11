@@ -1,13 +1,30 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, View, StatusBar, Text } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { useThemeContext } from '../context/ThemeContext';
 import AdminChatList from '../components/chat/AdminChatList';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSocket } from '../context/SocketContext';
 
 const ChatScreen = () => {
   const theme = useTheme();
   const { isDarkMode } = useThemeContext();
+  const { socket, connected } = useSocket();
+  
+  useEffect(() => {
+    // Ensure socket connection is active when entering chat screen
+    if (socket && !connected) {
+      console.log('ChatScreen: Socket not connected, attempting to reconnect');
+      socket.connect();
+    } else if (socket && connected) {
+      console.log('ChatScreen: Socket connection verified');
+      socket.emit('ping_server'); // Test the connection
+    }
+    
+    return () => {
+      // No need to disconnect on leaving, keep the socket alive for notifications
+    };
+  }, [socket, connected]);
   
   return (
     <SafeAreaView 

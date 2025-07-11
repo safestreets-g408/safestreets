@@ -32,6 +32,11 @@
     "updates": {
       "fallbackToCacheTimeout": 0,
       "checkAutomatically": "ON_LOAD"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "5efc6edd-3d82-49ff-8c4e-f6e467251211"
+      }
     }
   }
 }

@@ -41,10 +41,30 @@ const ChatDetailScreen = ({ route, navigation }) => {
         console.log(`Fetching chat room for admin ID: ${adminId} (Attempt: ${currentRetry + 1})`);
         const roomData = await chatService.getChatRoom(adminId);
         console.log('Chat room data received:', roomData);
-        setChatRoomId(roomData.roomId);
-        setLoading(false);
-        // Reset retry count on success
-        setRetryCount(0);
+        
+        // Check if this is a fallback/temporary chat room
+        if (roomData.roomId && (
+          roomData.roomId.includes('_temporary') ||
+          roomData.roomId.includes('_error') ||
+          roomData.isErrorFallback
+        )) {
+          console.warn('Received fallback/temporary chat room:', roomData);
+          setChatRoomId(roomData.roomId);
+          
+          // Don't reset the retryCount, but don't increment it either
+          // This allows a retry attempt after a short delay
+          
+          // Fetch chat service health in background
+          chatService.healthCheck().catch(healthErr => {
+            console.error('Health check error:', healthErr);
+          });
+        } else {
+          // Normal chat room received
+          setChatRoomId(roomData.roomId);
+          setLoading(false);
+          // Reset retry count on success
+          setRetryCount(0);
+        }
       } catch (err) {
         console.error('Error fetching chat room:', err);
         

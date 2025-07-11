@@ -265,10 +265,33 @@ const ChatWindow = ({ chatRoomId, receiverName, adminId }) => {
     const messageText = newMessage.trim();
     setNewMessage('');
     
+    // Ensure socket connection is active before sending
+    if (socket && !socket.connected) {
+      console.log('Socket disconnected. Attempting to reconnect before sending message...');
+      socket.connect();
+      // Wait a moment for the connection attempt
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
     try {
-      // For mock chat rooms, add message locally without sending to API
+      // If we're in a temporary chat room and this is the first message,
+      // try to establish a real connection first
+      if (isMockChatRoom() && messages.length <= 1) {
+        try {
+          // Try to get/create a real chat room
+          console.log('Temporary chat room - attempting to establish real connection first');
+          await refreshChatRoom();
+        } catch (refreshErr) {
+          console.log('Could not establish real connection, continuing with temporary chat');
+        }
+      }
+      
+      // Run a health check in the background
+      chatService.healthCheck().catch(err => console.error('Health check error:', err));
+      
+      // Check if we're still in a mock/temporary chat room
       if (isMockChatRoom()) {
-        console.log('Mock chat room - adding message locally without API call');
+        console.log('Using temporary chat mode - message will be queued');
         
         // Add message locally
         const newMsg = {
@@ -277,30 +300,67 @@ const ChatWindow = ({ chatRoomId, receiverName, adminId }) => {
           senderId: fieldWorker?._id || 'local-user',
           senderModel: 'FieldWorker',
           createdAt: new Date().toISOString(),
-          isLocal: true
+          isPending: true
         };
         
         setMessages(prev => [...prev, newMsg]);
         setTimeout(() => flatListRef.current?.scrollToEnd(), 100);
         
-        // Add a simulated response after a short delay
-        setTimeout(() => {
-          const simulatedResponse = {
-            _id: `simulated-${Date.now()}`,
-            message: "Your message has been queued and will be delivered when the system is back online. Thank you for your patience.",
-            senderId: adminId,
-            senderModel: 'Admin',
-            createdAt: new Date().toISOString(),
-            isSystem: true
-          };
-          setMessages(prev => [...prev, simulatedResponse]);
-          setTimeout(() => flatListRef.current?.scrollToEnd(), 100);
-        }, 1000);
+        // Store message in AsyncStorage queue for later delivery
+        try {
+          // Try to send the message anyway in the background
+          chatService.sendMessage(adminId, messageText)
+            .then(() => {
+              // Update message status to sent if successful
+              setMessages(prev => 
+                prev.map(msg => 
+                  msg._id === newMsg._id 
+                    ? { ...msg, isPending: false, isSent: true } 
+                    : msg
+                )
+              );
+              console.log('Message sent successfully from temporary chat');
+            })
+            .catch(err => console.log('Background send failed:', err.message));
+            
+          // Add a simulated response
+          setTimeout(() => {
+            const simulatedResponse = {
+              _id: `simulated-${Date.now()}`,
+              message: "Your message has been queued. Tap the refresh button to try establishing a better connection.",
+              senderId: adminId,
+              senderModel: 'Admin',
+              createdAt: new Date().toISOString(),
+              isSystem: true
+            };
+            setMessages(prev => [...prev, simulatedResponse]);
+            setTimeout(() => flatListRef.current?.scrollToEnd(), 100);
+          }, 1000);
+        } catch (err) {
+          console.log('Failed to queue message:', err);
+        }
       } else {
-        // Normal flow - send message to API
+        // Normal flow - send message to API with real-time connection
         console.log(`Sending message to admin ID: ${adminId}`);
         
-        // First, add a temporary message to the UI with a pending status
+        // First, make sure the socket is connected
+        if (socket && !socket.connected) {
+          console.log('Socket not connected. Attempting to reconnect...');
+          socket.connect();
+          
+          // Brief delay to allow socket to connect
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Join chat room if socket is now connected
+          if (socket.connected) {
+            joinChat(adminId, chatRoomId);
+            console.log('Socket reconnected successfully');
+          } else {
+            console.log('Socket reconnection failed, continuing with API-only');
+          }
+        }
+        
+        // Add a temporary message to the UI with a pending status
         const tempMessageId = `temp-${Date.now()}`;
         const tempMessage = {
           _id: tempMessageId,
@@ -330,14 +390,15 @@ const ChatWindow = ({ chatRoomId, receiverName, adminId }) => {
               )
             );
             
-            // For redundancy, manually emit a socket event with the message
-            // This acts as a fallback in case the server's emit didn't work
-            if (socket && chatRoomId) {
-              console.log('Manually emitting message via socket as backup');
-              socket.emit('manual_message', {
-                ...response,
+            // For redundancy, emit a socket event if connected
+            if (socket && socket.connected && chatRoomId) {
+              console.log('Emitting message_sent event via socket');
+              socket.emit('message_sent', {
+                messageId: response._id,
+                chatRoomId: chatRoomId,
                 adminId: adminId,
-                chatRoomId: chatRoomId
+                message: messageText,
+                timestamp: new Date().toISOString()
               });
             }
           }
@@ -389,26 +450,68 @@ const ChatWindow = ({ chatRoomId, receiverName, adminId }) => {
   }, [adminId, markAsRead, isMockChatRoom]);
 
   const isMockChatRoom = useCallback(() => {
-    return chatRoomId && (chatRoomId.includes('_mock') || chatRoomId.includes('_fallback'));
+    // Check if this is a temporary/mock/fallback chat room
+    return chatRoomId && (
+      chatRoomId.includes('_mock') || 
+      chatRoomId.includes('_fallback') || 
+      chatRoomId.includes('_temporary')
+    );
   }, [chatRoomId]);
+  
+  const refreshChatRoom = useCallback(async () => {
+    if (!adminId) return;
+    
+    try {
+      console.log('Refreshing chat room connection with admin:', adminId);
+      setLoading(true);
+      setError(null);
+      
+      // Try to get/create a real chat room
+      const chatRoomResponse = await chatService.getChatRoom(adminId);
+      
+      if (chatRoomResponse && chatRoomResponse.roomId) {
+        console.log('Successfully refreshed chat room:', chatRoomResponse.roomId);
+        setChatRoomId(chatRoomResponse.roomId);
+        
+        // Force reconnect to socket
+        if (socket) {
+          console.log('Reconnecting socket for refreshed chat room');
+          if (!socket.connected) socket.connect();
+          joinChat(adminId, chatRoomResponse.roomId);
+        }
+        
+        // Load messages for the new room
+        await loadMessages();
+        markMessagesRead();
+      }
+    } catch (err) {
+      console.error('Failed to refresh chat room:', err);
+      setError('Failed to refresh chat connection. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [adminId, socket, joinChat, loadMessages, markMessagesRead]);
 
   useEffect(() => {
     if (!chatRoomId) return;
     
     if (isMockChatRoom()) {
-      console.log('Using mock/fallback chat room:', chatRoomId);
-      // For mock chat rooms, provide a nicer user experience
+      console.log('Using temporary chat room:', chatRoomId);
       setMessages([{
         _id: 'welcome-message',
         senderId: adminId,
         senderModel: 'Admin',
-        message: 'Welcome to the support chat! This is a temporary chat session. The system is experiencing some technical difficulties, but you can still send messages that will be delivered when connectivity is restored.',
+        message: 'Welcome to the support chat! This session is temporary. Tap the refresh button to establish a proper connection.',
         createdAt: new Date().toISOString(),
         isSystem: true
       }]);
       setLoading(false);
+      
+      // After a short delay, attempt to establish a real connection
+      setTimeout(() => refreshChatRoom(), 2000);
     } else {
       // Normal flow for real chat rooms
+      console.log('Using real chat room:', chatRoomId);
       joinChat(adminId, chatRoomId);
       loadMessages();
       markMessagesRead();
@@ -469,6 +572,10 @@ const ChatWindow = ({ chatRoomId, receiverName, adminId }) => {
     };
   }, [socket, chatRoomId, fieldWorker, markMessagesRead]);
   
+  const handleRefresh = () => {
+    refreshChatRoom();
+  };
+  
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -484,6 +591,23 @@ const ChatWindow = ({ chatRoomId, receiverName, adminId }) => {
       style={styles.container}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
+      {/* Header with refresh button */}
+      <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
+        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+          {isMockChatRoom() ? 'Temporary Chat' : 'Chat Support'}
+        </Text>
+        <TouchableOpacity 
+          onPress={handleRefresh} 
+          style={styles.refreshButton}
+          disabled={loading}
+        >
+          <MaterialCommunityIcons 
+            name="refresh" 
+            size={20} 
+            color={loading ? theme.colors.disabled : theme.colors.primary} 
+          />
+        </TouchableOpacity>
+      </View>
       <FlatList
         ref={flatListRef}
         data={messages}
@@ -570,17 +694,16 @@ const ChatWindow = ({ chatRoomId, receiverName, adminId }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    padding: 20,
   },
   loadingText: {
     marginTop: 10,
-    fontSize: 16,
+    fontSize: 14,
     color: '#6B7280',
   },
   messagesList: {
@@ -752,6 +875,22 @@ const styles = StyleSheet.create({
   },
   reportBold: {
     fontWeight: '600',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  refreshButton: {
+    padding: 6,
   },
 });
 

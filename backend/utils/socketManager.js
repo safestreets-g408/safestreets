@@ -17,9 +17,24 @@ class SocketManager {
   setupSocketHandlers() {
     this.io.on('connection', (socket) => {
       console.log('User connected:', socket.id);
+      
+      // Add a connection timeout to ensure authentication happens
+      const authTimeout = setTimeout(() => {
+        if (!socket.userId) {
+          console.log('Socket connection timed out without authentication:', socket.id);
+          socket.disconnect(true);
+        }
+      }, 10000); // 10 seconds timeout for authentication
+      
+      // Clear timeout on disconnect
+      socket.on('disconnect', () => {
+        clearTimeout(authTimeout);
+      });
 
       // Handle authentication
       socket.on('authenticate', async (token) => {
+        console.log('Authentication attempt for socket:', socket.id);
+        clearTimeout(authTimeout); // Clear timeout on authentication attempt
         try {
           const decoded = jwt.verify(token, process.env.JWT_SECRET);
           let user;
@@ -46,8 +61,36 @@ class SocketManager {
 
                 // Join a field worker room for notifications
                 socket.join(`fieldworker_${userInfo.id}`);
+                
+                // Join tenant rooms for better message routing
                 if (userInfo.tenantId) {
                   socket.join(`tenant_fieldworkers_${userInfo.tenantId}`);
+                  socket.join(`tenant_${userInfo.tenantId}`);
+                  socket.join(`chat_${userInfo.tenantId}`);
+                }
+                
+                // Join admin chat rooms for more reliable message delivery
+                const ChatRoom = require('../models/ChatRoom');
+                try {
+                  // Find all chat rooms this field worker is part of
+                  const chatRooms = await ChatRoom.find({
+                    'participants': {
+                      $elemMatch: { userId: user._id, userModel: 'FieldWorker' }
+                    }
+                  });
+                  
+                  // Join each chat room
+                  for (const room of chatRooms) {
+                    socket.join(`chat_${room._id}`);
+                    
+                    // Also join direct admin chat rooms
+                    const adminParticipant = room.participants.find(p => p.userModel === 'Admin');
+                    if (adminParticipant && adminParticipant.userId) {
+                      socket.join(`admin_${adminParticipant.userId.toString()}`);
+                    }
+                  }
+                } catch (err) {
+                  console.error('Error joining chat rooms for field worker:', err);
                 }
 
                 socket.emit('authenticated', userInfo);
@@ -216,6 +259,12 @@ class SocketManager {
         } catch (error) {
           console.error('Error marking messages as read (field worker):', error);
         }
+      });
+      
+      // Add ping-pong for connection testing
+      socket.on('ping_server', () => {
+        console.log(`Ping received from socket ${socket.id}`);
+        socket.emit('pong_server', { timestamp: new Date().toISOString() });
       });
       
       // Handle joining chat room

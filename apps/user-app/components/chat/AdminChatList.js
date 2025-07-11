@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,14 +7,14 @@ import {
   StyleSheet,
   Image,
   TextInput,
-  ActivityIndicator
+  ActivityIndicator,
+  RefreshControl
 } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { format } from 'date-fns';
 import { chatService } from '../../utils/chatAPI';
-import { LinearGradient } from 'expo-linear-gradient';
 import { checkNetworkConnectivity, showNetworkError } from '../../utils/auth';
 import { useThemeContext } from '../../context/ThemeContext';
 
@@ -24,6 +24,8 @@ const AdminChatList = () => {
   const [admins, setAdmins] = useState([]);
   const [filteredAdmins, setFilteredAdmins] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastErrorTime, setLastErrorTime] = useState(0);
   
   const theme = useTheme();
   const { isDarkMode } = useThemeContext();
@@ -44,7 +46,27 @@ const AdminChatList = () => {
         return;
       }
       
-      console.log('Fetching admin chat list...');
+      // First try refreshChats (which has built-in fallbacks)
+      try {
+        console.log('Fetching admin chat list using refreshChats...');
+        const response = await chatService.refreshChats();
+        
+        if (response && Array.isArray(response)) {
+          console.log('Admin list response from refreshChats:', response);
+          setAdmins(response);
+          setFilteredAdmins(response);
+          console.log(`Loaded ${response.length} admins successfully using refreshChats`);
+          setLoading(false);
+          return;
+        } else {
+          console.warn('Invalid response from refreshChats, falling back to getAdminChatList');
+        }
+      } catch (refreshErr) {
+        console.warn('refreshChats failed, falling back to getAdminChatList:', refreshErr.message);
+      }
+      
+      // If refreshChats fails, fall back to the original method
+      console.log('Fetching admin chat list using getAdminChatList...');
       const response = await chatService.getAdminChatList();
       console.log('Admin list response:', response);
       
@@ -58,32 +80,118 @@ const AdminChatList = () => {
       setAdmins(response);
       setFilteredAdmins(response);
       console.log(`Loaded ${response.length} admins successfully`);
+      
+      // Run a health check in the background to diagnose any issues
+      chatService.healthCheck().then(health => {
+        console.log('Chat service health status:', health);
+        if (!health.healthy) {
+          console.warn('Chat service has issues:', health);
+        }
+      }).catch(err => {
+        console.error('Health check error:', err);
+      });
+      
     } catch (err) {
       console.error('Error loading admins:', err);
+      setLastErrorTime(Date.now());
       
-      if (err.response) {
-        // Server responded with an error status code
-        const statusCode = err.response.status;
-        const errorMessage = err.response.data?.message || 'Unknown server error';
-        console.error(`Server error ${statusCode}: ${errorMessage}`);
-        
-        if (statusCode === 401) {
-          setError('Authentication error. Please log in again.');
+      if (err.isAxiosError) {
+        if (err.response) {
+          // Server responded with an error status code
+          const statusCode = err.response.status;
+          const errorMessage = err.response.data?.message || 'Unknown server error';
+          console.error(`Server error ${statusCode}: ${errorMessage}`);
+          
+          if (statusCode === 401) {
+            setError('Authentication error. Please log in again.');
+          } else if (statusCode === 404) {
+            setError('Chat service not found. The server may be misconfigured.');
+          } else if (statusCode >= 500) {
+            setError('Server error. Please try again later.');
+          } else {
+            setError(`Failed to load admin list: ${errorMessage}`);
+          }
+        } else if (err.request) {
+          // Request was made but no response received
+          console.error('No response received from server');
+          setError('Server not responding. Please try again later.');
         } else {
-          setError(`Failed to load admin list: ${errorMessage}`);
+          // Error setting up the request
+          setError(`Request failed: ${err.message}`);
         }
-      } else if (err.request) {
-        // Request was made but no response received
-        console.error('No response received from server');
-        setError('Server not responding. Please try again later.');
       } else {
-        // Error setting up the request
-        setError('Failed to load admin list. Please try again.');
+        // General error
+        setError(`Failed to load admin list: ${err.message}`);
       }
     } finally {
       setLoading(false);
     }
   };
+  
+  // Pull-to-refresh handler
+  const onRefresh = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      console.log('Pull-to-refresh: Refreshing chats list...');
+      
+      // First check the health of the chat service
+      try {
+        const healthStatus = await chatService.healthCheck();
+        console.log('Chat service health status:', healthStatus);
+        
+        if (!healthStatus.healthy) {
+          console.warn('Chat service health check failed:', healthStatus);
+          // Try to reconnect socket if it's disconnected
+          if (healthStatus.socket && !healthStatus.socket.socket) {
+            try {
+              const { useSocket } = require('../../context/SocketContext');
+              const { reconnectSocket } = useSocket();
+              if (reconnectSocket) {
+                console.log('Attempting to reconnect socket...');
+                reconnectSocket();
+              }
+            } catch (socketErr) {
+              console.error('Failed to reconnect socket:', socketErr);
+            }
+          }
+        }
+      } catch (healthCheckErr) {
+        console.error('Error checking chat service health:', healthCheckErr);
+      }
+      
+      // Now try to refresh the chats list
+      const response = await chatService.refreshChats();
+      
+      if (!response || !Array.isArray(response)) {
+        console.error('Invalid response format from refreshChats:', response);
+        
+        // Try the original endpoint as fallback
+        console.log('Trying fallback to original getAdminChatList...');
+        const fallbackResponse = await chatService.getAdminChatList();
+        
+        if (fallbackResponse && Array.isArray(fallbackResponse)) {
+          setAdmins(fallbackResponse);
+          setFilteredAdmins(fallbackResponse);
+          console.log(`Fallback successful: Loaded ${fallbackResponse.length} admins`);
+          setError(null);
+        } else {
+          throw new Error('Both refresh attempts failed');
+        }
+      } else {
+        setAdmins(response);
+        setFilteredAdmins(response);
+        console.log(`Pull-to-refresh: Loaded ${response.length} admins successfully`);
+        setError(null); // Clear any previous errors
+      }
+    } catch (err) {
+      console.error('Error refreshing chats:', err);
+      // Don't show error dialog on pull-to-refresh, just log it
+      // But update the last error time to prevent flooding
+      setLastErrorTime(Date.now());
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
   
   // Fetch available admins
   useEffect(() => {
@@ -299,6 +407,14 @@ const AdminChatList = () => {
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={renderEmptyState}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
+          />
+        }
       />
     </View>
   );

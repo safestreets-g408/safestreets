@@ -69,23 +69,48 @@ export const SocketProvider = ({ children }) => {
       // Log all incoming messages for debugging
       console.log('SocketContext: Received new_message event:', message);
       
+      // Enhanced logging of message properties
+      console.log('Message properties:', {
+        id: message._id,
+        sender: message.senderId,
+        senderModel: message.senderModel,
+        senderName: message.senderName,
+        chatId: message.chatId,
+        tenantId: message.tenantId,
+        fromFieldWorker: message.fromFieldWorker,
+        adminId: message.adminId
+      });
+      
       // This will be handled by individual chat components
       // But also update global notification state
-      if (message.senderModel === 'FieldWorker') {
+      if (message.senderModel === 'FieldWorker' || message.fromFieldWorker) {
         console.log('SocketContext: Field worker message received');
         
-        // Find the tenantId for this message
-        const tenantId = message.tenantId || (typeof message.chatId === 'string' && message.chatId.includes('_') ? 
-          message.chatId.split('_')[1] : null);
+        // Find the tenantId for this message - with multiple fallbacks
+        let tenantId = message.tenantId;
         
+        if (!tenantId && message.chatId) {
+          // Try to extract from chatId if in format like chat_<tenantId>
+          if (typeof message.chatId === 'string' && message.chatId.includes('_')) {
+            tenantId = message.chatId.split('_')[1];
+          }
+        }
+        
+        // If we have the tenantId, update notifications
         if (tenantId) {
+          console.log(`Adding notification for tenant ${tenantId}`);
+          
           setChatNotifications(prev => [{
             type: 'new_message',
             senderId: message.senderId,
             senderName: message.senderName || 'Field Worker',
             tenantId,
-            message: message.message.length > 30 ? `${message.message.substring(0, 30)}...` : message.message,
-            timestamp: new Date()
+            message: message.message && message.message.length > 30 
+              ? `${message.message.substring(0, 30)}...` 
+              : (message.message || 'New message'),
+            timestamp: new Date(),
+            chatId: message.chatId,
+            adminId: message.adminId
           }, ...prev].slice(0, 10));
           
           // Update unread count
@@ -93,15 +118,10 @@ export const SocketProvider = ({ children }) => {
             ...prev,
             [tenantId]: (prev[tenantId] || 0) + 1
           }));
+        } else {
+          console.warn('Could not determine tenantId for notification');
         }
       }
-    });
-    
-    // Listen for additional message events for redundancy
-    newSocket.on('new_chat_message', (message) => {
-      console.log('SocketContext: Received new_chat_message event:', message);
-      // Forward this to new_message handlers by re-emitting
-      newSocket.emit('new_message', message);
     });
     
     // Global message handler for broadcast messages
@@ -153,7 +173,7 @@ export const SocketProvider = ({ children }) => {
     });
 
     setSocket(newSocket);
-  }, [token, socket]);
+  }, [token, socket, user]);
 
   const disconnect = useCallback(() => {
     if (socket) {

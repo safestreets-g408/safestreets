@@ -203,11 +203,18 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
 
     const handleNewMessage = (message) => {
       console.log('Received new_message event:', message);
+      console.log('Message properties:', JSON.stringify(message, null, 2));
+      
+      // Enhanced message filtering for different message formats
+      const currentTenantIdStr = tenantId ? tenantId.toString() : '';
       
       // We need to check multiple possible chatId formats
       const isTenantChat = 
-        message.chatId === `tenant_${tenantId}` || 
-        message.chatId.toString() === tenantId ||
+        (message.tenantId && message.tenantId.toString() === currentTenantIdStr) || // Direct tenantId match 
+        (message.chatId === `tenant_${tenantId}`) || // tenant_ID format
+        (message.chatId && message.chatId.toString() === currentTenantIdStr) || // Direct chatId match
+        (message.adminId && message.fromFieldWorker && user && 
+          (message.adminId === user._id || message.adminId === user.id)) || // Direct message to this admin
         message.chatId.includes(tenantId);
       
       // For debugging
