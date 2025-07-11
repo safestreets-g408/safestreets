@@ -76,16 +76,21 @@ exports.analyzeWithYolo = async (req, res) => {
     console.log(`Calling AI server at ${AI_SERVER_URL}/detect-yolo with image size: ${base64Image.length}`);
     
     try {
+      console.log(`Calling AI server for YOLO detection, image size: ${Math.round(base64Image.length/1024)}KB`);
+      const startTime = Date.now();
+      
       // Call the AI server with timeout and detailed error handling
       const response = await axios.post(`${AI_SERVER_URL}/detect-yolo`, {
         image: base64Image
       }, {
-        timeout: 60000, // 60 second timeout (increased for large images)
+        timeout: 120000, // 120 second timeout for very large images
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         }
       });
+      
+      console.log(`YOLO detection completed in ${(Date.now() - startTime)/1000}s`);
       
       console.log('AI server response received:', response.status);
       

@@ -5,10 +5,14 @@ Handles AI-powered road damage summary generation using Google's Gemini API
 import os
 import base64
 import json
+import traceback
 from typing import Dict, Any, Optional, List
 import requests
 from PIL import Image
 import io
+import time
+import hashlib
+import functools
 
 from ..core.config import GOOGLE_API_KEY
 
@@ -17,7 +21,45 @@ from ..core.config import GOOGLE_API_KEY
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
 GEMINI_VISION_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
 
+# Simple cache for gemini responses
+_gemini_cache = {}
+_cache_ttl = 3600  # 1 hour cache time
 
+def cache_result(func):
+    """Cache decorator for expensive API calls"""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        # Create a cache key from function arguments
+        key_parts = [func.__name__]
+        key_parts.extend([str(arg) for arg in args])
+        key_parts.extend([f"{k}:{v}" for k, v in sorted(kwargs.items())])
+        cache_key = hashlib.md5("|".join(key_parts).encode()).hexdigest()
+        
+        current_time = time.time()
+        # Check if result is in cache and not expired
+        if cache_key in _gemini_cache and _gemini_cache[cache_key]['expire_time'] > current_time:
+            print(f"Cache hit for {func.__name__}")
+            return _gemini_cache[cache_key]['result']
+        
+        # Call the function
+        result = func(*args, **kwargs)
+        
+        # Cache the result
+        _gemini_cache[cache_key] = {
+            'result': result,
+            'expire_time': current_time + _cache_ttl
+        }
+        
+        # Clean up old cache entries
+        for k in list(_gemini_cache.keys()):
+            if _gemini_cache[k]['expire_time'] < current_time:
+                del _gemini_cache[k]
+                
+        return result
+    return wrapper
+
+
+@cache_result
 def generate_road_damage_summary(
     image_base64: str,
     damage_type: str,
@@ -86,7 +128,7 @@ def generate_road_damage_summary(
             GEMINI_API_URL,
             headers=headers,
             json=payload,
-            timeout=30
+            timeout=60  # Increased timeout
         )
         
         if response.status_code == 200:
@@ -425,9 +467,10 @@ def test_gemini_connection() -> Dict[str, Any]:
         }
 
 
+@cache_result
 def generate_road_damage_summary_from_params(location: str, damage_type: str, severity: str, priority: str) -> str:
     """
-    Generate road damage summary from parameters (wrapper for API compatibility)
+    Generate a comprehensive, professional road damage summary from parameters
     
     Args:
         location: Location of the damage
@@ -436,10 +479,13 @@ def generate_road_damage_summary_from_params(location: str, damage_type: str, se
         priority: Priority level
         
     Returns:
-        Generated summary string
+        Professionally formatted summary string
     """
     try:
-        # Create a fallback summary without requiring image data
+        print(f"Generating professional summary for {location}, {damage_type}, {severity}, priority {priority}")
+        start_time = time.time()
+        
+        # Create a professional summary without requiring image data
         confidence = 0.7  # Default confidence for text-based summaries
         
         # Map severity to confidence
@@ -452,26 +498,108 @@ def generate_road_damage_summary_from_params(location: str, damage_type: str, se
         
         confidence = severity_confidence_map.get(severity, 0.7)
         
-        # Generate summary
-        summary = f"Road damage report for {location}: {damage_type} detected with {severity} severity. "
-        summary += f"Priority level: {priority}. "
+        # Get detailed damage description based on type
+        damage_descriptions = {
+            'pothole': "depression in the road surface resulting from material failure and erosion, characterized by crumbling pavement and circular/irregular shape",
+            'alligator_crack': "interconnected cracks forming a pattern resembling alligator skin, indicating structural failure in the pavement layers",
+            'longitudinal_crack': "parallel cracks along the direction of travel, often resulting from poor joint construction or thermal cycling",
+            'transverse_crack': "perpendicular cracks across the road surface, typically caused by thermal stress and pavement shrinkage",
+            'surface_crack': "superficial fractures in the road surface that have not yet penetrated to deeper layers",
+            'erosion': "deterioration of road material due to water infiltration and environmental factors, resulting in material loss",
+            'D00': "longitudinal crack affecting surface integrity with potential for water infiltration",
+            'D10': "transverse crack indicating thermal stress patterns in pavement structure",
+            'D20': "alligator cracking demonstrating advanced fatigue in pavement layers",
+            'D30': "edge cracking along road boundaries with potential for shoulder degradation",
+            'D40': "pothole formation with complete material failure requiring prompt intervention",
+            'D50': "surface deterioration with initial indications of pavement breakdown"
+        }
         
-        # Add recommendations based on damage type and severity
+        # Get implications based on damage type and severity
+        implications = {
+            'High': {
+                'safety': "Presents significant safety hazards to road users, particularly motorcycles and smaller vehicles.",
+                'progression': "Will rapidly deteriorate without intervention, especially during adverse weather conditions.",
+                'cost': "Delay in repairs will likely result in substantially higher rehabilitation costs."
+            },
+            'Medium': {
+                'safety': "Moderate safety concern that may impact vehicle handling and control under certain conditions.",
+                'progression': "Expected to worsen gradually, accelerating with exposure to moisture and freeze-thaw cycles.",
+                'cost': "Preventative maintenance now would be more cost-effective than future reactive repairs."
+            },
+            'Low': {
+                'safety': "Minimal immediate safety concerns but warrants monitoring for progression.",
+                'progression': "Likely to deteriorate slowly under normal conditions and usage patterns.",
+                'cost': "Can be addressed during routine maintenance operations."
+            }
+        }
+        
+        # Customize repair approaches based on damage type
+        repair_approaches = {
+            'pothole': "mill and fill technique with proper compaction and edge sealing",
+            'alligator_crack': "full-depth patching or asphalt overlay depending on structural assessment",
+            'longitudinal_crack': "crack sealing with appropriate elastomeric material to prevent water infiltration",
+            'transverse_crack': "routing and sealing to address thermal movement concerns",
+            'surface_crack': "application of sealant treatment to prevent moisture penetration",
+            'erosion': "stabilization of base material and surface restoration with drainage improvements",
+            'D00': "crack sealing with performance-grade sealant",
+            'D10': "crack filling and possible thermal movement accommodation",
+            'D20': "mill and overlay or full-depth reclamation based on structural evaluation",
+            'D30': "edge reinforcement and shoulder stabilization",
+            'D40': "full-depth patching with proper compaction and material selection",
+            'D50': "surface treatment and preventative maintenance application"
+        }
+        
+        # Generate professional summary with sections
+        summary = f"## Road Damage Assessment Report\n\n"
+        summary += f"**Location:** {location}\n"
+        summary += f"**Damage Type:** {damage_type}\n"
+        summary += f"**Severity Level:** {severity}\n"
+        summary += f"**Priority Classification:** {priority}\n\n"
+        
+        # Damage description
+        summary += f"**Damage Analysis:**\n"
+        damage_desc = damage_descriptions.get(damage_type.lower(), f"Identified road surface damage consistent with {damage_type} classification")
+        summary += f"The inspection has identified {damage_desc}. "
+        
+        # Add severity-specific details
+        severity_impl = implications.get(severity, implications.get('Medium'))
+        summary += f"{severity_impl['safety']} {severity_impl['progression']}\n\n"
+        
+        # Add recommendations section
+        summary += f"**Recommended Actions:**\n"
+        
         if severity in ['High', 'Critical']:
-            summary += "Immediate attention required. "
+            summary += f"1. **Immediate Intervention Required:** Schedule emergency repair within 24-72 hours.\n"
+            summary += f"2. **Temporary Mitigation:** Implement hazard signage and possible traffic control measures.\n"
+            if damage_type.lower() in ['pothole', 'alligator_crack', 'd40', 'd20']:
+                summary += f"3. **Safety Measures:** Consider temporary road plates or cold patch application as interim solution.\n"
+            summary += f"4. **Repair Methodology:** Utilize {repair_approaches.get(damage_type.lower(), 'appropriate repair techniques')} to ensure durability of repair.\n"
         elif severity == 'Medium':
-            summary += "Scheduled maintenance recommended. "
+            summary += f"1. **Scheduled Maintenance:** Include in upcoming maintenance cycle (recommended within 2-4 weeks).\n"
+            summary += f"2. **Monitoring Protocol:** Establish regular inspection schedule to track progression.\n"
+            summary += f"3. **Repair Methodology:** Apply {repair_approaches.get(damage_type.lower(), 'standard repair techniques')} to address damage effectively.\n"
+            summary += f"4. **Preventative Measures:** Consider adjacent area treatment to prevent similar failures.\n"
         else:
-            summary += "Monitor condition and plan routine maintenance. "
+            summary += f"1. **Planned Maintenance:** Incorporate into routine maintenance schedule.\n"
+            summary += f"2. **Documentation:** Record in asset management system for future reference.\n"
+            summary += f"3. **Monitoring Protocol:** Include in next scheduled inspection cycle.\n"
+            summary += f"4. **Preventative Strategy:** Consider surface treatment during next scheduled maintenance.\n"
         
-        # Add safety recommendations
-        if damage_type.lower() in ['pothole', 'alligator_crack', 'd40', 'd20']:
-            summary += "Safety hazard - consider temporary signage or barriers. "
+        # Budget and planning implications
+        summary += f"\n**Planning Implications:**\n"
+        summary += f"- {severity_impl['cost']}\n"
+        summary += f"- Recommended repair approach using {repair_approaches.get(damage_type.lower(), 'standard techniques')} should be evaluated for cost-effectiveness.\n"
+        summary += f"- Consider adjacent infrastructure inspection to identify potential related issues.\n\n"
         
-        summary += f"Professional inspection and repair estimate recommended for {location}."
+        # Final note
+        summary += f"This assessment is based on standardized classification protocols. Professional engineering inspection is recommended to confirm findings and finalize repair specifications for {location}."
+        
+        elapsed_time = time.time() - start_time
+        print(f"Professional summary generated in {elapsed_time:.2f} seconds")
         
         return summary
         
     except Exception as e:
-        print(f"Error generating parameter-based summary: {e}")
+        print(f"Error generating professional summary: {e}")
+        traceback.print_exc()
         return f"Road damage report for {location}: {damage_type} with {severity} severity. Priority: {priority}. Professional inspection recommended."

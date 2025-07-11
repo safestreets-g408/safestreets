@@ -37,20 +37,47 @@ const uploadDamageReport = async (req, res) => {
     
     // Generate a summary using AI if description is missing
     let finalDescription = description;
+    let formattedDescription = null;
+    let descriptionType = 'standard';
+    
     if (!description || description.trim() === '') {
       try {
-        console.log('Generating AI summary for damage report');
-        finalDescription = await generateDamageSummary({
+        console.log('Generating professional AI summary for damage report');
+        
+        // The generateDamageSummary function now returns a professionally formatted summary
+        const aiGeneratedSummary = await generateDamageSummary({
           location,
           damageType,
           severity,
           priority
         });
-        console.log('AI summary generated successfully');
+        
+        console.log('Professional AI summary generated successfully');
+        
+        // Check if the description is in markdown format (starts with ## or has markdown headers)
+        if (aiGeneratedSummary.includes('##') || aiGeneratedSummary.includes('**')) {
+          formattedDescription = aiGeneratedSummary;
+          descriptionType = 'professional';
+          
+          // Create a simplified plain text version for backward compatibility
+          // Extract just the first paragraph or sentence for simple description
+          const plainTextDescription = aiGeneratedSummary
+            .replace(/##.*?\n/g, '')  // Remove headers
+            .replace(/\*\*/g, '')     // Remove bold markers
+            .replace(/\n\n/g, ' ')    // Replace double line breaks with space
+            .split('.')[0] + '.';     // Get first sentence
+            
+          finalDescription = plainTextDescription;
+          
+          console.log('Created both formatted and plain text versions of description');
+        } else {
+          finalDescription = aiGeneratedSummary;
+        }
       } catch (summaryError) {
         console.error('Error generating AI summary:', summaryError);
         // Use a simple default if AI generation fails
         finalDescription = `Road damage at ${location}: ${damageType} with ${severity} severity. Priority level: ${priority}.`;
+        descriptionType = 'standard';
       }
     }
 
@@ -102,6 +129,8 @@ const uploadDamageReport = async (req, res) => {
       region,
       location: processedLocation,
       description: finalDescription,
+      formattedDescription: formattedDescription,
+      descriptionType: descriptionType,
       reporter,
       status: 'Pending'
     });
@@ -589,12 +618,27 @@ const createAndAssignFromAiReport = async (req, res) => {
         });
       }
 
-      // Update report
+      console.log(`Assigning report to field worker: ${fieldWorker._id} (${fieldWorker.name})`);
+      
+      // Update report with assignment details
       newReport.assignedTo = fieldWorker._id;
       newReport.assignedAt = new Date();
       newReport.status = 'Assigned';
       
+      // Save the report with assignment details
       await newReport.save();
+      
+      // Verify the status was properly saved by retrieving it again
+      const savedReport = await DamageReport.findById(newReport._id);
+      console.log(`Saved report status: ${savedReport.status}, assignedTo: ${savedReport.assignedTo}`);
+      
+      // Update any existing report caches
+      try {
+        await clearSingleReportCache(newReport._id.toString());
+        console.log('Report cache cleared');
+      } catch (cacheError) {
+        console.error('Error clearing report cache:', cacheError);
+      }
       
       // Send notification to field worker about new assignment
       if (fieldWorker.deviceTokens && fieldWorker.deviceTokens.length > 0) {
@@ -728,6 +772,24 @@ const assignRepair = async (req, res) => {
     // Update report
     report.assignedTo = fieldWorker._id;
     report.assignedAt = new Date();
+    report.status = 'Assigned'; // Set status first before saving
+    
+    console.log(`Updating report ${report._id} status to "Assigned" and worker to ${fieldWorker._id}`);
+    
+    // Save the report first to ensure status is updated
+    await report.save();
+    
+    // Double-check that the status was saved properly
+    const updatedReport = await DamageReport.findById(report._id);
+    console.log(`Verification - Report status after save: ${updatedReport.status}, assignedTo: ${updatedReport.assignedTo}`);
+    
+    // Clear the cache for this report to ensure latest data is shown
+    try {
+      await clearSingleReportCache(report._id.toString());
+      console.log(`Cache cleared for report ${report._id}`);
+    } catch (cacheError) {
+      console.error('Error clearing report cache:', cacheError);
+    }
     
     // Send notification to field worker about the assignment
     if (fieldWorker.deviceTokens && fieldWorker.deviceTokens.length > 0) {
@@ -748,14 +810,13 @@ const assignRepair = async (req, res) => {
             params: { id: report._id.toString() }
           }
         );
+        
+        console.log(`Notification sent to field worker ${fieldWorker.name}`);
       } catch (notificationError) {
         console.error('Error sending assignment notification:', notificationError);
         // Don't fail the request if notification fails
       }
     }
-    report.status = 'Assigned';
-    
-    await report.save();
 
     res.status(200).json({
       message: 'Repair task assigned successfully',

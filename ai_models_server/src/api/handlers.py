@@ -3,6 +3,7 @@ Route handlers for AI Models Server
 """
 import traceback
 import random
+import time
 from flask import request
 
 from ..models.model_manager import model_manager
@@ -106,6 +107,7 @@ def handle_summary_endpoint():
         return handle_preflight_request()
     
     print("📝 Summary generation endpoint called")
+    start_time = time.time()
     
     try:
         # Validate request
@@ -128,6 +130,7 @@ def handle_summary_endpoint():
         
         # Check if Gemini is available
         if not model_manager.is_model_available('gemini'):
+            print("⚠️ Gemini model not available, using fallback")
             # Generate fallback summary
             fallback_summary = f"Road damage report for {location}: {damage_type} with {severity} severity. Priority level: {priority}. This is a fallback summary as the AI summary generator is not available."
             
@@ -135,6 +138,8 @@ def handle_summary_endpoint():
                 "summary": fallback_summary,
                 "message": "Fallback summary generated (Gemini not available)"
             }
+            
+            print(f"⏱️ Summary generation completed in {time.time() - start_time:.2f} seconds (fallback)")
             return add_cors_headers(create_fallback_response(response_data))
         
         # Generate actual summary
@@ -143,15 +148,39 @@ def handle_summary_endpoint():
         
         response_data = {
             "summary": summary,
-            "message": "Summary generated successfully"
+            "formatted_summary": summary,  # Keep original format with markdown
+            "summary_type": "professional",
+            "message": "Professional summary generated successfully"
         }
         
+        print(f"✅ Summary generated successfully")
+        print(f"⏱️ Summary generation completed in {time.time() - start_time:.2f} seconds")
         return add_cors_headers(create_success_response(response_data))
         
     except Exception as e:
-        print(f"❌ Error in summary generation endpoint: {e}")
+        elapsed_time = time.time() - start_time
+        print(f"❌ Error in summary generation endpoint after {elapsed_time:.2f} seconds: {e}")
         traceback.print_exc()
-        return create_error_response(f"Server error generating summary: {str(e)}", 500)
+        
+        # Generate a simple fallback summary
+        try:
+            location = request.get_json().get('location', 'unknown location')
+            damage_type = request.get_json().get('damageType', 'unknown damage')
+            severity = request.get_json().get('severity', 'medium')
+            priority = request.get_json().get('priority', 'medium')
+            
+            fallback_summary = f"Road damage report for {location}: {damage_type} with {severity} severity. Priority level: {priority}. This is a fallback summary due to an error."
+            
+            response_data = {
+                "summary": fallback_summary,
+                "message": "Fallback summary generated due to error",
+                "success": True
+            }
+            
+            print(f"⏱️ Summary fallback completed in {time.time() - start_time:.2f} seconds")
+            return add_cors_headers(create_fallback_response(response_data))
+        except:
+            return create_error_response(f"Server error generating summary: {str(e)}", 500)
 
 
 def handle_yolo_detection_endpoint():

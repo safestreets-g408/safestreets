@@ -20,6 +20,8 @@ const DamageReportSchema = new mongoose.Schema({
   priority: { type: String, required: true },
   action: { type: String, required: true },
   description: { type: String },
+  formattedDescription: { type: String }, // For professionally formatted markdown descriptions
+  descriptionType: { type: String, enum: ['standard', 'professional'], default: 'standard' },
   status: { type: String, default: 'Pending' },
   repairStatus: { type: String, default: 'pending', enum: ['pending', 'in_progress', 'completed', 'on_hold', 'cancelled'] },
   assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'FieldWorker', default: null },
