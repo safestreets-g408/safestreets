@@ -46,7 +46,11 @@ def main():
     print_startup_info()
     print(f"⏱️  Server startup completed in {time.time() - start_time:.2f} seconds")
     
-    # Run the Flask app
+    # Return app for gunicorn if called via import
+    if __name__ != "__main__":
+        return app
+    
+    # Run the Flask app directly if script is executed directly
     app.run(host=FLASK_HOST, port=FLASK_PORT, debug=FLASK_DEBUG)
 
 if __name__ == "__main__":

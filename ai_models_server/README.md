@@ -4,10 +4,12 @@ A well-organized Flask-based AI server for road damage detection and analysis.
 
 ## 🚀 Quick Start
 
+### Option 1: Local Setup
+
 Make sure all required models are in the `models/` directory:
 - `vit_model.pt` - Vision Transformer model for damage classification and bbox detection
 - `yolo_model.pt` - YOLO model for object detection
-- `cnn_road_classifier_scripted.pt` - CNN model for road surface validation
+- `cnn_road_classifier.pth` - CNN model for road surface validation
 - `class_names.txt` - Class labels for damage classification
 
 Set up a virtual environment and install dependencies:
@@ -26,6 +28,24 @@ Or use the start script:
 ```bash
 ./scripts/start.sh
 ```
+
+### Option 2: Docker Setup
+
+You can easily run the AI Models Server using Docker:
+
+```bash
+# Clone the repository if you haven't already
+git clone https://github.com/your-org/safestreets.git
+cd safestreets/ai_models_server
+
+# Build and run with docker-compose
+docker-compose up -d
+
+# Check logs
+docker-compose logs -f
+```
+
+See the Docker section below for more details.
 
 ## 🧪 Model Verification
 
@@ -146,6 +166,64 @@ GOOGLE_API_KEY=your_api_key_here
 ```bash
 python app.py
 ```
+
+## 🐳 Docker Setup
+
+You can run the AI Models Server in a Docker container for easier deployment.
+
+### Using docker-compose
+
+1. Configure your environment variables:
+```bash
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+2. Build and start the container:
+```bash
+docker-compose up -d
+```
+
+3. Check logs:
+```bash
+docker-compose logs -f
+```
+
+### Building and Pushing to Docker Hub
+
+To build and push the Docker image to Docker Hub:
+
+1. Set your Docker Hub username (if not safestreets):
+```bash
+export DOCKER_HUB_USERNAME=your-dockerhub-username
+```
+
+2. Run the build and push script:
+```bash
+./docker-build-push.sh [tag]
+```
+
+Where `[tag]` is optional and defaults to `latest`.
+
+### Running from Docker Hub
+
+Pull and run the Docker image:
+
+```bash
+docker pull safestreets/ai-models-server:latest
+docker run -p 5000:5000 --env-file .env safestreets/ai-models-server:latest
+```
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| FLASK_HOST | Host to bind the Flask app | 0.0.0.0 |
+| FLASK_PORT | Port to bind the Flask app | 5000 |
+| FLASK_DEBUG | Enable debug mode | False |
+| GEMINI_API_KEY | Google Gemini API key | (required) |
+| GOOGLE_API_KEY | Alternative naming for Gemini API | (required) |
+| CORS_ORIGINS | CORS allowed origins | * |
 
 ## Summary Generation
 

@@ -4,7 +4,10 @@ Route handlers for AI Models Server
 import traceback
 import random
 import time
-from flask import request
+from flask import request, jsonify
+import platform
+import sys
+import os
 
 from ..models.model_manager import model_manager
 from ..utils.response_utils import (
@@ -444,3 +447,26 @@ def handle_models_status_endpoint():
         print(f"❌ Error getting models status: {e}")
         traceback.print_exc()
         return create_error_response(f"Error getting models status: {str(e)}", 500)
+
+
+def handle_health_check():
+    """Handler for the health check endpoint"""
+    from ..core.config import API_VERSION
+    
+    # Get system info
+    system_info = {
+        "status": "healthy",
+        "api_version": API_VERSION,
+        "system": platform.system(),
+        "python_version": sys.version.split()[0],
+        "timestamp": int(time.time())
+    }
+    
+    # Check models status (lightweight version)
+    model_status = {}
+    for model_name, status in model_manager.get_all_model_status().items():
+        model_status[model_name] = "loaded" if status.get("loaded", False) else "not_loaded"
+    
+    system_info["models"] = model_status
+    
+    return jsonify(system_info), 200

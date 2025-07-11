@@ -27,6 +27,11 @@ def register_routes(app):
     def health_check():
         return handle_health_check()
     
+    # API-specific health check endpoint for Docker/Kubernetes
+    @app.route("/api/health", methods=["GET"])
+    def api_health_check():
+        return handle_health_check()
+    
     # ViT prediction endpoint
     @app.route("/predict", methods=["POST", "OPTIONS"])
     def predict():
