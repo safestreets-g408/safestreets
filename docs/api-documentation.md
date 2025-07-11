@@ -681,18 +681,32 @@ Authorization: Bearer <admin_token>
   "name": "John Doe",
   "workerId": "FW002",
   "email": "john.doe@safestreets.worker",
-  "password": "securepassword"
+  "phone": "555-123-4567",
+  "personalEmail": "john.personal@email.com",
+  "specialization": "Road Repair",
+  "region": "North District",
+  "status": "Available"
 }
 
 Response:
 {
   "success": true,
   "data": {
-    "id": "worker_db_id",
+    "_id": "worker_db_id",
     "name": "John Doe",
     "email": "john.doe@safestreets.worker",
-    "password": "johFW002",  // Only shown once
-    "workerId": "FW002"
+    "workerId": "FW002",
+    "specialization": "Road Repair",
+    "region": "North District",
+    "profile": {
+      "phone": "555-123-4567",
+      "personalEmail": "john.personal@email.com",
+      "receiveDailyUpdates": true,
+      "isActive": true,
+      "totalReportsHandled": 0
+    },
+    "status": "Available",
+    "activeAssignments": 0
   }
 }
 ```
@@ -728,22 +742,66 @@ Authorization: Bearer <admin_token>
 
 Response:
 {
-  "success": true,
-  "data": {
-    "id": "worker_id",
+  "name": "John Doe",
+  "email": "john.doe@safestreets.worker",
+  "workerId": "FW001",
+  "specialization": "Road Repair",
+  "region": "North District",
+  "profile": {
+    "phone": "555-123-4567",
+    "personalEmail": "john.personal@email.com",
+    "receiveDailyUpdates": true,
+    "isActive": true,
+    "totalReportsHandled": 15,
+    "lastActive": "2025-07-11T09:30:45.123Z"
+  },
+  "activeAssignments": 2,
+  "status": "Available"
+}
+```
+
+**Get Field Worker Assignments (Admin Only)**
+```http
+GET /field/:workerId/assignments
+Authorization: Bearer <admin_token>
+
+Response:
+{
+  "fieldWorker": {
+    "id": "worker_db_id",
     "name": "John Doe",
-    "email": "john.doe@safestreets.worker",
     "workerId": "FW001",
-    "assignedTasks": [
-      {
-        "id": "task_id",
-        "description": "Fix pothole on main street",
-        "status": "in_progress"
+    "email": "john.doe@safestreets.worker"
+  },
+  "assignments": [
+    {
+      "_id": "assignment_id_1",
+      "reportId": "REP-001",
+      "location": {
+        "address": "123 Main Street",
+        "coordinates": [35.12345, -82.54321]
       },
-      // ...more tasks
-    ],
-    "completedTasks": 20
-  }
+      "damageType": "Pothole",
+      "severity": "High",
+      "status": "In Progress",
+      "createdAt": "2025-07-01T10:30:00.000Z",
+      "assignedAt": "2025-07-01T14:15:00.000Z"
+    },
+    {
+      "_id": "assignment_id_2",
+      "reportId": "REP-002",
+      "location": {
+        "address": "456 Elm Street",
+        "coordinates": [35.12675, -82.55421]
+      },
+      "damageType": "Surface Crack",
+      "severity": "Medium",
+      "status": "Under Review",
+      "createdAt": "2025-07-03T09:20:00.000Z",
+      "assignedAt": "2025-07-03T11:45:00.000Z"
+    }
+  ],
+  "count": 2
 }
 ```
 
@@ -755,14 +813,32 @@ Authorization: Bearer <admin_token>
 
 {
   "name": "John Smith",
-  "email": "john.smith@safestreets.worker",
-  "status": "active"
+  "specialization": "Pothole Repair",
+  "region": "South District",
+  "phone": "555-987-6543",
+  "personalEmail": "john.smith.personal@email.com",
+  "receiveDailyUpdates": true,
+  "status": "Available"
 }
 
 Response:
 {
-  "success": true,
-  "message": "Field worker updated successfully"
+  "_id": "worker_db_id",
+  "name": "John Smith",
+  "email": "john.doe@safestreets.worker",
+  "workerId": "FW002",
+  "specialization": "Pothole Repair",
+  "region": "South District",
+  "profile": {
+    "phone": "555-987-6543",
+    "personalEmail": "john.smith.personal@email.com",
+    "receiveDailyUpdates": true,
+    "isActive": true,
+    "totalReportsHandled": 0,
+    "lastActive": "2025-07-10T15:30:45.123Z"
+  },
+  "status": "Available",
+  "activeAssignments": 0
 }
 ```
 

@@ -244,6 +244,45 @@ When developing features for the multi-tenant architecture:
 3. Test with multiple tenants to ensure isolation
 4. Consider tenant-specific configurations
 
+## Email System
+
+SafeStreets uses a comprehensive email system for notifications and communications.
+
+### Email Service
+
+The email service is located at `backend/utils/emailService.js` and uses Nodemailer to send emails. It supports:
+
+- Plain text emails
+- HTML formatted emails
+- Test mode using Ethereal for development
+- Configurable SMTP settings through environment variables
+
+### Email Templates
+
+Modern, responsive HTML email templates are implemented for various system notifications:
+
+1. **Daily Updates for Field Workers**:
+   - Located in `backend/scripts/sendDailyUpdates.js`
+   - Sends daily assignment summaries to field workers
+   - Shows assignment counts, details, and status
+   - Uses responsive design with modern styling
+
+### Scheduled Emails
+
+The system supports scheduled email delivery:
+
+1. **Configure Cron Job**:
+   ```bash
+   # Send daily updates at 7:00 AM every day
+   0 7 * * * cd /path/to/safestreets && node backend/scripts/sendDailyUpdates.js >> /path/to/logs/daily-updates.log 2>&1
+   ```
+
+2. **Email Testing**:
+   ```bash
+   # Test email sending manually
+   NODE_ENV=development node backend/scripts/sendDailyUpdates.js
+   ```
+
 ## AI Model Development
 
 For working on the AI models:

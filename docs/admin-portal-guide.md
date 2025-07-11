@@ -174,9 +174,29 @@ The Field Workers section allows administrators to:
 2. Enter field worker details:
    - Name
    - Worker ID
-   - Contact information
+   - Email address (work email)
+   - Personal email (for daily updates)
+   - Phone number
+   - Specialization
+   - Region
 3. Submit to create the account
-4. System generates email and password automatically
+4. System generates work email and password automatically
+
+#### Managing Field Workers
+1. **Editing Field Worker Details**:
+   - Click the "Edit" button on a field worker's card
+   - Update relevant information, including personal email for daily updates
+   - Save changes
+   
+2. **Viewing Assignments**:
+   - Click "View Assignments" to see all tasks assigned to a specific worker
+   - Assignments are categorized by status
+   - Each assignment displays location, damage type, severity, and status
+
+3. **Daily Updates**:
+   - Workers with personal emails receive daily email updates
+   - Updates include assignment counts and details
+   - Modern, responsive HTML email design with color-coding by status
 
 #### Worker Performance
 View detailed performance metrics for each worker:
@@ -184,6 +204,7 @@ View detailed performance metrics for each worker:
 - Average completion time
 - Quality ratings
 - Activity timeline
+- Active assignment count
 
 ### Analytics Dashboard
 

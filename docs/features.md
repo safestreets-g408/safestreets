@@ -69,16 +69,44 @@ This document outlines the architecture and features of a road damage detection 
 * **Historical Analysis:**
     * Enables viewing of old damage reports, comparing before/after photos, and analyzing repair frequency by location.
 
-## 5. Notifications & Alerts
+## 5. Field Worker Management
 
-* **Email Alerts:**
-    * Sends email alerts to administrators for new high-priority damage reports.
-* **Push Notifications (Optional):**
-    * Provides real-time alerts to field teams.
-* **Repair Reminders:**
-    * Sends reminders for tasks that are pending beyond a specified deadline.
+* **Field Worker Profiles:**
+    * Comprehensive profile management for field workers
+    * Work details: name, worker ID, specialization, region
+    * Contact details: work email, personal email, phone number
+    * Performance metrics: active assignments, completed reports
 
-## 6. Security & Access Control
+* **Assignment Management:**
+    * Track active assignments per worker
+    * View detailed assignment information
+    * Enforce maximum assignment limits to prevent overloading
+    * Geographic assignment matching based on worker's region
+
+* **Daily Updates:**
+    * Automated daily email updates to field workers
+    * Modern, responsive HTML email templates
+    * Personalized assignment summaries
+    * Status tracking and prioritization
+
+## 6. Notifications & Alerts
+
+* **Email Notifications:**
+    * Daily status updates to field workers via personal email
+    * Sends email alerts to administrators for new high-priority damage reports
+    * Configurable notification preferences
+    * Responsive HTML templates with status color-coding
+
+* **Push Notifications:**
+    * Real-time alerts to field teams for new assignments
+    * Status update notifications
+    * Priority-based notification system
+
+* **Task Reminders:**
+    * Sends reminders for tasks that are pending beyond a specified deadline
+    * Escalation alerts for overdue high-priority tasks
+
+## 7. Security & Access Control
 
 * **JWT Authentication:**
     * Uses JSON Web Tokens (JWT) for secure authentication of users and administrators.
