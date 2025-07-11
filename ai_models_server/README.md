@@ -175,9 +175,24 @@ You can run the AI Models Server in a Docker container for easier deployment.
 
 1. Configure your environment variables:
 ```bash
-cp .env.example .env
+cp .env.sample .env
 # Edit .env with your configuration
 ```
+
+## ☁️ Cloud Deployment
+
+### Render Deployment
+
+The AI Models Server can be deployed to Render using Docker. We've included the necessary files for easy deployment.
+
+```bash
+# Push your repository with the render.yaml file
+git push
+
+# Then create a new Blueprint in Render pointing to your repository
+```
+
+For detailed instructions, see [RENDER_DEPLOYMENT.md](./RENDER_DEPLOYMENT.md).
 
 2. Build and start the container:
 ```bash
