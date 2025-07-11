@@ -21,6 +21,7 @@ const chatRoutes = require('./routes/chatRoutes');
 const fieldWorkerChatRoutes = require('./routes/fieldWorkerChatRoutes');
 const adminAiChatRoutes = require('./routes/adminAiChatRoutes');
 const fieldWorkerAiChatRoutes = require('./routes/fieldWorkerAiChatRoutes');
+const accessRequestRoutes = require('./routes/accessRequestRoutes');
 const path = require('path');
 
 dotenv.config();
@@ -81,6 +82,8 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/admin/ai-chat', adminAiChatRoutes);
 app.use('/api/fieldworker/ai-chat', fieldWorkerAiChatRoutes);
+app.use('/api/access-requests', accessRequestRoutes);
+app.use('/api/admin', require('./routes/emailRoutes'));
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server running on port ${PORT}`));

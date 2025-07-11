@@ -189,6 +189,7 @@ const Hero = ({ isAuthenticated }) => {
                   <Button
                     variant="outlined"
                     size="large"
+                    onClick={() => navigate('/request-access')}
                     sx={{
                       px: 4,
                       py: 1.5,
@@ -203,7 +204,7 @@ const Hero = ({ isAuthenticated }) => {
                       },
                     }}
                   >
-                    Watch Demo
+                    Request Access
                   </Button>
                 </Box>
               </Box>

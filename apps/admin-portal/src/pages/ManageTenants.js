@@ -19,14 +19,19 @@ import {
   FormControlLabel,
   Switch,
   Toolbar,
-  Paper
+  Paper,
+  Alert,
+  Snackbar
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import EmailIcon from '@mui/icons-material/Email';
 import { useTenant } from '../context/TenantContext';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL, TOKEN_KEY } from '../config/constants';
+import axios from 'axios';
 
 const ManageTenants = () => {
   const { tenants, loading, error, createTenant, updateTenant, deleteTenant } = useTenant();
@@ -36,6 +41,8 @@ const ManageTenants = () => {
   const [selectedTenant, setSelectedTenant] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const initialFormData = {
     name: '',
     code: '',
@@ -105,6 +112,10 @@ const ManageTenants = () => {
     setSelectedTenant(null);
     setFormError('');
   };
+  
+  const handleCloseAlert = () => {
+    setShowSuccessAlert(false);
+  };
 
   // Handle form input changes
   const handleInputChange = (e) => {
@@ -125,6 +136,25 @@ const ManageTenants = () => {
         [name]: value
       });
     }
+  };
+  
+  // Generate a strong random password
+  const generatePassword = (length = 12) => {
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+    let password = "";
+    for (let i = 0; i < length; i++) {
+      const randomIndex = Math.floor(Math.random() * charset.length);
+      password += charset[randomIndex];
+    }
+    return password;
+  };
+  
+  // Handle generating a random password
+  const handleGeneratePassword = () => {
+    setFormData({
+      ...formData,
+      adminPassword: generatePassword(12)
+    });
   };
   
   const handleSwitchChange = (e) => {
@@ -174,7 +204,36 @@ const ManageTenants = () => {
         fieldWorkers: formData.fieldWorkers || []
       };
       
+      // Create the tenant
       await createTenant(dataToSubmit);
+      
+      // Send email with credentials
+      try {
+        const token = localStorage.getItem(TOKEN_KEY);
+        await axios.post(
+          `${API_BASE_URL}/admin/send-tenant-credentials`,
+          {
+            email: formData.adminEmail,
+            tenantName: formData.name,
+            adminName: formData.adminName,
+            password: formData.adminPassword,
+            loginUrl: window.location.origin + '/login'
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+        console.log('Tenant credentials sent successfully');
+        setSuccessMessage(`Tenant "${formData.name}" created successfully and credentials sent to ${formData.adminEmail}`);
+        setShowSuccessAlert(true);
+        
+        // Auto-hide the success message after 6 seconds
+        setTimeout(() => setShowSuccessAlert(false), 6000);
+      } catch (emailErr) {
+        console.error('Error sending tenant credentials:', emailErr);
+        // Don't fail the entire process if email sending fails
+      }
+      
       handleCloseDialogs();
     } catch (err) {
       setFormError(err.message);
@@ -400,6 +459,10 @@ const ManageTenants = () => {
       <Dialog open={openCreateDialog} onClose={handleCloseDialogs} maxWidth="sm" fullWidth>
         <DialogTitle>Create New Tenant</DialogTitle>
         <DialogContent dividers>
+          <Typography variant="body2" color="textSecondary" paragraph sx={{ mb: 2 }}>
+            Create a new tenant organization. Login credentials will be sent to the tenant administrator by email automatically.
+          </Typography>
+          
           <Grid container spacing={2}>
             <Grid item xs={12}>
               <TextField
@@ -466,15 +529,32 @@ const ManageTenants = () => {
             </Grid>
             
             <Grid item xs={12}>
-              <TextField
-                name="adminPassword"
-                label="Admin Password *"
-                value={formData.adminPassword}
-                onChange={handleInputChange}
-                type="password"
-                fullWidth
-                required
-              />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <TextField
+                  name="adminPassword"
+                  label="Admin Password *"
+                  value={formData.adminPassword}
+                  onChange={handleInputChange}
+                  type="text"
+                  fullWidth
+                  required
+                  InputProps={{
+                    endAdornment: (
+                      <Button
+                        variant="text"
+                        size="small"
+                        onClick={handleGeneratePassword}
+                        sx={{ whiteSpace: 'nowrap' }}
+                      >
+                        Generate Password
+                      </Button>
+                    )
+                  }}
+                />
+              </Box>
+              <Typography variant="caption" color="textSecondary">
+                Password will be sent to the tenant admin's email
+              </Typography>
             </Grid>
             
             <Grid item xs={12}>
@@ -784,9 +864,9 @@ const ManageTenants = () => {
             onClick={handleCreateTenant} 
             variant="contained" 
             disabled={formLoading}
-            startIcon={formLoading && <CircularProgress size={20} />}
+            startIcon={formLoading ? <CircularProgress size={20} /> : <EmailIcon />}
           >
-            Create
+            Create Tenant & Send Credentials
           </Button>
         </DialogActions>
       </Dialog>
@@ -929,6 +1009,22 @@ const ManageTenants = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      
+      {/* Success Alert */}
+      <Snackbar
+        open={showSuccessAlert}
+        autoHideDuration={6000}
+        onClose={handleCloseAlert}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleCloseAlert} 
+          severity="success" 
+          sx={{ width: '100%' }}
+        >
+          {successMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

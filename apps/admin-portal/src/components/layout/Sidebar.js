@@ -26,6 +26,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import LogoutIcon from '@mui/icons-material/ExitToApp';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import BusinessIcon from '@mui/icons-material/Business';
+import RequestPageIcon from '@mui/icons-material/RequestPage';
 import { DRAWER_WIDTH } from '../../config/constants';
 
 // Super admin menu items
@@ -41,6 +42,12 @@ const superAdminMenuItems = [
     icon: <BusinessIcon />,
     path: '/tenants',
     badge: null,
+  },
+  {
+    text: 'Access Requests',
+    icon: <RequestPageIcon />,
+    path: '/access-requests',
+    badge: 'New',
   },
   { 
     text: 'All Reports', 

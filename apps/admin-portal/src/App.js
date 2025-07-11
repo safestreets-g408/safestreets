@@ -32,6 +32,8 @@ import SearchResults from './pages/SearchResults';
 import Chat from './pages/Chat';
 import Landing from './pages/Landing';
 import AiChatPage from './pages/AiChatPage';
+import RequestAccess from './pages/RequestAccess';
+import ManageAccessRequests from './pages/ManageAccessRequests';
 
 // ThemeApp component handles the MUI theme based on theme context
 const ThemeApp = ({ children }) => {
@@ -64,6 +66,7 @@ function App() {
                       <Route path="/" element={<Landing />} />
                       <Route path="/landing" element={<Landing />} />
                       <Route path="/login" element={<Login />} />
+                      <Route path="/request-access" element={<RequestAccess />} />
                     
                       <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
                         <Route path="/dashboard" element={<Dashboard />} />
@@ -80,6 +83,7 @@ function App() {
                         {/* Tenant Management */}
                         <Route path="/tenants" element={<ManageTenants />} />
                         <Route path="/tenants/:tenantId" element={<TenantDetails />} />
+                        <Route path="/access-requests" element={<ManageAccessRequests />} />
                       </Route>
         
                       {/* Catch all route */}
