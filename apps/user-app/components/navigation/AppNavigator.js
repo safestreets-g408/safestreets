@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { ActivityIndicator } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { useAuth } from '../../context/AuthContext';
+import { navigationRef } from './RootNavigation';
 
 // Import screens
 import LoginScreen from '../../screens/LoginScreen';
@@ -12,6 +13,7 @@ import ViewReportScreen from '../../screens/ViewReportScreen';
 import SettingsScreen from '../../screens/SettingsScreen';
 import AfterImageCameraScreen from '../../screens/AfterImageCameraScreen';
 import ChatDetailScreen from '../../screens/ChatDetailScreen';
+import NotificationScreen from '../../screens/NotificationScreen';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const Stack = createStackNavigator();
@@ -26,6 +28,7 @@ const AppNavigator = () => {
 
   return (
     <NavigationContainer
+      ref={navigationRef}
       fallback={<ActivityIndicator size="large" color={theme.colors.primary} />}
     >
       <Stack.Navigator
@@ -86,6 +89,24 @@ const AppNavigator = () => {
               component={ChatDetailScreen}
               options={{ 
                 title: "Chat",
+                headerTitleAlign: 'center',
+                headerBackground: () => (
+                  <LinearGradient
+                    colors={['#2196f3', '#1976d2', '#0d47a1']}
+                    style={{ flex: 1 }}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  />
+                ),
+                headerTintColor: '#ffffff',
+                headerBackTitleVisible: false,
+              }}
+            />
+            <Stack.Screen
+              name="Notifications"
+              component={NotificationScreen}
+              options={{ 
+                title: "Notifications",
                 headerTitleAlign: 'center',
                 headerBackground: () => (
                   <LinearGradient

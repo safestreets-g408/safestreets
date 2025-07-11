@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const DamageReport = require('../models/DamageReport');
 const FieldWorker = require('../models/FieldWorker');
 const AiReport = require('../models/AiReport');
+const NotificationService = require('../utils/notificationService');
 
 // Get field worker's assigned reports
 const getFieldWorkerReports = async (req, res) => {
@@ -88,6 +89,55 @@ const updateRepairStatus = async (req, res) => {
     }
 
     await report.save();
+
+    // Send notification to field worker on status change
+    try {
+      const fieldWorker = await FieldWorker.findById(fieldWorkerId);
+      
+      if (fieldWorker && fieldWorker.deviceTokens && fieldWorker.deviceTokens.length > 0) {
+        // Get all tokens
+        const tokens = fieldWorker.deviceTokens.map(device => device.token);
+        
+        // Generate appropriate message based on status
+        let title = 'Report Status Updated';
+        let body = '';
+        
+        switch (status) {
+          case 'in_progress':
+            body = `You've started work on report #${report.reportId}`;
+            break;
+          case 'completed':
+            body = `Report #${report.reportId} has been marked as completed`;
+            break;
+          case 'on_hold':
+            body = `Report #${report.reportId} has been put on hold`;
+            break;
+          case 'cancelled':
+            body = `Report #${report.reportId} has been cancelled`;
+            break;
+          default:
+            body = `Status for report #${report.reportId} has been updated`;
+        }
+        
+        // Send notification
+        await NotificationService.sendPushNotifications(
+          tokens,
+          title,
+          body,
+          {
+            type: 'report',
+            reportId: report.reportId,
+            taskId: report._id.toString(),
+            screenName: 'TaskDetails',
+            params: { id: report._id.toString() },
+            status
+          }
+        );
+      }
+    } catch (notificationError) {
+      console.error('Error sending status update notification:', notificationError);
+      // Don't fail the request if notification fails
+    }
 
     res.status(200).json({ 
       message: 'Repair status updated successfully', 

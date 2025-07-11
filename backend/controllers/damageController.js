@@ -6,6 +6,7 @@ const upload = require('../middleware/multerConfig');
 const path = require('path');
 const { generateDamageSummary } = require('../utils/aiUtils');
 const { clearDamageReportCaches, clearSingleReportCache } = require('../utils/cacheUtils');
+const NotificationService = require('../utils/notificationService');
 
 
 // Helper function to validate MongoDB ObjectId
@@ -594,6 +595,31 @@ const createAndAssignFromAiReport = async (req, res) => {
       newReport.status = 'Assigned';
       
       await newReport.save();
+      
+      // Send notification to field worker about new assignment
+      if (fieldWorker.deviceTokens && fieldWorker.deviceTokens.length > 0) {
+        try {
+          // Get the latest token
+          const tokens = fieldWorker.deviceTokens.map(device => device.token);
+          
+          // Send notification
+          await NotificationService.sendPushNotifications(
+            tokens,
+            'New Task Assigned',
+            `You have been assigned to inspect ${newReport.damageType} damage in ${newReport.location.address || newReport.region}`,
+            {
+              type: 'task',
+              taskId: newReport._id.toString(),
+              reportId: newReport.reportId,
+              screenName: 'TaskDetails',
+              params: { id: newReport._id.toString() }
+            }
+          );
+        } catch (notificationError) {
+          console.error('Error sending assignment notification:', notificationError);
+          // Don't fail the request if notification fails
+        }
+      }
     }
     
     res.status(201).json({ 
@@ -702,6 +728,31 @@ const assignRepair = async (req, res) => {
     // Update report
     report.assignedTo = fieldWorker._id;
     report.assignedAt = new Date();
+    
+    // Send notification to field worker about the assignment
+    if (fieldWorker.deviceTokens && fieldWorker.deviceTokens.length > 0) {
+      try {
+        // Get all tokens
+        const tokens = fieldWorker.deviceTokens.map(device => device.token);
+        
+        // Send notification
+        await NotificationService.sendPushNotifications(
+          tokens,
+          'New Assignment',
+          `You have been assigned to report #${report.reportId}: ${report.damageType} damage in ${report.location.address || report.region}`,
+          {
+            type: 'task',
+            taskId: report._id.toString(),
+            reportId: report.reportId,
+            screenName: 'TaskDetails',
+            params: { id: report._id.toString() }
+          }
+        );
+      } catch (notificationError) {
+        console.error('Error sending assignment notification:', notificationError);
+        // Don't fail the request if notification fails
+      }
+    }
     report.status = 'Assigned';
     
     await report.save();

@@ -11,14 +11,17 @@ import AppNavigator from './components/navigation/AppNavigator';
 
 // Import UI components
 import { LoadingSpinner } from './components/ui';
+import { NotificationToast } from './components/notifications';
 
 // Import hooks
-import { useAppState } from './hooks';
+import { useAppState, useNotificationHandler } from './hooks';
 
 // App content component with access to AuthContext
 const AppContent = () => {
   const theme = useTheme();
   const { isDarkMode } = useThemeContext();
+  const { showToast, currentToast, hideToast } = useNotificationHandler();
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
   
   try {
     const { isLoading } = useAppState();
@@ -35,6 +38,18 @@ const AppContent = () => {
           animated={true}
         />
         <AppNavigator />
+        
+        {/* Toast notification */}
+        {showToast && currentToast && (
+          <NotificationToast
+            notification={currentToast}
+            onPress={() => {
+              // Handle toast press - navigate or show details
+              hideToast();
+            }}
+            onDismiss={hideToast}
+          />
+        )}
       </>
     );
   } catch (error) {

@@ -48,7 +48,24 @@ const FieldWorkerSchema = new mongoose.Schema({
     createdAt: { 
         type: Date, 
         default: Date.now 
-    }
+    },
+    deviceTokens: [
+        {
+            token: {
+                type: String,
+                required: true
+            },
+            type: {
+                type: String,
+                enum: ['ios', 'android', 'web', 'unknown'],
+                default: 'unknown'
+            },
+            lastRegistered: {
+                type: Date,
+                default: Date.now
+            }
+        }
+    ]
 });
 
 // Generate email and password from name and worker ID

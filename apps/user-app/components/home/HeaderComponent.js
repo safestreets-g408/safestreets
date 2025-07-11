@@ -5,6 +5,7 @@ import * as Animatable from 'react-native-animatable';
 import { Avatar, useTheme, IconButton } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeContext, THEME_MODE } from '../../context/ThemeContext';
+import { NotificationBadge } from '../notifications';
 
 const HeaderComponent = ({ fieldWorker, cityStats, navigation }) => {
   const theme = useTheme();
@@ -81,6 +82,15 @@ const HeaderComponent = ({ fieldWorker, cityStats, navigation }) => {
           duration={1000}
           style={styles.headerActions}
         >
+          {/* Notifications Badge */}
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('Notifications')}
+            style={styles.notificationButton}
+            activeOpacity={0.7}
+          >
+            <NotificationBadge />
+          </TouchableOpacity>
+          
           {/* Theme Toggle Button */}
           <TouchableOpacity 
             onPress={handleThemeToggle}
@@ -166,6 +176,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  notificationButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    elevation: 2,
+    shadowColor: 'rgba(0,0,0,0.3)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+  },
   themeToggleButton: {
     width: 36,
     height: 36,
@@ -239,7 +263,7 @@ const styles = StyleSheet.create({
     height: '60%',
     backgroundColor: 'rgba(255,255,255,0.3)',
     alignSelf: 'center',
-  }
+  },
 });
 
 export default HeaderComponent;

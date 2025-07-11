@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { 
   View, 
   StyleSheet, 
@@ -13,7 +13,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { useAuth } from '../context/AuthContext';
 import { useThemeContext } from '../context/ThemeContext';
+import { useNotifications } from '../context/NotificationContext';
 import { updateRepairStatus } from '../utils/auth';
+import HeaderRight from '../components/navigation/HeaderRight';
 import { 
   getDashboardData, 
   getFilteredReports, 
@@ -624,6 +626,19 @@ const HomeScreen = ({ navigation }) => {
     
     return notificationArray;
   };
+
+  // Set up navigation header right component
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <HeaderRight 
+          notifications={notifications}
+          onPress={() => navigation.navigate('Notifications')}
+        />
+      ),
+      headerShown: false, // Keep header hidden as we're using custom HeaderComponent
+    });
+  }, [navigation, notifications]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>

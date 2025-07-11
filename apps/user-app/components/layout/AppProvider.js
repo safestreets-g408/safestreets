@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '../../context/AuthContext';
 import { ThemeProvider } from '../../context/ThemeContext';
 import { SocketProvider } from '../../context/SocketContext';
+import { NotificationProvider } from '../../context/NotificationContext';
 import { DefaultTheme, Provider as PaperProvider } from 'react-native-paper';
 
 // Default fallback theme - very simple to avoid any potential errors
@@ -75,9 +76,11 @@ function AppProvider({ children }) {
       <SafeThemeProvider>
         <AuthProvider>
           <SocketProvider>
-            <View style={styles.container}>
-              {children}
-            </View>
+            <NotificationProvider>
+              <View style={styles.container}>
+                {children}
+              </View>
+            </NotificationProvider>
           </SocketProvider>
         </AuthProvider>
       </SafeThemeProvider>
