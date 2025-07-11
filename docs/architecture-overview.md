@@ -121,23 +121,26 @@ SafeStreets implements a comprehensive multi-tenant architecture that ensures da
 
 ## AI Model Architecture
 
+- **YOLO Object Detection**
+  - YOLOv8 with YOLOv5 fallback implementation
+  - Identifies and localizes damage areas within images
+  - Provides bounding boxes with damage classes
+  - Robust fallback mechanisms for reliability
+
 - **Vision Transformer (ViT)**
-  - Pre-trained on ImageNet, fine-tuned on road damage dataset
+  - HuggingFace/PyTorch implementation
   - Patch size: 16x16 pixels
   - Input resolution: 224x224 pixels
-  - Damage classification into 8 categories
+  - Damage classification into multiple categories
 
 - **CNN Road Classifier**
+  - Simple but effective CNN implementation
   - Validates images contain actual road surfaces
   - Prevents processing of irrelevant images
   - Improves system accuracy and efficiency
 
-- **YOLO Object Detection**
-  - Identifies and localizes damage areas within images
-  - Provides bounding boxes for damaged regions
-  - Supports damage area measurements
-
 - **Google Gemini Integration**
+  - Leverages Gemini 1.5 Flash API
   - Generates natural language descriptions of damage
   - Provides standardized report formatting
   - Incorporates damage type, severity, and location information
