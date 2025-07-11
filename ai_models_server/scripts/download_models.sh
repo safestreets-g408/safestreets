@@ -20,7 +20,7 @@ check_model() {
 }
 
 # Define the required models and their locations
-VIT_MODEL_PATH="./vit_model.pth"
+VIT_MODEL_PATH="./vit_model.pt"
 YOLO_MODEL_PATH="./yolo_model.pt"
 ROAD_MODEL_PATH="./cnn_road_classifier_scripted.pt"
 
