@@ -41,6 +41,8 @@ const FieldWorkerSchema = new mongoose.Schema({
     },
     profile: {
         phone: String,
+        personalEmail: String,
+        receiveDailyUpdates: { type: Boolean, default: false },
         lastActive: Date,
         totalReportsHandled: { type: Number, default: 0 },
         isActive: { type: Boolean, default: true }

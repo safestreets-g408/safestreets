@@ -15,7 +15,13 @@ import {
   Phone as PhoneIcon
 } from '@mui/icons-material';
 
-function FieldWorker({ fieldWorkers = [], onAddWorker = () => {}, onEditWorker = () => {}, onDeleteWorker = () => {} }) {
+function FieldWorker({ 
+  fieldWorkers = [], 
+  onAddWorker = () => {}, 
+  onEditWorker = () => {}, 
+  onDeleteWorker = () => {},
+  onViewAssignments = () => {}
+}) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState(null);
@@ -26,6 +32,7 @@ function FieldWorker({ fieldWorkers = [], onAddWorker = () => {}, onEditWorker =
     workerId: '',
     email: '',
     phone: '',
+    personalEmail: '',
     specialization: '',
     region: '',
     status: 'Available'
@@ -36,6 +43,7 @@ function FieldWorker({ fieldWorkers = [], onAddWorker = () => {}, onEditWorker =
     workerId: '',
     email: '',
     phone: '',
+    personalEmail: '',
     specialization: '',
     region: '',
     status: 'Available'
@@ -52,6 +60,7 @@ function FieldWorker({ fieldWorkers = [], onAddWorker = () => {}, onEditWorker =
         workerId: worker.workerId || '',
         email: worker.email || '',
         phone: worker.profile?.phone || '',
+        personalEmail: worker.profile?.personalEmail || worker.personalEmail || '',
         specialization: worker.specialization || '',
         region: worker.region || '',
         status: worker.status || 'Available'
@@ -260,6 +269,15 @@ function FieldWorker({ fieldWorkers = [], onAddWorker = () => {}, onEditWorker =
                     {worker.profile?.phone || 'No phone'}
                   </Typography>
 
+                  {(worker.profile?.personalEmail || worker.personalEmail) && (
+                    <Typography variant="body2" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+                      <EmailIcon fontSize="small" sx={{ mr: 1, color: 'secondary.main' }} />
+                      <Tooltip title="Personal email for daily updates">
+                        <span>{worker.profile?.personalEmail || worker.personalEmail} (Personal)</span>
+                      </Tooltip>
+                    </Typography>
+                  )}
+
                   <Typography variant="body2" sx={{ mb: 1 }}>
                     <strong>Specialization:</strong> {worker.specialization || '-'}
                   </Typography>
@@ -276,9 +294,10 @@ function FieldWorker({ fieldWorkers = [], onAddWorker = () => {}, onEditWorker =
                   <Button
                     size="small"
                     startIcon={<AssignmentIcon />}
-                    disabled={worker.status !== 'Available'}
+                    onClick={() => onViewAssignments(worker.id)}
+                    color="primary"
                   >
-                    View Assignments
+                    View Assignments ({worker.activeAssignments || 0})
                   </Button>
                   <Box>
                     <Tooltip title="Edit">
@@ -353,6 +372,17 @@ function FieldWorker({ fieldWorkers = [], onAddWorker = () => {}, onEditWorker =
               value={workerData.phone}
               onChange={handleInputChange}
               placeholder="Contact phone number"
+            />
+            
+            <TextField
+              label="Personal Email (For Daily Updates)"
+              name="personalEmail"
+              type="email"
+              fullWidth
+              value={workerData.personalEmail}
+              onChange={handleInputChange}
+              placeholder="Optional: For receiving daily task updates"
+              helperText="Daily updates about task assignments and damage reports will be sent to this email"
             />
 
             <TextField

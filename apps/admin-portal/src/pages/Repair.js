@@ -50,6 +50,8 @@ function Repair() {
     }
   };
 
+  // The backend now calculates active assignments directly
+
   useEffect(() => {
     const fetchAllData = async () => {
       try {
@@ -58,18 +60,27 @@ function Repair() {
         // Fetch both field workers and repairs in parallel
         await Promise.all([
           (async () => {
+            // The backend now calculates active assignments correctly
             const response = await api.get('/field/workers');
+            console.log('Field workers response:', response);
+            
+            // Transform the workers with the data from backend
             const transformedWorkers = response.map(worker => ({
               id: worker._id,
               workerId: worker.workerId,
               name: worker.name,
               email: worker.email,
               phone: worker.profile?.phone || '',
+              personalEmail: worker.profile?.personalEmail || '',
               specialization: worker.specialization,
               region: worker.region,
+              profile: worker.profile || {},
+              // The backend now calculates active assignments correctly
               activeAssignments: worker.activeAssignments || 0,
-              status: (worker.activeAssignments >= 3) ? 'Busy' : 'Available'
+              status: worker.status || (worker.activeAssignments >= 3 ? 'Busy' : 'Available')
             }));
+            
+            // Set workers data
             setFieldWorkers(transformedWorkers);
           })(),
           fetchRepairs()
@@ -207,6 +218,7 @@ function Repair() {
         specialization: workerData.specialization,
         region: workerData.region,
         phone: workerData.phone,
+        personalEmail: workerData.personalEmail,
         status: workerData.status
       };
       
@@ -223,8 +235,10 @@ function Repair() {
           email: response.email,
           specialization: response.specialization,
           region: response.region,
-          activeAssignments: 0,
+          activeAssignments: response.activeAssignments || 0,
           profile: response.profile || {},
+          personalEmail: response.profile?.personalEmail || workerData.personalEmail || '',
+          phone: response.profile?.phone || workerData.phone || '',
           status: workerData.status || 'Available'
         };
         
@@ -253,35 +267,47 @@ function Repair() {
   const handleEditFieldWorker = async (workerId, workerData) => {
     try {
       console.log('Editing field worker:', workerId, workerData);
+      console.log('Personal email to update:', workerData.personalEmail);
       setError(null);
       
-      // Prepare the data for the API
+      // Prepare the data for the API - send fields as the backend expects them
       const workerPayload = {
         name: workerData.name,
         specialization: workerData.specialization,
         region: workerData.region,
         phone: workerData.phone,
+        personalEmail: workerData.personalEmail,
+        // If personalEmail is provided, enable daily updates by default
+        receiveDailyUpdates: workerData.personalEmail ? true : false,
         status: workerData.status
       };
       
+      console.log('Sending payload to update worker:', workerPayload);
       const response = await api.put(`/field/${workerId}`, workerPayload);
       
       if (response) {
         console.log('Field worker updated successfully:', response);
         
-        // Update the worker in the state
+        console.log('Updated field worker response:', response);
+        
+        // Update the worker in the state with data from response
         setFieldWorkers(prevWorkers => 
           prevWorkers.map(worker => 
             worker.workerId === workerId 
               ? {
                   ...worker,
-                  name: workerData.name,
-                  specialization: workerData.specialization,
-                  region: workerData.region,
+                  name: response.name || workerData.name,
+                  specialization: response.specialization || workerData.specialization,
+                  region: response.region || workerData.region,
                   profile: {
                     ...(worker.profile || {}),
-                    phone: workerData.phone
+                    ...(response.profile || {}),
+                    phone: response.profile?.phone || workerData.phone,
+                    personalEmail: response.profile?.personalEmail || workerData.personalEmail
                   },
+                  // Keep these fields separately for easy access in UI
+                  personalEmail: response.profile?.personalEmail || workerData.personalEmail, 
+                  phone: response.profile?.phone || workerData.phone,
                   status: workerData.status
                 }
               : worker
@@ -351,6 +377,47 @@ function Repair() {
       setSnackbarOpen(true);
       
       return false;
+    }
+  };
+
+  // Function to handle viewing a worker's assignments
+  const handleViewAssignments = async (workerId) => {
+    try {
+      setError(null);
+      
+      const worker = fieldWorkers.find(w => w.id === workerId);
+      if (!worker) {
+        throw new Error(`Worker with ID ${workerId} not found`);
+      }
+      
+      // Use the new dedicated endpoint to get assignments for this worker
+      const response = await api.get(`/field/${worker.workerId}/assignments`);
+      const assignments = response?.assignments || [];
+      
+      if (assignments && assignments.length > 0) {
+        // Format a message with assignment details
+        const assignmentDetails = assignments.map((a, idx) => 
+          `${idx + 1}. Report #${a.reportId}\n   📍 ${a.location?.address || 'Unknown location'}\n   📊 Status: ${a.status}\n   🔍 Type: ${a.damageType}`
+        ).join('\n\n');
+        
+        setSnackbarSeverity('info');
+        setSnackbarMessage(`${worker.name}'s Assignments (${assignments.length}):\n\n${assignmentDetails}`);
+      } else {
+        setSnackbarSeverity('info');
+        setSnackbarMessage(`${worker.name} has no current assignments.`);
+      }
+      
+      setSnackbarOpen(true);
+      return assignments;
+    } catch (err) {
+      console.error('Error fetching worker assignments:', err);
+      setError(`Failed to fetch assignments: ${err.message || 'Unknown error'}`);
+      
+      setSnackbarSeverity('error');
+      setSnackbarMessage(`Failed to fetch assignments: ${err.message || 'Unknown error'}`);
+      setSnackbarOpen(true);
+      
+      return [];
     }
   };
 
@@ -433,6 +500,7 @@ function Repair() {
               onAddWorker={handleAddFieldWorker}
               onEditWorker={handleEditFieldWorker}
               onDeleteWorker={handleDeleteFieldWorker}
+              onViewAssignments={handleViewAssignments}
             />
           )}
         </>
@@ -451,7 +519,12 @@ function Repair() {
           onClose={handleSnackbarClose} 
           severity={snackbarSeverity} 
           variant="filled"
-          sx={{ width: '100%' }}
+          sx={{ 
+            width: '100%', 
+            maxWidth: '500px',
+            whiteSpace: 'pre-wrap', 
+            overflowWrap: 'break-word'
+          }}
         >
           {snackbarMessage}
         </Alert>
