@@ -31,6 +31,7 @@ import TenantDetails from './pages/TenantDetails';
 import SearchResults from './pages/SearchResults';
 import Chat from './pages/Chat';
 import Landing from './pages/Landing';
+import AiChatPage from './pages/AiChatPage';
 
 // ThemeApp component handles the MUI theme based on theme context
 const ThemeApp = ({ children }) => {
@@ -73,6 +74,7 @@ function App() {
                         <Route path="/historical" element={<Historical />} />
                         <Route path="/profile" element={<Profile />} />
                         <Route path="/ai-analysis" element={<AiAnalysis />} />
+                        <Route path="/ai-chat" element={<AiChatPage />} />
                         <Route path="/search-results" element={<SearchResults />} />
                         <Route path="/chat" element={<Chat />} />
                         {/* Tenant Management */}

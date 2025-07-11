@@ -22,7 +22,8 @@ The SafeStreets platform consists of five interconnected components:
 
 - 📷 Advanced road damage detection using AI
 - 🤖 AI-powered road damage report summary generation using Google Gemini
-- 📍 Automatic GPS location tagging
+- � Gemini-powered AI chat assistant for both admin and field workers
+- �📍 Automatic GPS location tagging
 - 🔐 Secure authentication for administrators and field workers
 - 📊 Comprehensive analytics dashboard
 - 📝 Task assignment and tracking for repair teams
@@ -51,13 +52,25 @@ The platform features a CNN-based road classification service that validates if 
 The system uses YOLO (You Only Look Once) for precise localization of damage areas within road images, providing bounding box information for better visualization and analysis.
 
 ### Google Gemini Integration
-SafeStreets integrates Google's Gemini 1.5 Flash model to automatically generate professional damage report summaries based on:
+SafeStreets integrates Google's Gemini 1.5 models for multiple AI-powered features:
+
+#### Damage Report Summary Generation
+Using Gemini 1.5 Flash, the system automatically generates professional damage report summaries based on:
 - Location
 - Damage type
 - Severity level
 - Priority rating
 
-This feature helps standardize report descriptions and saves time for field workers and administrators by providing consistent, well-formatted summaries.
+This feature standardizes report descriptions and saves time for field workers and administrators.
+
+#### Interactive AI Assistant
+Powered by Gemini 1.5 Pro, SafeStreets offers intelligent chat assistance for both admins and field workers:
+
+- **Admin Portal AI Assistant**: Provides guidance on infrastructure management, damage assessment, prioritization strategies, and system operations
+  
+- **Mobile App AI Assistant**: Helps field workers with damage type identification, reporting best practices, and answers questions about road maintenance procedures
+
+The AI Assistant contextually adapts to each user's role, providing relevant information and maintaining conversation history for continuous support.
 
 ## 🚀 Quick Start Guide
 

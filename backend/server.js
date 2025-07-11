@@ -19,6 +19,8 @@ const tenantRoutes = require('./routes/tenantRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const fieldWorkerChatRoutes = require('./routes/fieldWorkerChatRoutes');
+const adminAiChatRoutes = require('./routes/adminAiChatRoutes');
+const fieldWorkerAiChatRoutes = require('./routes/fieldWorkerAiChatRoutes');
 const path = require('path');
 
 dotenv.config();
@@ -77,6 +79,8 @@ app.use('/api/images', imageRoutes);
 app.use('/api/damage', damageRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/admin/ai-chat', adminAiChatRoutes);
+app.use('/api/fieldworker/ai-chat', fieldWorkerAiChatRoutes);
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server running on port ${PORT}`));

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Box, 
   useTheme, 
@@ -17,6 +17,10 @@ const MainLayout = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const location = useLocation();
+  
+  // Check if we're on the AI Chat page
+  const isAiChatPage = location.pathname === '/ai-chat';
 
   useEffect(() => {
     // Simulate initial loading
@@ -31,6 +35,8 @@ const MainLayout = () => {
   const handleLogout = () => {
     navigate('/login');
   };
+
+  const currentPath = location.pathname;
 
   if (isLoading) {
     return (
@@ -130,8 +136,8 @@ const MainLayout = () => {
           </Box>
         </Container>
 
-        {/* Chat Floating Button */}
-        <ChatFloatingButton />
+        {/* Chat Floating Button - only show on non-AI chat pages */}
+        {!isAiChatPage && <ChatFloatingButton />}
 
         {/* Mobile overlay */}
         {isMobile && mobileOpen && (

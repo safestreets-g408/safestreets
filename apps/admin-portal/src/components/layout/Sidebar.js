@@ -53,6 +53,12 @@ const superAdminMenuItems = [
     icon: <AutoAwesomeIcon />, 
     path: '/ai-analysis', 
     badge: 'AI',
+  },
+  {
+    text: 'AI Assistant',
+    icon: <AutoAwesomeIcon />,
+    path: '/ai-chat',
+    badge: 'Gemini',
   }
 ];
 
@@ -99,6 +105,12 @@ const regularMenuItems = [
     icon: <AutoAwesomeIcon />, 
     path: '/ai-analysis', 
     badge: 'AI',
+  },
+  {
+    text: 'AI Assistant',
+    icon: <AutoAwesomeIcon />,
+    path: '/ai-chat',
+    badge: 'Gemini',
   }
 ];
 
