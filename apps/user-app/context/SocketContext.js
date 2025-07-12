@@ -24,6 +24,7 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const [connected, setConnected] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
+  const [isInitializing, setIsInitializing] = useState(false);
   const { isAuthenticated, fieldWorker } = useAuth();
   
   // Initialize socket connection
@@ -32,6 +33,13 @@ export const SocketProvider = ({ children }) => {
       console.log('Not authenticated or no fieldWorker data, skipping socket connection');
       return;
     }
+    
+    if (isInitializing) {
+      console.log('Socket initialization already in progress, skipping...');
+      return;
+    }
+    
+    setIsInitializing(true);
     
     try {
       const token = await getAuthToken();
@@ -44,6 +52,7 @@ export const SocketProvider = ({ children }) => {
       // Clean up existing socket if it exists
       if (socketInstance) {
         console.log('Cleaning up existing socket before creating new one');
+        socketInstance.removeAllListeners(); // Remove all event listeners first
         socketInstance.disconnect();
         socketInstance = null;
       }
@@ -96,6 +105,13 @@ export const SocketProvider = ({ children }) => {
         // We now know the server accepted our credentials
       });
       
+      // Handle authentication errors from server
+      socketInstance.on('auth_error', (message) => {
+        console.error('Authentication error from server:', message);
+        setConnectionError(`Authentication failed: ${message}`);
+        // Don't try to reconnect immediately, user might need to re-login
+      });
+      
       socketInstance.on('connect', () => {
         console.log('Socket connected successfully');
         setConnected(true);
@@ -103,14 +119,11 @@ export const SocketProvider = ({ children }) => {
         
         // After connection, explicitly authenticate again to ensure server recognizes us
         getAuthToken().then(currentToken => {
-          if (currentToken) {
-            console.log('Sending explicit authentication after connect');
-            socketInstance.emit('authenticate', { 
-              token: currentToken,
-              userType: 'fieldworker',
-              userId: fieldWorker._id,
-              tenantId: fieldWorker.tenant
-            });
+          if (currentToken && typeof currentToken === 'string' && currentToken.trim() !== '') {
+            console.log('Sending explicit authentication after connect, token type:', typeof currentToken, 'length:', currentToken.length);
+            socketInstance.emit('authenticate', currentToken);
+          } else {
+            console.error('Invalid token for authentication:', typeof currentToken, currentToken);
           }
         });
         
@@ -219,81 +232,53 @@ export const SocketProvider = ({ children }) => {
       });
       
       setSocket(socketInstance);
+      setIsInitializing(false);
     } catch (error) {
       console.error('Error initializing socket:', error);
       setConnectionError(`Initialization error: ${error.message}`);
       socketInstance = null;
+      setIsInitializing(false);
     }
-  }, [isAuthenticated, fieldWorker]);
+  }, [isAuthenticated, fieldWorker, isInitializing]);
   
   // Function to reconnect the socket - exposed for external use
   const reconnectSocket = useCallback(() => {
     console.log('Manually reconnecting socket...');
     
+    // Prevent multiple concurrent reconnection attempts
+    if (reconnectSocket.isReconnecting) {
+      console.log('Reconnection already in progress, skipping...');
+      return;
+    }
+    reconnectSocket.isReconnecting = true;
+    
     // Reset connection attempts counter
     setConnectionAttempts(0);
     
-    // Perform chat service health check first to confirm server availability
+    // Clean up and reinitialize the socket completely
     try {
-      console.log('Performing chat service health check...');
-      getAuthToken().then(token => {
-        if (!token) {
-          console.error('No auth token available for health check');
-          setConnectionError('Authentication required');
-          return;
-        }
-        
-        // Make a simple API call to check if server is reachable
-        const healthCheckUrl = API_BASE_URL.endsWith('/api') 
-          ? `${API_BASE_URL}/health` 
-          : `${API_BASE_URL}/api/health`;
-          
-        fetch(healthCheckUrl, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          timeout: 5000
-        })
-        .then(response => {
-          console.log('API health check successful');
-          
-          // Now try socket reconnection with server verified as available
-          if (socketInstance) {
-            // Clean up existing event listeners to prevent duplicates
-            socketInstance.offAny();
-            
-            // Try reconnecting the existing socket first
-            socketInstance.connect();
-            
-            // Set a timeout to check if connection was successful
-            setTimeout(() => {
-              if (!socketInstance.connected) {
-                console.log('Reconnect attempt failed, reinitializing socket...');
-                // If not, reinitialize the socket
-                initializeSocketConnection();
-              } else {
-                console.log('Socket successfully reconnected');
-                setConnected(true);
-              }
-            }, 3000); // Give it a bit more time to connect
-          } else {
-            // If no socket instance exists, create a new one
-            initializeSocketConnection();
-          }
-        })
-        .catch(error => {
-          console.error('API health check failed:', error);
-          
-          // Server might be down, retry with exponential backoff
-          setTimeout(() => {
-            console.log('Retrying connection after health check failure...');
-            initializeSocketConnection();
-          }, 5000);
+      console.log('Performing complete socket reinitialization...');
+      
+      // Clean up existing socket completely
+      if (socketInstance) {
+        console.log('Cleaning up existing socket for reconnection');
+        socketInstance.removeAllListeners();
+        socketInstance.disconnect();
+        socketInstance = null;
+        setSocket(null);
+        setConnected(false);
+      }
+      
+      // Wait a moment before reinitializing
+      setTimeout(() => {
+        initializeSocketConnection().finally(() => {
+          reconnectSocket.isReconnecting = false;
         });
-      });
+      }, 1000);
+      
     } catch (error) {
       console.error('Error during reconnect process:', error);
+      reconnectSocket.isReconnecting = false;
       // Final fallback - just try to reinitialize
       initializeSocketConnection();
     }
@@ -306,29 +291,30 @@ export const SocketProvider = ({ children }) => {
   useEffect(() => {
     if (!connected || !socketInstance) return;
     
-    // Set up heartbeat to check connection every 20 seconds
+    // Set up heartbeat to check connection every 30 seconds (increased from 20s)
     const heartbeatInterval = setInterval(() => {
       if (socketInstance && socketInstance.connected) {
         // Socket is connected, send a ping to keep it alive
         socketInstance.emit('ping_server');
         console.log('Heartbeat: sent ping to server');
-      } else if (socketInstance && !socketInstance.connected && connectionAttempts < 5) {
-        // Socket exists but is disconnected, try to reconnect
+      } else if (socketInstance && !socketInstance.connected && connectionAttempts < 3) {
+        // Socket exists but is disconnected, try to reconnect (reduced max attempts)
         console.log('Heartbeat: Socket disconnected, attempting reconnect');
-        socketInstance.connect();
         setConnectionAttempts(prev => prev + 1);
-      } else if (connectionAttempts >= 5) {
-        // Too many failed attempts, reinitialize the socket
-        console.log('Heartbeat: Too many failed attempts, reinitializing socket');
-        initializeSocketConnection();
+        // Use reconnectSocket instead of direct connect to avoid duplicates
+        reconnectSocket();
+      } else if (connectionAttempts >= 3) {
+        // Too many failed attempts, stop trying for now
+        console.log('Heartbeat: Too many failed attempts, stopping automatic reconnection');
+        setConnectionError('Connection lost - please try manual reconnect');
         setConnectionAttempts(0);
       }
-    }, 20000);
+    }, 30000); // Increased interval to reduce connection pressure
     
     return () => {
       clearInterval(heartbeatInterval);
     };
-  }, [connected, socketInstance, connectionAttempts]);
+  }, [connected, socketInstance, connectionAttempts, reconnectSocket]);
   
   // Initialize socket when authenticated
   useEffect(() => {
@@ -386,20 +372,23 @@ export const SocketProvider = ({ children }) => {
     try {
       console.log('Joining chat rooms with adminId:', adminId, 'and chatRoomId:', chatRoomId);
       
-      // First re-authenticate to ensure the server recognizes us
+      // First re-authenticate only if socket seems disconnected or unauthenticated
       const currentToken = await getAuthToken();
-      if (!currentToken) {
-        console.error('No token available when attempting to join chat rooms');
+      if (!currentToken || typeof currentToken !== 'string' || currentToken.trim() === '') {
+        console.error('No valid token available when attempting to join chat rooms:', typeof currentToken, currentToken);
         return;
       }
       
-      // Authenticate with the socket
-      socket.emit('authenticate', { 
-        token: currentToken,
-        userType: 'fieldworker',
-        userId: fieldWorker._id,
-        tenantId: fieldWorker.tenant
-      });
+      // Only re-authenticate if the socket appears to need it
+      if (!socket.connected || !socket.userId) {
+        console.log('Socket not connected or not authenticated, re-authenticating for chat rooms');
+        socket.emit('authenticate', currentToken);
+        
+        // Wait a moment for authentication to complete
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } else {
+        console.log('Socket already authenticated, proceeding to join rooms');
+      }
       
       // Create a standard payload with auth info for all room joins
       const basePayload = {

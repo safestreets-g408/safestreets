@@ -99,8 +99,19 @@ const getChatRoom = async (req, res) => {
     const { fieldWorker } = req;
     const { recipientId, recipientType } = req.body;
     
+    // Validate fieldWorker
+    if (!fieldWorker || !fieldWorker._id) {
+      console.error('Invalid fieldWorker in getChatRoom:', fieldWorker);
+      return res.status(400).json({ message: 'FieldWorker not found in request' });
+    }
+    
     if (recipientType !== 'admin') {
       return res.status(400).json({ message: 'Invalid recipient type' });
+    }
+    
+    // Validate recipientId
+    if (!recipientId) {
+      return res.status(400).json({ message: 'recipientId is required' });
     }
     
     // Find the admin
@@ -108,6 +119,8 @@ const getChatRoom = async (req, res) => {
     if (!admin) {
       return res.status(404).json({ message: 'Admin not found' });
     }
+    
+    console.log('Creating chat room with fieldWorker:', fieldWorker._id, 'and admin:', admin._id);
     
     // Check if fieldWorker has access to this admin (tenant check)
     if (admin.role !== 'super-admin' && admin.tenant.toString() !== fieldWorker.tenant.toString()) {
@@ -126,25 +139,41 @@ const getChatRoom = async (req, res) => {
     
     // If no chat room exists, create one
     if (!chatRoom) {
+      // Validate participant data before creating chat room
+      if (!fieldWorker._id || !fieldWorker.name) {
+        console.error('Invalid fieldWorker data for chat room creation:', { id: fieldWorker._id, name: fieldWorker.name });
+        return res.status(400).json({ message: 'Invalid fieldWorker data' });
+      }
+      
+      if (!admin._id || !admin.name) {
+        console.error('Invalid admin data for chat room creation:', { id: admin._id, name: admin.name });
+        return res.status(400).json({ message: 'Invalid admin data' });
+      }
+      
+      const participantData = [
+        {
+          userId: fieldWorker._id,
+          userModel: 'FieldWorker',
+          name: fieldWorker.name,
+          role: 'field_worker'
+        },
+        {
+          userId: admin._id,
+          userModel: 'Admin',
+          name: admin.name,
+          role: admin.role === 'super-admin' ? 'super_admin' : 'tenant_admin'
+        }
+      ];
+      
+      console.log('Creating chat room with participants:', participantData);
+      
       chatRoom = new ChatRoom({
         roomType: 'admin_fieldworker',
-        participants: [
-          {
-            userId: fieldWorker._id,
-            userModel: 'FieldWorker',
-            name: fieldWorker.name,
-            role: 'field_worker'
-          },
-          {
-            userId: admin._id,
-            userModel: 'Admin',
-            name: admin.name,
-            role: admin.role === 'super-admin' ? 'super_admin' : 'tenant_admin'
-          }
-        ]
+        participants: participantData
       });
       
       await chatRoom.save();
+      console.log('Chat room created successfully:', chatRoom._id);
     }
     
     res.json({ 

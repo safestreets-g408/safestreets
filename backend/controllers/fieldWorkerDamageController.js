@@ -850,6 +850,183 @@ const getFieldWorkerAiReports = async (req, res) => {
   }
 };
 
+// Helper functions
+const calculateAverageCompletionTime = (reports) => {
+  const completedReports = reports.filter(r => 
+    r.repairStatus === 'completed' && r.assignedAt && r.updatedAt
+  );
+  
+  if (completedReports.length === 0) return 0;
+  
+  const totalTime = completedReports.reduce((sum, report) => {
+    const assignedDate = new Date(report.assignedAt);
+    const completedDate = new Date(report.updatedAt);
+    const timeDiff = completedDate - assignedDate;
+    return sum + timeDiff;
+  }, 0);
+  
+  // Return average time in hours
+  return Math.round(totalTime / completedReports.length / (1000 * 60 * 60));
+};
+
+const calculatePerformanceOverTime = (reports) => {
+  const last30Days = [];
+  const now = new Date();
+  
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date(now);
+    date.setDate(date.getDate() - i);
+    date.setHours(0, 0, 0, 0);
+    
+    const nextDate = new Date(date);
+    nextDate.setDate(nextDate.getDate() + 1);
+    
+    const dayReports = reports.filter(r => {
+      const assignedDate = new Date(r.assignedAt);
+      return assignedDate >= date && assignedDate < nextDate;
+    });
+    
+    const completed = dayReports.filter(r => r.repairStatus === 'completed').length;
+    const total = dayReports.length;
+    
+    last30Days.push({
+      date: date.toISOString().split('T')[0],
+      completed,
+      total,
+      completionRate: total > 0 ? (completed / total * 100).toFixed(1) : 0
+    });
+  }
+  
+  return last30Days;
+};
+
+const calculateCompletionRateByType = (reports) => {
+  const damageTypes = ['pothole', 'crack', 'debris', 'flooding', 'other'];
+  
+  return damageTypes.map(type => {
+    const typeReports = reports.filter(r => r.damageType === type);
+    const completed = typeReports.filter(r => r.repairStatus === 'completed').length;
+    
+    return {
+      damageType: type,
+      total: typeReports.length,
+      completed,
+      completionRate: typeReports.length > 0 ? (completed / typeReports.length * 100).toFixed(1) : 0
+    };
+  }).filter(item => item.total > 0);
+};
+
+const calculateAvgTimeByPriority = (reports) => {
+  const priorities = ['Low', 'Medium', 'High', 'Critical'];
+  
+  return priorities.map(priority => {
+    const priorityReports = reports.filter(r => 
+      r.priority === priority && r.repairStatus === 'completed' && r.assignedAt && r.updatedAt
+    );
+    
+    if (priorityReports.length === 0) {
+      return {
+        priority,
+        averageTime: 0,
+        count: 0
+      };
+    }
+    
+    const totalTime = priorityReports.reduce((sum, report) => {
+      const assignedDate = new Date(report.assignedAt);
+      const completedDate = new Date(report.updatedAt);
+      return sum + (completedDate - assignedDate);
+    }, 0);
+    
+    return {
+      priority,
+      averageTime: Math.round(totalTime / priorityReports.length / (1000 * 60 * 60)), // in hours
+      count: priorityReports.length
+    };
+  }).filter(item => item.count > 0);
+};
+
+const calculateTasksByTimeOfDay = (reports) => {
+  const timeSlots = [
+    { label: '6-9 AM', start: 6, end: 9 },
+    { label: '9-12 PM', start: 9, end: 12 },
+    { label: '12-3 PM', start: 12, end: 15 },
+    { label: '3-6 PM', start: 15, end: 18 },
+    { label: '6-9 PM', start: 18, end: 21 },
+    { label: 'Other', start: 21, end: 6 }
+  ];
+  
+  return timeSlots.map(slot => {
+    const slotReports = reports.filter(r => {
+      if (!r.assignedAt) return false;
+      const hour = new Date(r.assignedAt).getHours();
+      
+      if (slot.label === 'Other') {
+        return hour >= 21 || hour < 6;
+      }
+      
+      return hour >= slot.start && hour < slot.end;
+    });
+    
+    return {
+      timeSlot: slot.label,
+      count: slotReports.length,
+      completed: slotReports.filter(r => r.repairStatus === 'completed').length
+    };
+  });
+};
+
+const calculateDamageTypeCounts = (reports) => {
+  const counts = {};
+  reports.forEach(report => {
+    const type = report.damageType || 'other';
+    counts[type] = (counts[type] || 0) + 1;
+  });
+  return counts;
+};
+
+const calculateStatusCounts = (reports) => {
+  const counts = {
+    pending: 0,
+    in_progress: 0,
+    completed: 0,
+    cancelled: 0
+  };
+  
+  reports.forEach(report => {
+    const status = report.repairStatus || 'pending';
+    if (counts.hasOwnProperty(status)) {
+      counts[status]++;
+    }
+  });
+  
+  return counts;
+};
+
+const getPeriodLabel = (period) => {
+  const now = new Date();
+  
+  switch (period) {
+    case 'today':
+      return `Today (${now.toLocaleDateString()})`;
+    case 'week':
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      return `This Week (${startOfWeek.toLocaleDateString()} - ${now.toLocaleDateString()})`;
+    case 'month':
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      return `This Month (${startOfMonth.toLocaleDateString()} - ${now.toLocaleDateString()})`;
+    case 'quarter':
+      const quarterStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+      return `This Quarter (${quarterStart.toLocaleDateString()} - ${now.toLocaleDateString()})`;
+    case 'year':
+      const yearStart = new Date(now.getFullYear(), 0, 1);
+      return `This Year (${yearStart.toLocaleDateString()} - ${now.toLocaleDateString()})`;
+    default:
+      return 'All Time';
+  }
+};
+
 module.exports = {
   getFieldWorkerReports,
   updateRepairStatus,

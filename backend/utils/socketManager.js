@@ -34,9 +34,19 @@ class SocketManager {
       // Handle authentication
       socket.on('authenticate', async (token) => {
         console.log('Authentication attempt for socket:', socket.id);
+        console.log('Token received:', typeof token, token ? 'has value' : 'is empty/null');
+        console.log('Handshake auth:', socket.handshake.auth);
         clearTimeout(authTimeout); // Clear timeout on authentication attempt
         try {
+          // Validate token format
+          if (!token || typeof token !== 'string') {
+            console.error('Invalid token format received:', typeof token, token);
+            socket.emit('error', 'Invalid token format - must be a string');
+            return;
+          }
+          
           const decoded = jwt.verify(token, process.env.JWT_SECRET);
+          console.log('Token decoded successfully:', decoded);
           let user;
           
           if (socket.handshake.auth && socket.handshake.auth.userType === 'fieldworker') {

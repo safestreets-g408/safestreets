@@ -53,7 +53,8 @@ const protectFieldWorker = async (req, res, next) => {
     }
 
     req.fieldWorker = {
-      id: decoded.fieldWorkerId,
+      _id: decoded.fieldWorkerId,  // Use _id for consistency with MongoDB ObjectId
+      id: decoded.fieldWorkerId,   // Keep id for backward compatibility
       workerId: fieldWorker.workerId,
       name: fieldWorker.name,
       region: fieldWorker.region,
