@@ -106,11 +106,13 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
       if (user.role === 'super-admin') {
         return (
           room.tenantName?.toLowerCase().includes(searchLower) ||
+          room.fieldWorker?.name?.toLowerCase().includes(searchLower) ||
           lastMessageText.toLowerCase().includes(searchLower)
         );
       } else {
         return (
           (room.contactName || 'Support Team').toLowerCase().includes(searchLower) ||
+          room.fieldWorker?.name?.toLowerCase().includes(searchLower) ||
           lastMessageText.toLowerCase().includes(searchLower)
         );
       }
@@ -648,7 +650,9 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
                               }}
                             >
                               {user?.role === 'super-admin' ? (
-                                room.tenantName?.charAt(0)?.toUpperCase() || 'T'
+                                room.roomType === 'field_worker_chat' 
+                                  ? (room.fieldWorker?.name?.charAt(0)?.toUpperCase() || 'F')
+                                  : (room.tenantName?.charAt(0)?.toUpperCase() || 'T')
                               ) : (
                                 <AdminIcon />
                               )}
@@ -670,7 +674,9 @@ const ChatRoomsList = ({ onSelectRoom, selectedRoomId }) => {
                                 }}
                               >
                                 {user?.role === 'super-admin' 
-                                  ? room.tenantName 
+                                  ? (room.roomType === 'field_worker_chat' 
+                                      ? `${room.fieldWorker?.name} (${room.tenantName})` 
+                                      : room.tenantName)
                                   : (room.contactName || 'Support Team')
                                 }
                               </Typography>

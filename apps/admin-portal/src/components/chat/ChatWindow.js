@@ -34,7 +34,7 @@ import PropTypes from 'prop-types';
 import ReportSelectorDialog from './ReportSelectorDialog';
 import ReportMessage from './ReportMessage';
 
-const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
+const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClose }) => {
   const theme = useTheme();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -123,7 +123,12 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
       
       setError(null); // Clear previous errors
 
-      const response = await chatService.getChatMessages(tenantId, pageNum);
+      let response;
+      if (roomType === 'field_worker_chat' && roomId) {
+        response = await chatService.getFieldWorkerChatMessages(roomId, pageNum);
+      } else {
+        response = await chatService.getChatMessages(tenantId, pageNum);
+      }
       
       if (append) {
         setMessages(prev => [...response.messages, ...prev]);
@@ -141,7 +146,7 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [tenantId, scrollToBottom]);
+  }, [tenantId, roomType, roomId, scrollToBottom]);
 
   // Load more messages
   const loadMoreMessages = () => {
@@ -202,35 +207,60 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
     if (!socket) return;
 
     const handleNewMessage = (message) => {
-      console.log('Received new_message event:', message);
-      console.log('Message properties:', JSON.stringify(message, null, 2));
+      console.log('ChatWindow: Received new_message event:', message);
+      console.log('ChatWindow: Message properties:', JSON.stringify(message, null, 2));
+      console.log('ChatWindow: Current chat context - tenantId:', tenantId, 'roomType:', roomType, 'roomId:', roomId);
       
-      // Enhanced message filtering for different message formats
+      // Enhanced message filtering for different chat types
       const currentTenantIdStr = tenantId ? tenantId.toString() : '';
+      const currentRoomIdStr = roomId ? roomId.toString() : '';
       
-      // We need to check multiple possible chatId formats
-      const isTenantChat = 
-        (message.tenantId && message.tenantId.toString() === currentTenantIdStr) || // Direct tenantId match 
-        (message.chatId === `tenant_${tenantId}`) || // tenant_ID format
-        (message.chatId && message.chatId.toString() === currentTenantIdStr) || // Direct chatId match
-        (message.adminId && message.fromFieldWorker && user && 
-          (message.adminId === user._id || message.adminId === user.id)) || // Direct message to this admin
-        message.chatId.includes(tenantId);
+      let isForThisChat = false;
       
-      // For debugging
-      if (!isTenantChat) {
-        console.log(`Message chatId ${message.chatId} doesn't match expected tenantId ${tenantId}`);
-        // Also log if this is possibly from a field worker we're interested in
-        if (message.senderModel === 'FieldWorker') {
-          console.log('This is a field worker message - checking if it belongs in this chat');
-          // Additional logging to help debug
-          console.log('Message full details:', message);
-        }
+      if (roomType === 'field_worker_chat' && roomId) {
+        // For field worker chats, match by roomId
+        isForThisChat = 
+          (message.chatId && message.chatId.toString() === currentRoomIdStr) ||
+          (message.roomId && message.roomId.toString() === currentRoomIdStr);
+        console.log('Field worker chat check:', isForThisChat, 'message.chatId:', message.chatId, 'expected roomId:', roomId);
+      } else {
+        // For regular tenant chats, match by tenantId
+        isForThisChat = 
+          (message.tenantId && message.tenantId.toString() === currentTenantIdStr) || // Direct tenantId match 
+          (message.chatId === `tenant_${tenantId}`) || // tenant_ID format
+          (message.chatId && message.chatId.toString() === currentTenantIdStr) || // Direct chatId match
+          (message.adminId && message.fromFieldWorker && user && 
+            (message.adminId === user._id || message.adminId === user.id)) || // Direct message to this admin
+          (message.chatId && typeof message.chatId === 'string' && message.chatId.includes(tenantId));
+        console.log('Regular tenant chat check:', isForThisChat, 'message.tenantId:', message.tenantId, 'expected tenantId:', tenantId);
       }
       
-      if (isTenantChat || (user?.tenant?._id === tenantId || user?.tenant === tenantId)) {
-        console.log('Adding message to chat:', message);
-        setMessages(prev => [...prev, message]);
+      // For debugging
+      if (!isForThisChat) {
+        console.log(`ChatWindow: Message doesn't match current chat context`);
+        console.log('ChatWindow: Message details for debugging:', {
+          messageChatId: message.chatId,
+          messageTenantId: message.tenantId,
+          messageRoomId: message.roomId,
+          currentTenantId: tenantId,
+          currentRoomId: roomId,
+          currentRoomType: roomType
+        });
+      }
+      
+      if (isForThisChat) {
+        console.log('ChatWindow: Adding message to chat:', message);
+        
+        // Check for duplicate messages
+        setMessages(prev => {
+          const existingMessage = prev.find(msg => msg._id === message._id);
+          if (existingMessage) {
+            console.log('ChatWindow: Duplicate message detected, skipping');
+            return prev;
+          }
+          return [...prev, message];
+        });
+        
         setTimeout(scrollToBottom, 100);
         
         // Mark as read if not from current user
@@ -259,7 +289,7 @@ const ChatWindow = ({ tenantId, tenantName, contactName, onClose }) => {
       socket.off('new_message', handleNewMessage);
       socket.off('user_typing', handleUserTyping);
     };
-  }, [socket, tenantId, user, markAsRead, scrollToBottom]);
+  }, [socket, tenantId, roomId, roomType, user, markAsRead, scrollToBottom]);
 
   // Cleanup typing timeout
   useEffect(() => {
@@ -1165,6 +1195,8 @@ ChatWindow.propTypes = {
   tenantId: PropTypes.string.isRequired,
   tenantName: PropTypes.string,
   contactName: PropTypes.string,
+  roomType: PropTypes.string,
+  roomId: PropTypes.string,
   onClose: PropTypes.func.isRequired
 };
 

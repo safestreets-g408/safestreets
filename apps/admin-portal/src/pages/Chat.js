@@ -394,6 +394,8 @@ const Chat = () => {
                   tenantId={selectedRoom.tenantId}
                   tenantName={selectedRoom.tenantName}
                   contactName={selectedRoom.contactName}
+                  roomType={selectedRoom.roomType}
+                  roomId={selectedRoom.roomId}
                   onClose={handleCloseChat}
                 />
               ) : (

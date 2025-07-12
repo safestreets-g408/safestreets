@@ -333,6 +333,10 @@ const sendMessage = async (req, res) => {
         req.io.to(`chat_${chatRoom._id}`).emit(eventName, messageObj);
         console.log(`Emitted to chat_${chatRoom._id}`);
         
+        // ALWAYS emit to super_admin room for visibility - this is crucial
+        req.io.to('super_admin').emit(eventName, messageObj);
+        console.log('Emitted to super_admin room');
+        
         // If admin has a tenant, emit to that tenant's room
         if (adminUser && adminUser.tenant) {
           const tenantId = adminUser.tenant.toString ? adminUser.tenant.toString() : adminUser.tenant;
@@ -341,14 +345,13 @@ const sendMessage = async (req, res) => {
           console.log(`Emitted to tenant rooms for tenant ${tenantId}`);
         }
         
-        // Emit to super_admin room for visibility
-        req.io.to('super_admin').emit(eventName, messageObj);
-        
         // Also broadcast to the field worker's tenant room
         if (fieldWorker.tenant) {
           const fwTenantId = fieldWorker.tenant.toString ? fieldWorker.tenant.toString() : fieldWorker.tenant;
           req.io.to(`tenant_fieldworkers_${fwTenantId}`).emit(eventName, messageObj);
           req.io.to(`tenant_${fwTenantId}`).emit(eventName, messageObj);
+          req.io.to(`chat_${fwTenantId}`).emit(eventName, messageObj); // Additional broadcast
+          console.log(`Emitted to field worker tenant rooms for ${fwTenantId}`);
         }
         
         // Send a notification event for admin portal to update UI
@@ -361,12 +364,18 @@ const sendMessage = async (req, res) => {
           chatId: chatRoom._id.toString(),
           timestamp: new Date(),
           adminId: adminId,
-          directMessage: true
+          directMessage: true,
+          fromFieldWorker: true
         };
         
-        // Emit notification with consistent event name
+        // Emit notification to all relevant targets
         req.io.to(`admin_${adminId}`).emit('chat_notification', notificationData);
         req.io.to('super_admin').emit('chat_notification', notificationData);
+        
+        // Also send to all admins in the tenant if applicable
+        if (fieldWorker.tenant) {
+          req.io.to(`tenant_${fieldWorker.tenant}`).emit('chat_notification', notificationData);
+        }
         
         // Also broadcast to all connected clients (will be filtered on client side)
         req.io.emit('global_message', {

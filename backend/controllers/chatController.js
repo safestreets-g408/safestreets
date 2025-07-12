@@ -84,11 +84,87 @@ const getAllChatRooms = async (req, res) => {
       return res.status(403).json({ message: 'Access denied - super admin required' });
     }
 
+    // Get traditional tenant chat rooms
     const chatRooms = await ChatRoom.find({ isActive: true })
       .sort({ 'lastMessage.timestamp': -1, updatedAt: -1 });
 
-    console.log('Found chat rooms:', chatRooms.length);
-    res.json(chatRooms);
+    // Get field worker chat rooms (admin_fieldworker type)
+    const fieldWorkerChats = await ChatRoom.find({ 
+      roomType: 'admin_fieldworker',
+      isActive: { $ne: false }
+    }).populate({
+      path: 'participants.userId',
+      select: 'name email role tenant profileImage'
+    }).sort({ lastMessageAt: -1, updatedAt: -1 });
+
+    // Transform field worker chats to match expected format
+    const transformedFieldWorkerChats = await Promise.all(
+      fieldWorkerChats.map(async (room) => {
+        const fieldWorkerParticipant = room.participants.find(p => p.userModel === 'FieldWorker');
+        const adminParticipant = room.participants.find(p => p.userModel === 'Admin');
+        
+        if (!fieldWorkerParticipant) return null;
+        
+        // Get the actual field worker document
+        const FieldWorker = require('../models/FieldWorker');
+        const fieldWorker = await FieldWorker.findById(fieldWorkerParticipant.userId).populate('tenant', 'name');
+        
+        if (!fieldWorker) return null;
+        
+        // Get last message
+        const lastMessage = await ChatMessage.findOne({ chatId: room._id })
+          .sort({ createdAt: -1 })
+          .select('message createdAt senderId senderName senderModel');
+        
+        // Get unread count for admin
+        const unreadCount = await ChatMessage.countDocuments({
+          chatId: room._id,
+          senderModel: 'FieldWorker',
+          readBy: { $not: { $elemMatch: { userId: admin._id } } }
+        });
+        
+        return {
+          _id: room._id,
+          tenantId: fieldWorker.tenant?._id || fieldWorker.tenant,
+          tenantName: fieldWorker.tenant?.name || 'Unknown Tenant',
+          roomType: 'field_worker_chat',
+          fieldWorker: {
+            _id: fieldWorker._id,
+            name: fieldWorker.name,
+            email: fieldWorker.email,
+            profileImage: fieldWorker.profileImage
+          },
+          admin: adminParticipant ? {
+            _id: adminParticipant.userId,
+            name: adminParticipant.name,
+            role: adminParticipant.role
+          } : null,
+          lastMessage: lastMessage ? {
+            message: lastMessage.message,
+            timestamp: lastMessage.createdAt,
+            senderName: lastMessage.senderName,
+            senderModel: lastMessage.senderModel
+          } : null,
+          unreadCount,
+          isActive: true,
+          updatedAt: room.lastMessageAt || room.updatedAt
+        };
+      })
+    );
+    
+    // Filter out null results and combine with regular chat rooms
+    const validFieldWorkerChats = transformedFieldWorkerChats.filter(chat => chat !== null);
+    const allChats = [...chatRooms, ...validFieldWorkerChats];
+    
+    // Sort by last activity
+    allChats.sort((a, b) => {
+      const aTime = a.lastMessage?.timestamp || a.updatedAt || new Date(0);
+      const bTime = b.lastMessage?.timestamp || b.updatedAt || new Date(0);
+      return new Date(bTime) - new Date(aTime);
+    });
+
+    console.log('Found chat rooms:', chatRooms.length, 'field worker chats:', validFieldWorkerChats.length);
+    res.json(allChats);
   } catch (error) {
     console.error('Error getting chat rooms:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -135,6 +211,55 @@ const getChatMessages = async (req, res) => {
     });
   } catch (error) {
     console.error('Error getting chat messages:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Get chat messages for field worker room
+const getFieldWorkerChatMessages = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { page = 1, limit = 50 } = req.query;
+    const { admin } = req;
+
+    console.log('getFieldWorkerChatMessages - Admin:', admin.name, 'Room ID:', roomId);
+
+    // Check if this is a valid field worker chat room
+    const chatRoom = await ChatRoom.findById(roomId);
+    if (!chatRoom || chatRoom.roomType !== 'admin_fieldworker') {
+      return res.status(404).json({ message: 'Field worker chat room not found' });
+    }
+
+    // Check if admin has access (super admin or participant in the room)
+    if (admin.role !== 'super-admin') {
+      const isParticipant = chatRoom.participants.some(p => 
+        p.userModel === 'Admin' && p.userId.toString() === admin._id.toString()
+      );
+      if (!isParticipant) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+    }
+
+    const skip = (page - 1) * limit;
+
+    const messages = await ChatMessage.find({ chatId: roomId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const totalMessages = await ChatMessage.countDocuments({ chatId: roomId });
+
+    console.log('Found field worker chat messages:', messages.length);
+
+    res.json({
+      messages: messages.reverse(), // Reverse to show oldest first
+      totalMessages,
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(totalMessages / limit),
+      hasMore: skip + messages.length < totalMessages
+    });
+  } catch (error) {
+    console.error('Error getting field worker chat messages:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -424,6 +549,7 @@ module.exports = {
   getAllChatRooms,
   getTenantChatRooms,
   getChatMessages,
+  getFieldWorkerChatMessages,
   sendMessage,
   markMessagesAsRead,
   getChatRoomsByRole

@@ -6,6 +6,7 @@ const {
   getAllChatRooms,
   getTenantChatRooms,
   getChatMessages,
+  getFieldWorkerChatMessages,
   sendMessage,
   markMessagesAsRead,
   getChatRoomsByRole
@@ -40,6 +41,9 @@ router.get('/room/:tenantId', protectAdmin, getChatRoom);
 
 // Get messages for a chat room
 router.get('/room/:tenantId/messages', protectAdmin, getChatMessages);
+
+// Get messages for a field worker chat room
+router.get('/fieldworker-room/:roomId/messages', protectAdmin, getFieldWorkerChatMessages);
 
 // Send a message
 router.post('/room/:tenantId/message', protectAdmin, sendMessage);

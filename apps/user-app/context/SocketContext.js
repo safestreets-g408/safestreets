@@ -25,6 +25,7 @@ export const SocketProvider = ({ children }) => {
   const [connected, setConnected] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
   const [isInitializing, setIsInitializing] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const { isAuthenticated, fieldWorker } = useAuth();
   
   // Initialize socket connection
@@ -223,12 +224,62 @@ export const SocketProvider = ({ children }) => {
       // Listen for new messages and notifications
       socketInstance.on('new_message', (message) => {
         console.log('New message received:', message);
-        // You can add logic here to update UI or show notification
+        
+        // Show notification if message is from admin and not from current user
+        if (message.senderModel === 'Admin' && message.senderId !== fieldWorker._id) {
+          // Check for duplicate notifications
+          setNotifications(prev => {
+            const existingNotification = prev.find(notif => 
+              (notif.messageId && message._id && notif.messageId === message._id) ||
+              (notif.message === message.message && notif.adminId === message.senderId &&
+               Math.abs(new Date(notif.timestamp) - new Date()) < 5000) // 5 second window
+            );
+            
+            if (existingNotification) {
+              console.log('Duplicate notification detected, skipping');
+              return prev;
+            }
+            
+            // Create notification data
+            const notificationData = {
+              id: Date.now(),
+              messageId: message._id,
+              type: 'new_message',
+              senderName: message.senderName || 'Admin',
+              message: message.message && message.message.length > 50 
+                ? `${message.message.substring(0, 50)}...` 
+                : (message.message || 'New message'),
+              timestamp: new Date(),
+              adminId: message.senderId
+            };
+            
+            return [notificationData, ...prev.slice(0, 9)];
+          });
+        }
       });
       
-      socketInstance.on('notification', (notification) => {
-        console.log('Notification received:', notification);
-        // You can add logic here to show notification
+      socketInstance.on('chat_notification', (notification) => {
+        console.log('Chat notification received:', notification);
+        
+        // Check for duplicate notifications
+        setNotifications(prev => {
+          const existingNotification = prev.find(notif => 
+            (notif.messageId && notification.messageId && notif.messageId === notification.messageId) ||
+            (notif.message === notification.message && notif.adminId === notification.adminId &&
+             Math.abs(new Date(notif.timestamp) - new Date()) < 5000) // 5 second window
+          );
+          
+          if (existingNotification) {
+            console.log('Duplicate chat notification detected, skipping');
+            return prev;
+          }
+          
+          return [{
+            id: Date.now(),
+            ...notification,
+            timestamp: new Date()
+          }, ...prev.slice(0, 9)];
+        });
       });
       
       setSocket(socketInstance);
@@ -531,6 +582,8 @@ export const SocketProvider = ({ children }) => {
       socket,
       connected,
       connectionError,
+      notifications,
+      setNotifications,
       joinChat,
       markAsRead,
       startTyping,

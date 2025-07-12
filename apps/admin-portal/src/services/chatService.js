@@ -49,6 +49,28 @@ export const chatService = {
     }
   },
 
+  // Get messages for a field worker chat room
+  getFieldWorkerChatMessages: async (roomId, page = 1, limit = 20) => {
+    try {
+      // Validate roomId
+      if (!roomId) {
+        throw new Error('Invalid room ID');
+      }
+      
+      const response = await api.get(`${CHAT_ENDPOINT}/fieldworker-room/${roomId}/messages`, {
+        params: { page, limit }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to load field worker messages:', error.response?.data || error.message);
+      const errorMessage = 
+        error.response?.data?.message || 
+        error.message || 
+        'Failed to load messages. Please check your connection and try again.';
+      throw new Error(errorMessage);
+    }
+  },
+
   // Send a message with better error handling
   sendMessage: async (tenantId, content) => {
     try {

@@ -127,16 +127,42 @@ class SocketManager {
               socket.userId = userInfo.id;
               socket.userInfo = userInfo;
 
+              // Join admin-specific room
+              socket.join(`admin_${userInfo.id}`);
+
               // Join appropriate rooms
               if (userInfo.role === 'super-admin') {
                 socket.join('super_admin');
-                // Join all tenant chat rooms for super admin
-                const chatRooms = await ChatRoom.find({ isActive: true });
-                chatRooms.forEach(room => {
-                  socket.join(`chat_${room.tenantId}`);
-                });
+                console.log('Admin joined super_admin room');
+                
+                // Join all tenant chat rooms for super admin to receive all messages
+                try {
+                  const chatRooms = await ChatRoom.find({ isActive: true });
+                  for (const room of chatRooms) {
+                    if (room.tenantId) {
+                      socket.join(`chat_${room.tenantId}`);
+                      socket.join(`tenant_${room.tenantId}`);
+                    }
+                    socket.join(`chat_${room._id}`);
+                  }
+                  
+                  // Also join all possible field worker rooms
+                  const fieldWorkers = await FieldWorker.find({}).select('tenant');
+                  for (const fw of fieldWorkers) {
+                    if (fw.tenant) {
+                      socket.join(`tenant_fieldworkers_${fw.tenant}`);
+                      socket.join(`fieldworker_${fw._id}`);
+                    }
+                  }
+                  
+                  console.log(`Super admin joined ${chatRooms.length} chat rooms and ${fieldWorkers.length} field worker rooms`);
+                } catch (err) {
+                  console.error('Error joining rooms for super admin:', err);
+                }
               } else if (userInfo.tenantId) {
                 socket.join(`chat_${userInfo.tenantId}`);
+                socket.join(`tenant_${userInfo.tenantId}`);
+                console.log(`Admin joined tenant rooms for ${userInfo.tenantId}`);
               }
 
               socket.emit('authenticated', userInfo);

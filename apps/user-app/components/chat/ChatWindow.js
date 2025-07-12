@@ -308,20 +308,32 @@ const ChatWindow = ({ chatRoomId, receiverName, adminId }) => {
         
         // Store message in AsyncStorage queue for later delivery
         try {
-          // Try to send the message anyway in the background
+          // Try to send the message anyway in the background (but only once)
           chatService.sendMessage(adminId, messageText)
-            .then(() => {
+            .then((response) => {
               // Update message status to sent if successful
+              if (response && response._id) {
+                setMessages(prev => 
+                  prev.map(msg => 
+                    msg._id === newMsg._id 
+                      ? { ...response, isPending: false, isSent: true } 
+                      : msg
+                  )
+                );
+                console.log('Message sent successfully from temporary chat');
+              }
+            })
+            .catch(err => {
+              console.log('Background send failed:', err.message);
+              // Mark as failed
               setMessages(prev => 
                 prev.map(msg => 
                   msg._id === newMsg._id 
-                    ? { ...msg, isPending: false, isSent: true } 
+                    ? { ...msg, isPending: false, isFailed: true } 
                     : msg
                 )
               );
-              console.log('Message sent successfully from temporary chat');
-            })
-            .catch(err => console.log('Background send failed:', err.message));
+            });
             
           // Add a simulated response
           setTimeout(() => {
@@ -390,17 +402,8 @@ const ChatWindow = ({ chatRoomId, receiverName, adminId }) => {
               )
             );
             
-            // For redundancy, emit a socket event if connected
-            if (socket && socket.connected && chatRoomId) {
-              console.log('Emitting message_sent event via socket');
-              socket.emit('message_sent', {
-                messageId: response._id,
-                chatRoomId: chatRoomId,
-                adminId: adminId,
-                message: messageText,
-                timestamp: new Date().toISOString()
-              });
-            }
+            // The backend already handles socket events when message is sent via API
+            console.log('Message sent successfully through API, backend will handle socket events');
           }
         } catch (err) {
           // If there's an error, mark the message as failed
@@ -694,6 +697,7 @@ const ChatWindow = ({ chatRoomId, receiverName, adminId }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#FAFBFC',
   },
   loadingContainer: {
     flex: 1,
@@ -709,6 +713,7 @@ const styles = StyleSheet.create({
   messagesList: {
     padding: 16,
     flexGrow: 1,
+    backgroundColor: '#FAFBFC',
   },
   loadingMoreContainer: {
     padding: 10,
