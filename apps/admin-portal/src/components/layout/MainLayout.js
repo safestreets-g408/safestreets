@@ -36,8 +36,6 @@ const MainLayout = () => {
     navigate('/login');
   };
 
-  const currentPath = location.pathname;
-
   if (isLoading) {
     return (
       <Box

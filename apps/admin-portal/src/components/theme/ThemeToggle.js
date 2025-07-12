@@ -1,11 +1,10 @@
 import React from 'react';
-import { IconButton, Tooltip, useTheme } from '@mui/material';
+import { IconButton, Tooltip } from '@mui/material';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { useThemeContext } from '../../context/ThemeContext';
 
 const ThemeToggle = ({ color = 'inherit', size = 'medium' }) => {
-  const theme = useTheme();
   const { darkMode, toggleDarkMode } = useThemeContext();
 
   return (

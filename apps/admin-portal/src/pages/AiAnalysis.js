@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
-  Card,
-  CardContent,
   Typography,
   CircularProgress,
   Alert,
@@ -11,22 +9,19 @@ import {
   Tab,
   Paper,
   Grid,
-  Divider,
   Container,
   Chip,
   FormControl,
   FormLabel,
   RadioGroup,
   FormControlLabel,
-  Radio,
-  Tooltip
+  Radio
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ImageIcon from '@mui/icons-material/Image';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import { api } from '../utils/api';
-import { TOKEN_KEY } from '../config/constants';
 
 const VisuallyHiddenInput = styled('input')({
   clip: 'rect(0 0 0 0)',

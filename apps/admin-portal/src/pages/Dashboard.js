@@ -7,10 +7,6 @@ import {
   Button,
   Stack,
   Tooltip,
-  Card,
-  CardContent,
-  CardHeader,
-  Divider,
   List,
   ListItem,
   ListItemText,
@@ -56,7 +52,6 @@ import { formatLocation } from '../utils/formatters';
 const Dashboard = () => {
   // Get user data to check role
   const { user } = useAuth();
-  const isSuperAdmin = user?.role === 'super-admin';
   
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState({
@@ -69,10 +64,6 @@ const Dashboard = () => {
   
   // Super admin specific state
   const [tenants, setTenants] = useState([]);
-  const [tenantsLoading, setTenantsLoading] = useState(false);
-  const [tenantsError, setTenantsError] = useState(null);
-  const [adminUsers, setAdminUsers] = useState([]);
-  const [adminUsersLoading, setAdminUsersLoading] = useState(false);
   const [selectedTab, setSelectedTab] = useState(0);
   
   const [aiReports, setAiReports] = useState([]);
@@ -102,7 +93,7 @@ const Dashboard = () => {
   const [recentActivity, setRecentActivity] = useState([]);
   const [chatOpen, setChatOpen] = useState(false);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -111,27 +102,20 @@ const Dashboard = () => {
       // Different API calls based on user role
       if (user?.role === 'super-admin') {
         // Fetch tenants data for super admin
-        setTenantsLoading(true);
         try {
           const tenantsData = await api.get(`${API_ENDPOINTS.TENANTS}`);
           setTenants(tenantsData);
           console.log('Tenants data fetched:', tenantsData.length || 0, 'tenants');
         } catch (error) {
           console.error('Error fetching tenants:', error);
-          setTenantsError(error.message || 'Failed to load tenants');
-        } finally {
-          setTenantsLoading(false);
         }
         
         // Fetch admin users across all tenants
-        setAdminUsersLoading(true);
         try {
-          const adminsData = await api.get(`${API_ENDPOINTS.ADMIN}/all`);
-          setAdminUsers(adminsData);
+          await api.get(`${API_ENDPOINTS.ADMIN}/all`);
+          // Store admins data if needed later
         } catch (error) {
           console.error('Error fetching admins:', error);
-        } finally {
-          setAdminUsersLoading(false);
         }
       }
       
@@ -180,11 +164,11 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [fetchDashboardData]);
 
 
   const fetchAiReports = async () => {

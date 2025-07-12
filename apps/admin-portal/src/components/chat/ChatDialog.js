@@ -9,16 +9,13 @@ import {
   Typography,
   Slide,
   useTheme,
-  Divider,
   Fade,
   useMediaQuery,
-  Badge,
   alpha
 } from '@mui/material';
 import {
   Close as CloseIcon,
-  Chat as ChatIcon,
-  ArrowBackIosNew as BackIcon
+  Chat as ChatIcon
 } from '@mui/icons-material';
 import ChatRoomsList from './ChatRoomsList';
 import ChatWindow from './ChatWindow';

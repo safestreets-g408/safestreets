@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { API_BASE_URL, API_ENDPOINTS, TOKEN_KEY, USER_KEY } from '../config/constants';
+import { API_BASE_URL, API_ENDPOINTS, TOKEN_KEY } from '../config/constants';
 
 const TenantContext = createContext(null);
 
