@@ -31,26 +31,22 @@ def ensure_models_loaded():
     print("🎯 All critical models verified")
     return True
 
+# Create Flask app instance for gunicorn
+app = create_app()
+
+# Initialize model loading for gunicorn
+ensure_models_loaded()
+print_startup_info()
+
 def main():
-    """Main application entry point"""
+    """Main application entry point when run directly"""
     start_time = time.time()
     print("🚀 Initializing AI Models Server...")
     
-    # Create Flask app
-    app = create_app()
-    
-    # Verify model status
-    ensure_models_loaded()
-    
     # Print startup info
-    print_startup_info()
     print(f"⏱️  Server startup completed in {time.time() - start_time:.2f} seconds")
     
-    # Return app for gunicorn if called via import
-    if __name__ != "__main__":
-        return app
-    
-    # Run the Flask app directly if script is executed directly
+    # Run the Flask app directly
     app.run(host=FLASK_HOST, port=FLASK_PORT, debug=FLASK_DEBUG)
 
 if __name__ == "__main__":

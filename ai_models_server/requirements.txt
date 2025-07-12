@@ -16,4 +16,4 @@ python-dotenv==1.0.0
 ultralytics==8.0.120
 requests==2.31.0
 huggingface-hub==0.19.4
-gunicorn
+gunicorn==23.0.0
