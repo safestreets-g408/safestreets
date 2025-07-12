@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const MANUAL_OVERRIDE_IP = '192.168.23.177'; 
 const API_PORT = '5030';
+// We'll use the API_BASE_URL from line 111
 
 // Function to validate URL and check if it's reachable
 export const testApiConnection = async (url, timeout = 5000) => {

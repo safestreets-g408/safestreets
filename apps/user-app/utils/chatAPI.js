@@ -12,11 +12,39 @@ let baseUrlInitialized = false;
 const getBaseUrl = async () => {
   // First try the configured base URL
   if (API_BASE_URL && API_BASE_URL !== 'undefined') {
+    console.log('Using API_BASE_URL from config:', API_BASE_URL);
     return API_BASE_URL;
   }
 
-  // If not set, try to determine from the environment or fall back to default
-  return 'http://localhost:5030/api';
+  // If not set, try multiple fallbacks
+  console.log('API_BASE_URL not set, trying fallbacks');
+  
+  // Try common local development URLs
+  const fallbackUrls = [
+    'http://192.168.23.177:5030/api', // Manual override
+    'http://localhost:5030/api',
+    'http://127.0.0.1:5030/api',
+    'http://10.0.2.2:5030/api' // For Android emulator
+  ];
+  
+  for (const url of fallbackUrls) {
+    try {
+      const response = await fetch(`${url}/health`, { 
+        method: 'GET',
+        timeout: 2000
+      });
+      if (response.ok) {
+        console.log(`Found working API at ${url}`);
+        return url;
+      }
+    } catch (err) {
+      console.log(`Failed to connect to ${url}:`, err.message);
+    }
+  }
+  
+  // Default fallback
+  console.warn('No working API found, using default');
+  return 'http://192.168.23.177:5030/api';
 };
 
 // Ensure the base URL is set
@@ -85,6 +113,88 @@ chatAPI.interceptors.response.use(
 export { chatAPI };
 
 export const chatService = {
+  // Health check for the chat service
+  healthCheck: async () => {
+    try {
+      await ensureBaseUrl();
+      console.log('Running chat service health check...');
+      
+      // Check backend API health with timeout
+      let apiStatus = { api: false };
+      try {
+        const healthResponse = await chatAPI.get('/health', { timeout: 5000 });
+        apiStatus = {
+          api: true,
+          message: 'API connection successful',
+          data: healthResponse
+        };
+      } catch (apiError) {
+        apiStatus = {
+          api: false,
+          error: apiError.message,
+          code: apiError.code || apiError.response?.status,
+          details: apiError.response?.data || 'No response data'
+        };
+        console.error('API health check failed:', apiStatus);
+      }
+      
+      // Check socket connection if available
+      let socketStatus = { socket: false };
+      try {
+        const { getSocket } = require('../context/SocketContext');
+        const socket = getSocket();
+        
+        if (socket) {
+          socketStatus = {
+            socket: socket.connected,
+            message: socket.connected ? 'Socket is connected' : 'Socket exists but disconnected',
+            id: socket.id || 'no-id',
+            nsp: socket.nsp || 'default',
+            reconnecting: socket.reconnecting || false,
+            disconnected: socket.disconnected || !socket.connected,
+          };
+          
+          // If socket exists but is disconnected, try emitting a test event
+          if (socket && !socket.connected) {
+            socket.emit('ping_server');
+            console.log('Sent test ping to server during health check');
+          }
+        } else {
+          socketStatus = {
+            socket: false,
+            message: 'No socket instance found'
+          };
+        }
+      } catch (socketError) {
+        socketStatus = {
+          socket: false,
+          error: socketError.message,
+          message: 'Error checking socket status'
+        };
+        console.error('Socket check error:', socketError);
+      }
+      
+      // Determine overall health
+      const healthy = apiStatus.api && (socketStatus.socket || apiStatus.api);
+      
+      return {
+        healthy,
+        api: apiStatus,
+        socket: socketStatus,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('Health check failed:', error);
+      return {
+        healthy: false,
+        api: { api: false, error: error.message },
+        socket: { socket: false, error: 'Not checked due to overall failure' },
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+    }
+  },
+
   // Get all admins the field worker can chat with
   getAdminChatList: async () => {
     try {

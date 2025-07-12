@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { Platform, AppState } from 'react-native';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 import { getAuthToken } from '../utils/auth';
@@ -22,120 +23,426 @@ export const useSocket = () => {
 export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const [connected, setConnected] = useState(false);
+  const [connectionError, setConnectionError] = useState(null);
   const { isAuthenticated, fieldWorker } = useAuth();
   
-  useEffect(() => {
-    // Reset reference on unmount
-    return () => {
+  // Initialize socket connection
+  const initializeSocketConnection = useCallback(async () => {
+    if (!isAuthenticated || !fieldWorker) {
+      console.log('Not authenticated or no fieldWorker data, skipping socket connection');
+      return;
+    }
+    
+    try {
+      const token = await getAuthToken();
+      if (!token) {
+        console.error('No auth token available for socket connection');
+        setConnectionError('Authentication required');
+        return;
+      }
+      
+      // Clean up existing socket if it exists
       if (socketInstance) {
+        console.log('Cleaning up existing socket before creating new one');
         socketInstance.disconnect();
         socketInstance = null;
       }
-    };
-  }, []);
-  
-  useEffect(() => {
-    // Clear any existing socket
-    if (socketInstance) {
-      socketInstance.disconnect();
+      
+      // Determine the socket server URL
+      let socketUrl = API_BASE_URL;
+      // If the URL ends with /api, remove it to get the socket server URL
+      if (socketUrl.endsWith('/api')) {
+        socketUrl = socketUrl.replace('/api', '');
+      }
+      
+      console.log('Initializing new socket connection to:', socketUrl);
+      
+      // Format auth properly - the server may be expecting a specific format
+      // First, modify the URL to include the token as a query parameter as some servers prefer this
+      const urlWithToken = `${socketUrl}?token=${encodeURIComponent(token)}&userType=fieldworker&userId=${encodeURIComponent(fieldWorker._id)}`;
+      
+      console.log('Connecting to socket with auth token included in URL');
+      
+      socketInstance = io(urlWithToken, {
+        // Keep auth in options too for redundancy (server might check in multiple places)
+        auth: {
+          token: token,  // Make sure the token is properly formatted
+          userType: 'fieldworker',
+          userId: fieldWorker._id,
+          // Add extra fields that might help with auth
+          tenantId: fieldWorker.tenant,
+          authorization: `Bearer ${token}` // Some servers expect this format
+        },
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 30,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 10000,
+        timeout: 30000,
+        forceNew: true,               // Change to true to avoid reusing cached connections with old auth
+        multiplex: false,             // Disable multiplexing to ensure fresh connection
+        autoConnect: true,
+        rejectUnauthorized: false,
+        extraHeaders: {              // Add token in headers too for maximum compatibility
+          'Authorization': `Bearer ${token}`,
+          'X-User-Type': 'fieldworker',
+          'X-User-Id': fieldWorker._id
+        }
+      });
+      
+      // Handle authentication confirmation from server
+      socketInstance.on('authenticated', () => {
+        console.log('Server confirmed authentication success');
+        // We now know the server accepted our credentials
+      });
+      
+      socketInstance.on('connect', () => {
+        console.log('Socket connected successfully');
+        setConnected(true);
+        setConnectionError(null);
+        
+        // After connection, explicitly authenticate again to ensure server recognizes us
+        getAuthToken().then(currentToken => {
+          if (currentToken) {
+            console.log('Sending explicit authentication after connect');
+            socketInstance.emit('authenticate', { 
+              token: currentToken,
+              userType: 'fieldworker',
+              userId: fieldWorker._id,
+              tenantId: fieldWorker.tenant
+            });
+          }
+        });
+        
+        // Join tenant room automatically on connect
+        if (fieldWorker?.tenant) {
+          const tenantRoom = `tenant_${fieldWorker.tenant}`;
+          socketInstance.emit('join_room', { 
+            room: tenantRoom,
+            userId: fieldWorker._id,
+            userType: 'fieldworker'
+          });
+          console.log(`Auto-joined tenant room: ${tenantRoom}`);
+        }
+      });
+      
+      socketInstance.on('disconnect', (reason) => {
+        console.log(`Socket disconnected. Reason: ${reason}`);
+        setConnected(false);
+        
+        // If the server closed the connection due to auth issues, we need to reinitialize
+        if (reason === 'io server disconnect' || reason === 'io client disconnect') {
+          console.log('Disconnect initiated by server or client, will need manual reconnect');
+          // We don't auto-reconnect here as it might be intentional
+        }
+      });
+      
+      socketInstance.on('error', (error) => {
+        console.error('Socket error:', error);
+        setConnected(false);
+        setConnectionError(error);
+        
+        // Handle authentication errors specifically
+        if (typeof error === 'string' && error.includes('authenticated')) {
+          console.log('Authentication error detected, will try to refresh token and reconnect');
+          
+          // Wait a moment then try to refresh the connection with a new token
+          setTimeout(async () => {
+            try {
+              // Get a fresh token
+              const freshToken = await getAuthToken();
+              if (freshToken) {
+                console.log('Got fresh token, reinitializing socket connection');
+                // Clean up the existing socket
+                if (socketInstance) {
+                  socketInstance.disconnect();
+                  socketInstance = null;
+                }
+                // Reinitialize with fresh token
+                initializeSocketConnection();
+              }
+            } catch (err) {
+              console.error('Failed to get fresh token:', err);
+            }
+          }, 2000);
+        }
+      });
+      
+      socketInstance.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+        setConnectionError(`Connection error: ${error.message}`);
+        
+        // Check if this is an auth error
+        if (error.message.includes('auth') || error.message.includes('unauthorized')) {
+          console.log('Authentication error in connection, will try to get new token');
+          
+          // Wait and try with fresh token
+          setTimeout(async () => {
+            try {
+              const freshToken = await getAuthToken();
+              if (freshToken) {
+                console.log('Got fresh token after connect error, reinitializing');
+                initializeSocketConnection();
+              }
+            } catch (err) {
+              console.error('Failed to get fresh token after connect error:', err);
+            }
+          }, 3000);
+        }
+      });
+      
+      socketInstance.on('reconnect_failed', () => {
+        console.error('Socket reconnection failed after all attempts');
+        setConnectionError('Failed to reconnect after multiple attempts');
+      });
+      
+      // Add ping-pong for connection testing
+      socketInstance.on('ping_server', () => {
+        console.log('Ping received from server');
+        socketInstance.emit('pong_client');
+      });
+      
+      socketInstance.on('pong_server', () => {
+        console.log('Server responded to ping');
+        setConnected(true);
+      });
+      
+      // Listen for new messages and notifications
+      socketInstance.on('new_message', (message) => {
+        console.log('New message received:', message);
+        // You can add logic here to update UI or show notification
+      });
+      
+      socketInstance.on('notification', (notification) => {
+        console.log('Notification received:', notification);
+        // You can add logic here to show notification
+      });
+      
+      setSocket(socketInstance);
+    } catch (error) {
+      console.error('Error initializing socket:', error);
+      setConnectionError(`Initialization error: ${error.message}`);
       socketInstance = null;
     }
+  }, [isAuthenticated, fieldWorker]);
+  
+  // Function to reconnect the socket - exposed for external use
+  const reconnectSocket = useCallback(() => {
+    console.log('Manually reconnecting socket...');
     
-    const initializeSocket = async () => {
-      if (!isAuthenticated || !fieldWorker) return;
-      
-      try {
-        const token = await getAuthToken();
-        if (!token) return;
-        
-        // Determine the socket server URL
-        let socketUrl = API_BASE_URL;
-        // If the URL ends with /api, remove it to get the socket server URL
-        if (socketUrl.endsWith('/api')) {
-          socketUrl = socketUrl.replace('/api', '');
+    // Reset connection attempts counter
+    setConnectionAttempts(0);
+    
+    // Perform chat service health check first to confirm server availability
+    try {
+      console.log('Performing chat service health check...');
+      getAuthToken().then(token => {
+        if (!token) {
+          console.error('No auth token available for health check');
+          setConnectionError('Authentication required');
+          return;
         }
         
-        console.log('Initializing socket connection to:', socketUrl);
-        
-        socketInstance = io(socketUrl, {
-          auth: {
-            token,
-            userType: 'fieldworker',
-            userId: fieldWorker._id
+        // Make a simple API call to check if server is reachable
+        const healthCheckUrl = API_BASE_URL.endsWith('/api') 
+          ? `${API_BASE_URL}/health` 
+          : `${API_BASE_URL}/api/health`;
+          
+        fetch(healthCheckUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
           },
-          transports: ['websocket', 'polling'],
-          reconnection: true,
-          reconnectionAttempts: 10,  // Increase retry attempts
-          reconnectionDelay: 1000,
-          reconnectionDelayMax: 5000,
-          timeout: 20000  // Increase timeout for slow connections
+          timeout: 5000
+        })
+        .then(response => {
+          console.log('API health check successful');
+          
+          // Now try socket reconnection with server verified as available
+          if (socketInstance) {
+            // Clean up existing event listeners to prevent duplicates
+            socketInstance.offAny();
+            
+            // Try reconnecting the existing socket first
+            socketInstance.connect();
+            
+            // Set a timeout to check if connection was successful
+            setTimeout(() => {
+              if (!socketInstance.connected) {
+                console.log('Reconnect attempt failed, reinitializing socket...');
+                // If not, reinitialize the socket
+                initializeSocketConnection();
+              } else {
+                console.log('Socket successfully reconnected');
+                setConnected(true);
+              }
+            }, 3000); // Give it a bit more time to connect
+          } else {
+            // If no socket instance exists, create a new one
+            initializeSocketConnection();
+          }
+        })
+        .catch(error => {
+          console.error('API health check failed:', error);
+          
+          // Server might be down, retry with exponential backoff
+          setTimeout(() => {
+            console.log('Retrying connection after health check failure...');
+            initializeSocketConnection();
+          }, 5000);
         });
-        
-        socketInstance.on('connect', () => {
-          console.log('Socket connected');
-          setConnected(true);
-        });
-        
-        socketInstance.on('disconnect', () => {
-          console.log('Socket disconnected');
-          setConnected(false);
-        });
-        
-        socketInstance.on('error', (error) => {
-          console.error('Socket error:', error);
-          setConnected(false);
-        });
-        
-        // Add ping-pong for connection testing
-        socketInstance.on('ping_server', () => {
-          console.log('Ping received from server');
-          socketInstance.emit('pong_client');
-        });
-        
-        socketInstance.on('pong_server', () => {
-          console.log('Server responded to ping');
-          setConnected(true);
-        });
-        
-        setSocket(socketInstance);
-      } catch (error) {
-        console.error('Error initializing socket:', error);
-        socketInstance = null;
-      }
-    };
+      });
+    } catch (error) {
+      console.error('Error during reconnect process:', error);
+      // Final fallback - just try to reinitialize
+      initializeSocketConnection();
+    }
+  }, [initializeSocketConnection]);
+  
+  // Keep track of connection attempts
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
+  
+  // Add heartbeat to check connection periodically
+  useEffect(() => {
+    if (!connected || !socketInstance) return;
     
-    initializeSocket();
+    // Set up heartbeat to check connection every 20 seconds
+    const heartbeatInterval = setInterval(() => {
+      if (socketInstance && socketInstance.connected) {
+        // Socket is connected, send a ping to keep it alive
+        socketInstance.emit('ping_server');
+        console.log('Heartbeat: sent ping to server');
+      } else if (socketInstance && !socketInstance.connected && connectionAttempts < 5) {
+        // Socket exists but is disconnected, try to reconnect
+        console.log('Heartbeat: Socket disconnected, attempting reconnect');
+        socketInstance.connect();
+        setConnectionAttempts(prev => prev + 1);
+      } else if (connectionAttempts >= 5) {
+        // Too many failed attempts, reinitialize the socket
+        console.log('Heartbeat: Too many failed attempts, reinitializing socket');
+        initializeSocketConnection();
+        setConnectionAttempts(0);
+      }
+    }, 20000);
+    
+    return () => {
+      clearInterval(heartbeatInterval);
+    };
+  }, [connected, socketInstance, connectionAttempts]);
+  
+  // Initialize socket when authenticated
+  useEffect(() => {
+    if (isAuthenticated && fieldWorker) {
+      initializeSocketConnection();
+      setConnectionAttempts(0);
+    }
     
     return () => {
       // Don't disconnect on component unmount,
       // we'll keep the socket reference for the app lifecycle
     };
-  }, [isAuthenticated, fieldWorker]);
+  }, [isAuthenticated, fieldWorker, initializeSocketConnection]);
   
-  const joinChat = useCallback((adminId, chatRoomId) => {
-    if (socket && connected && fieldWorker?.tenant) {
+  // Monitor app state changes
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState) => {
+      console.log('App state changed to:', nextAppState);
+      if (nextAppState === 'active') {
+        // App has come to the foreground
+        console.log('App is active, checking socket connection');
+        if (socketInstance && !socketInstance.connected) {
+          console.log('Socket disconnected while app was inactive, reconnecting');
+          reconnectSocket();
+        } else if (!socketInstance) {
+          console.log('No socket instance found after app became active, initializing');
+          initializeSocketConnection();
+        } else {
+          console.log('Socket appears to be connected, sending ping to verify');
+          socketInstance.emit('ping_server');
+        }
+      } else if (nextAppState === 'background') {
+        // App has gone to the background
+        console.log('App went to background, socket will try to stay connected');
+        // We don't disconnect here - let the socket try to maintain connection
+      }
+    };
+    
+    // Subscribe to app state changes
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    
+    return () => {
+      // Clean up subscription
+      subscription.remove();
+    };
+  }, [socketInstance, reconnectSocket, initializeSocketConnection]);
+  
+  // Join specific chat rooms
+  const joinChat = useCallback(async (adminId, chatRoomId) => {
+    if (!socket || !connected || !fieldWorker?.tenant) {
+      console.warn('Cannot join chat: socket not connected or missing fieldworker data');
+      return;
+    }
+    
+    try {
       console.log('Joining chat rooms with adminId:', adminId, 'and chatRoomId:', chatRoomId);
       
-      // Join tenant-wide chat room
+      // First re-authenticate to ensure the server recognizes us
+      const currentToken = await getAuthToken();
+      if (!currentToken) {
+        console.error('No token available when attempting to join chat rooms');
+        return;
+      }
+      
+      // Authenticate with the socket
+      socket.emit('authenticate', { 
+        token: currentToken,
+        userType: 'fieldworker',
+        userId: fieldWorker._id,
+        tenantId: fieldWorker.tenant
+      });
+      
+      // Create a standard payload with auth info for all room joins
+      const basePayload = {
+        userId: fieldWorker._id,
+        userType: 'fieldworker',
+        token: currentToken,
+        tenantId: fieldWorker.tenant
+      };
+      
+      // Join tenant-wide chat room with auth info
       const tenantRoom = `tenant_${fieldWorker.tenant}`;
-      socket.emit('join_room', { room: tenantRoom });
+      socket.emit('join_room', { 
+        ...basePayload,
+        room: tenantRoom 
+      });
       console.log(`Joined tenant chat room: ${tenantRoom}`);
       
       // Also join the tenant chat room using the chat_ prefix for consistency
       const tenantChatRoom = `chat_${fieldWorker.tenant}`;
-      socket.emit('join_room', { room: tenantChatRoom });
+      socket.emit('join_room', { 
+        ...basePayload,
+        room: tenantChatRoom 
+      });
       console.log(`Joined tenant chat room with chat_ prefix: ${tenantChatRoom}`);
       
       // Join specific admin chat room if provided
       if (adminId) {
         const adminRoom = `admin_${adminId}`;
-        socket.emit('join_room', { room: adminRoom });
+        socket.emit('join_room', { 
+          ...basePayload,
+          room: adminRoom,
+          recipientId: adminId
+        });
         console.log(`Joined admin chat room: ${adminRoom}`);
         
         // Also join the direct chat room (if it exists)
         if (fieldWorker?._id) {
           const directRoom = `direct_${fieldWorker._id}_${adminId}`;
-          socket.emit('join_room', { room: directRoom });
+          socket.emit('join_room', { 
+            ...basePayload,
+            room: directRoom,
+            recipientId: adminId
+          });
           console.log(`Joined direct chat room: ${directRoom}`);
         }
       }
@@ -143,77 +450,104 @@ export const SocketProvider = ({ children }) => {
       // Join the specific chat room if we have its ID
       if (chatRoomId) {
         const specificChatRoom = `chat_${chatRoomId}`;
-        socket.emit('join_room', { room: specificChatRoom });
+        socket.emit('join_room', { 
+          ...basePayload,
+          room: specificChatRoom,
+          chatRoomId: chatRoomId
+        });
         console.log(`Joined specific chat room: ${specificChatRoom}`);
       }
       
-      // Force reconnect to ensure connection is fresh
+      // Force a ping to verify connection after joining rooms
       socket.emit('ping_server');
-    } else {
-      console.warn('Cannot join chat: socket not connected or missing fieldworker data');
+      
+    } catch (error) {
+      console.error('Error during chat room joins:', error);
     }
   }, [socket, connected, fieldWorker]);
   
-  const markAsRead = useCallback(() => {
-    if (socket && connected && fieldWorker?.tenant) {
-      socket.emit('mark_as_read', { tenantId: fieldWorker.tenant });
-      console.log(`Marked messages as read for tenant ${fieldWorker.tenant}`);
-    }
-  }, [socket, connected, fieldWorker]);
-  
-  const startTyping = useCallback(() => {
-    if (socket && connected && fieldWorker?.tenant) {
-      socket.emit('typing', { 
-        tenantId: fieldWorker.tenant,
-        isTyping: true,
-        userName: fieldWorker?.name || 'Field Worker'
-      });
-    }
-  }, [socket, connected, fieldWorker]);
-  
-  const stopTyping = useCallback(() => {
-    if (socket && connected && fieldWorker?.tenant) {
-      socket.emit('typing', { 
-        tenantId: fieldWorker.tenant,
-        isTyping: false,
-        userName: fieldWorker?.name || 'Field Worker'
-      });
-    }
-  }, [socket, connected, fieldWorker]);
-  
-  // Explicitly reconnect socket if needed
-  const reconnectSocket = useCallback(() => {
-    console.log('Explicitly reconnecting socket...');
-    if (socketInstance) {
-      // If socket exists but is disconnected, try to reconnect
-      if (!socketInstance.connected) {
-        console.log('Socket disconnected. Attempting to reconnect...');
-        socketInstance.connect();
-        return true;
-      } else {
-        console.log('Socket already connected.');
-        return false;
+  // Mark messages as read
+  const markAsRead = useCallback(async (roomId) => {
+    if (!socket || !connected || !fieldWorker?._id) return;
+    
+    try {
+      const currentToken = await getAuthToken();
+      if (!currentToken) return;
+      
+      const basePayload = {
+        userId: fieldWorker._id,
+        userType: 'fieldworker',
+        token: currentToken
+      };
+      
+      if (roomId) {
+        socket.emit('mark_as_read', { 
+          ...basePayload,
+          roomId,
+        });
+        console.log(`Marked messages as read for room ${roomId}`);
+      } else if (fieldWorker.tenant) {
+        socket.emit('mark_as_read', { 
+          ...basePayload,
+          tenantId: fieldWorker.tenant,
+        });
+        console.log(`Marked all messages as read for tenant ${fieldWorker.tenant}`);
       }
-    } else {
-      console.log('No socket instance. Initializing new socket...');
-      // Reinitialize the socket
-      initializeSocket();
-      return true;
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
     }
-  }, [socketInstance]);
-
-  const value = {
-    socket,
-    connected,
-    joinChat,
-    markAsRead,
-    startTyping,
-    stopTyping,
-    reconnectSocket
-  };
+  }, [socket, connected, fieldWorker]);
+  
+  // Typing indicators
+  const startTyping = useCallback(async (roomId) => {
+    if (!socket || !connected || !fieldWorker?._id) return;
+    
+    try {
+      const currentToken = await getAuthToken();
+      if (!currentToken) return;
+      
+      socket.emit('typing', { 
+        roomId,
+        userId: fieldWorker._id,
+        userName: fieldWorker?.name || 'Field Worker',
+        isTyping: true,
+        token: currentToken
+      });
+    } catch (error) {
+      console.error('Error sending typing indicator:', error);
+    }
+  }, [socket, connected, fieldWorker]);
+  
+  const stopTyping = useCallback(async (roomId) => {
+    if (!socket || !connected || !fieldWorker?._id) return;
+    
+    try {
+      const currentToken = await getAuthToken();
+      if (!currentToken) return;
+      
+      socket.emit('typing', { 
+        roomId,
+        userId: fieldWorker._id,
+        userName: fieldWorker?.name || 'Field Worker',
+        isTyping: false,
+        token: currentToken
+      });
+    } catch (error) {
+      console.error('Error sending stop typing indicator:', error);
+    }
+  }, [socket, connected, fieldWorker]);
   
   return (
-    <SocketContext.Provider value={value}>
+    <SocketContext.Provider value={{
+      socket,
+      connected,
+      connectionError,
+      joinChat,
+      markAsRead,
+      startTyping,
+      stopTyping,
+      reconnectSocket
+    }}>
       {children}
     </SocketContext.Provider>
   );

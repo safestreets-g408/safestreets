@@ -18,7 +18,7 @@ import { chatService } from '../../utils/chatAPI';
 import { checkNetworkConnectivity, showNetworkError } from '../../utils/auth';
 import { useThemeContext } from '../../context/ThemeContext';
 
-const AdminChatList = () => {
+const AdminChatList = ({ refreshing: externalRefreshing, onRefresh: externalOnRefresh }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [admins, setAdmins] = useState([]);
@@ -131,7 +131,11 @@ const AdminChatList = () => {
   // Pull-to-refresh handler
   const onRefresh = useCallback(async () => {
     try {
-      setRefreshing(true);
+      // If external refreshing state is provided, use that instead
+      if (externalRefreshing === undefined) {
+        setRefreshing(true);
+      }
+      
       console.log('Pull-to-refresh: Refreshing chats list...');
       
       // First check the health of the chat service
@@ -145,8 +149,8 @@ const AdminChatList = () => {
           if (healthStatus.socket && !healthStatus.socket.socket) {
             try {
               const { useSocket } = require('../../context/SocketContext');
-              const { reconnectSocket } = useSocket();
-              if (reconnectSocket) {
+              const socket = useSocket();
+              if (socket && socket.reconnectSocket) {
                 console.log('Attempting to reconnect socket...');
                 reconnectSocket();
               }
@@ -189,9 +193,17 @@ const AdminChatList = () => {
       // But update the last error time to prevent flooding
       setLastErrorTime(Date.now());
     } finally {
-      setRefreshing(false);
+      // If external refreshing state is provided, let the parent handle it
+      if (externalRefreshing === undefined) {
+        setRefreshing(false);
+      }
+      
+      // If an external onRefresh callback was provided, call it
+      if (externalOnRefresh) {
+        externalOnRefresh();
+      }
     }
-  }, []);
+  }, [externalRefreshing, externalOnRefresh]);
   
   // Fetch available admins
   useEffect(() => {
@@ -409,7 +421,7 @@ const AdminChatList = () => {
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl 
-            refreshing={refreshing} 
+            refreshing={externalRefreshing !== undefined ? externalRefreshing : refreshing}
             onRefresh={onRefresh} 
             colors={[theme.colors.primary]}
             tintColor={theme.colors.primary}

@@ -1,14 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, StatusBar, Text, TouchableOpacity } from 'react-native';
-import { useTheme, ActivityIndicator } from 'react-native-paper';
+import React, { useEffect, useState, useCallback } from 'react';
+import { StyleSheet, View, StatusBar, Text, TouchableOpacity, Alert } from 'react-native';
+import { useTheme, ActivityIndicator, Button, Snackbar } from 'react-native-paper';
 import { useThemeContext } from '../context/ThemeContext';
 import ChatWindow from '../components/chat/ChatWindow';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { chatService } from '../utils/chatAPI';
+import { useSocket } from '../context/SocketContext';
 
 const ChatDetailScreen = ({ route, navigation }) => {
   const theme = useTheme();
   const { isDarkMode } = useThemeContext();
+  const { socket, connected, reconnectSocket } = useSocket();
   
   // Safely extract route params with validation
   const { adminId, adminName } = route.params || {};
@@ -17,6 +19,8 @@ const ChatDetailScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
   
   // Validate required params
   useEffect(() => {
@@ -27,9 +31,43 @@ const ChatDetailScreen = ({ route, navigation }) => {
     }
   }, [adminId]);
 
+  // Check socket connection when entering the chat detail screen
+  useEffect(() => {
+    // If socket is disconnected, try to reconnect
+    if (!connected && socket) {
+      console.log('ChatDetailScreen: Socket not connected, attempting to reconnect');
+      reconnectSocket();
+      setSnackbarMessage('Reconnecting to chat service...');
+      setSnackbarVisible(true);
+    } else if (socket && connected) {
+      console.log('ChatDetailScreen: Socket connection verified');
+      // Join the chat room for this admin
+      if (adminId) {
+        socket.emit('join_room', { room: `admin_${adminId}` });
+        console.log(`Joined admin room: admin_${adminId}`);
+      }
+    }
+  }, [connected, socket, reconnectSocket, adminId]);
+
   useEffect(() => {
     navigation.setOptions({
       title: adminName || 'Admin Support',
+      headerRight: () => (
+        !connected ? (
+          <Button 
+            icon="refresh" 
+            mode="text" 
+            compact 
+            onPress={() => {
+              reconnectSocket();
+              setSnackbarMessage('Reconnecting...');
+              setSnackbarVisible(true);
+            }}
+          >
+            Reconnect
+          </Button>
+        ) : null
+      )
     });
 
     // Skip fetch if we don't have an adminId
@@ -221,6 +259,19 @@ const ChatDetailScreen = ({ route, navigation }) => {
           adminId={adminId}
         />
       </View>
+      
+      {/* Connection status snackbar */}
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={3000}
+        action={{
+          label: 'Close',
+          onPress: () => setSnackbarVisible(false),
+        }}
+      >
+        {snackbarMessage}
+      </Snackbar>
     </SafeAreaView>
   );
 };
