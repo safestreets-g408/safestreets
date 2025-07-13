@@ -1,5 +1,5 @@
 import React from 'react';
-import { Stack, Tooltip, IconButton } from '@mui/material';
+import { Box, Tooltip, IconButton } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -12,65 +12,65 @@ const ReportActions = ({ report, onView, onEdit, onDelete, onDownload, colors })
     action(report);
   };
   
+  // Common icon button styles for a minimal look
+  const iconButtonStyle = {
+    padding: '4px',
+    '&:hover': { 
+      backgroundColor: 'rgba(0, 0, 0, 0.04)',
+    }
+  };
+  
   return (
-    <Stack direction="row" spacing={1}>
-      <Tooltip title="View Details" arrow>
+    <Box sx={{ display: 'flex', gap: 0.5 }}>
+      <Tooltip title="View Details" arrow placement="top">
         <IconButton 
           size="small"
           onClick={(e) => handleAction(onView, e)}
           sx={{ 
-            color: colors.primary,
-            '&:hover': { 
-              backgroundColor: colors.border,
-            }
+            ...iconButtonStyle,
+            color: 'primary.main',
           }}
         >
-          <VisibilityIcon fontSize="small" />
+          <VisibilityIcon sx={{ fontSize: '1rem' }} />
         </IconButton>
       </Tooltip>
-      <Tooltip title="Edit Report" arrow>
+      <Tooltip title="Edit Report" arrow placement="top">
         <IconButton 
           size="small"
           onClick={(e) => handleAction(onEdit, e)}
           sx={{ 
-            color: colors.warning,
-            '&:hover': { 
-              backgroundColor: colors.border,
-            }
+            ...iconButtonStyle,
+            color: 'text.secondary',
           }}
         >
-          <EditIcon fontSize="small" />
+          <EditIcon sx={{ fontSize: '1rem' }} />
         </IconButton>
       </Tooltip>
-      <Tooltip title="Delete Report" arrow>
+      <Tooltip title="Delete Report" arrow placement="top">
         <IconButton 
           size="small"
           onClick={(e) => handleAction(onDelete, e)}
           sx={{ 
-            color: colors.error,
-            '&:hover': { 
-              backgroundColor: colors.border,
-            }
+            ...iconButtonStyle,
+            color: 'error.main',
           }}
         >
-          <DeleteIcon fontSize="small" />
+          <DeleteIcon sx={{ fontSize: '1rem' }} />
         </IconButton>
       </Tooltip>
-      <Tooltip title="Download Report" arrow>
+      <Tooltip title="Download Report" arrow placement="top">
         <IconButton 
           size="small"
           onClick={(e) => handleAction(onDownload, e)}
           sx={{ 
-            color: colors.success,
-            '&:hover': { 
-              backgroundColor: colors.border,
-            }
+            ...iconButtonStyle,
+            color: 'text.secondary',
           }}
         >
-          <FileDownloadIcon fontSize="small" />
+          <FileDownloadIcon sx={{ fontSize: '1rem' }} />
         </IconButton>
       </Tooltip>
-    </Stack>
+    </Box>
   );
 };
 

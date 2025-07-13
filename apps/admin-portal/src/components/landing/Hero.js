@@ -35,7 +35,7 @@ const Hero = ({ isAuthenticated }) => {
         overflow: 'hidden',
       }}
     >
-      {/* Background gradient */}
+      {/* Enhanced background gradient */}
       <Box
         sx={{
           position: 'absolute',
@@ -43,10 +43,27 @@ const Hero = ({ isAuthenticated }) => {
           left: 0,
           right: 0,
           height: '100%',
-          background: `radial-gradient(80% 80% at 50% -10%, ${alpha(theme.palette.primary.main, 0.15)}, transparent)`,
+          background: theme.palette.mode === 'dark' 
+            ? `radial-gradient(80% 80% at 50% -10%, ${alpha(theme.palette.primary.main, 0.25)}, ${alpha(theme.palette.secondary.dark, 0.1)}, transparent)`
+            : `radial-gradient(80% 80% at 50% -10%, ${alpha(theme.palette.primary.main, 0.15)}, transparent)`,
           zIndex: -1,
         }}
       />
+      
+      {/* Additional background overlay for dark mode */}
+      {theme.palette.mode === 'dark' && (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '100%',
+            background: `linear-gradient(135deg, ${alpha(theme.palette.background.default, 0.3)}, transparent)`,
+            zIndex: -1,
+          }}
+        />
+      )}
       
       <Container maxWidth="lg">
         <Grid container spacing={4} alignItems="center">
@@ -67,10 +84,18 @@ const Hero = ({ isAuthenticated }) => {
                       mb: 2,
                       p: 1.2,
                       px: 2,
-                      border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                      border: theme.palette.mode === 'dark'
+                        ? `1px solid ${alpha(theme.palette.primary.main, 0.4)}`
+                        : `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
                       borderRadius: '100px',
                       width: 'fit-content',
-                      bgcolor: alpha(theme.palette.primary.main, 0.08),
+                      bgcolor: theme.palette.mode === 'dark'
+                        ? alpha(theme.palette.primary.main, 0.15)
+                        : alpha(theme.palette.primary.main, 0.08),
+                      backdropFilter: 'blur(8px)',
+                      boxShadow: theme.palette.mode === 'dark'
+                        ? `0 4px 20px ${alpha(theme.palette.primary.main, 0.2)}`
+                        : 'none',
                     }}
                   >
                     <Box
@@ -79,6 +104,7 @@ const Hero = ({ isAuthenticated }) => {
                         height: 10,
                         borderRadius: '50%',
                         bgcolor: 'primary.main',
+                        boxShadow: `0 0 10px ${alpha(theme.palette.primary.main, 0.6)}`,
                       }}
                     />
                     <Typography
@@ -175,12 +201,17 @@ const Hero = ({ isAuthenticated }) => {
                       py: 1.5,
                       fontWeight: 600,
                       borderRadius: '12px',
-                      boxShadow: `0 8px 20px ${alpha(theme.palette.primary.main, 0.3)}`,
+                      boxShadow: theme.palette.mode === 'dark'
+                        ? `0 8px 20px ${alpha(theme.palette.primary.main, 0.4)}`
+                        : `0 8px 20px ${alpha(theme.palette.primary.main, 0.3)}`,
                       background: `linear-gradient(45deg, ${theme.palette.primary.dark}, ${theme.palette.primary.main})`,
                       transition: 'all 0.3s ease',
                       '&:hover': {
                         transform: 'translateY(-3px)',
-                        boxShadow: `0 10px 25px ${alpha(theme.palette.primary.main, 0.5)}`,
+                        boxShadow: theme.palette.mode === 'dark'
+                          ? `0 12px 30px ${alpha(theme.palette.primary.main, 0.6)}`
+                          : `0 12px 30px ${alpha(theme.palette.primary.main, 0.5)}`,
+                        background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.primary.light})`,
                       },
                     }}
                   >
@@ -195,12 +226,19 @@ const Hero = ({ isAuthenticated }) => {
                       py: 1.5,
                       fontWeight: 600,
                       borderRadius: '12px',
-                      borderColor: alpha(theme.palette.primary.main, 0.3),
+                      borderColor: theme.palette.mode === 'dark'
+                        ? alpha(theme.palette.primary.main, 0.5)
+                        : alpha(theme.palette.primary.main, 0.3),
                       color: 'text.primary',
                       transition: 'all 0.3s ease',
+                      backdropFilter: 'blur(8px)',
                       '&:hover': {
                         borderColor: theme.palette.primary.main,
-                        bgcolor: alpha(theme.palette.primary.main, 0.05),
+                        bgcolor: alpha(theme.palette.primary.main, 0.1),
+                        transform: 'translateY(-2px)',
+                        boxShadow: theme.palette.mode === 'dark'
+                          ? `0 8px 25px ${alpha(theme.palette.primary.main, 0.3)}`
+                          : `0 8px 25px ${alpha(theme.palette.primary.main, 0.2)}`,
                       },
                     }}
                   >
@@ -227,43 +265,97 @@ const Hero = ({ isAuthenticated }) => {
             >
               <Box
                 component="img"
-                src="/assets/images/dashboard.png" 
+                src={theme.palette.mode === 'dark' ? "/assets/images/dashboard-dark.png" : "/assets/images/dashboard.png"}
                 alt="SafeStreets Dashboard"
                 sx={{
                   maxWidth: '100%',
                   maxHeight: '100%',
                   objectFit: 'contain',
                   borderRadius: '24px',
-                  boxShadow: `0 16px 50px ${alpha(theme.palette.common.black, 0.2)}`,
+                  boxShadow: theme.palette.mode === 'dark' 
+                    ? `0 16px 50px ${alpha(theme.palette.primary.main, 0.2)}`
+                    : `0 16px 50px ${alpha(theme.palette.common.black, 0.2)}`,
+                  border: theme.palette.mode === 'dark' 
+                    ? `1px solid ${alpha(theme.palette.primary.main, 0.1)}`
+                    : 'none',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'scale(1.02)',
+                    boxShadow: theme.palette.mode === 'dark'
+                      ? `0 20px 60px ${alpha(theme.palette.primary.main, 0.3)}`
+                      : `0 20px 60px ${alpha(theme.palette.common.black, 0.3)}`,
+                  },
                 }}
               />
               
-              {/* Optional floating elements */}
+              {/* Enhanced floating stats card */}
               <Box
                 sx={{
                   position: 'absolute',
                   bottom: { xs: -20, md: 40 },
                   right: { xs: 0, md: -40 },
-                  p: 2,
-                  borderRadius: '16px',
+                  p: 3,
+                  borderRadius: '20px',
                   bgcolor: 'background.paper',
-                  boxShadow: `0 10px 30px ${alpha(theme.palette.common.black, 0.1)}`,
-                  width: { xs: '180px', md: '220px' },
+                  boxShadow: theme.palette.mode === 'dark'
+                    ? `0 20px 40px ${alpha(theme.palette.common.black, 0.6)}`
+                    : `0 20px 40px ${alpha(theme.palette.common.black, 0.12)}`,
+                  width: { xs: '200px', md: '240px' },
                   zIndex: 2,
-                  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                  border: theme.palette.mode === 'dark'
+                    ? `1px solid ${alpha(theme.palette.primary.main, 0.2)}`
+                    : `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                  backdropFilter: 'blur(10px)',
+                  background: theme.palette.mode === 'dark'
+                    ? `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.95)}, ${alpha(theme.palette.primary.dark, 0.05)})`
+                    : 'background.paper',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-5px)',
+                    boxShadow: theme.palette.mode === 'dark'
+                      ? `0 25px 50px ${alpha(theme.palette.common.black, 0.8)}`
+                      : `0 25px 50px ${alpha(theme.palette.common.black, 0.15)}`,
+                  },
                 }}
                 component={motion.div}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.8 }}
               >
-                <Typography variant="subtitle2" fontWeight={700} mb={1}>
-                  AI Detection Accuracy
-                </Typography>
-                <Typography variant="h4" fontWeight={800} color="primary.main" mb={1}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <Box
+                    sx={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      bgcolor: 'success.main',
+                      mr: 1,
+                      animation: 'pulse 2s infinite',
+                      '@keyframes pulse': {
+                        '0%': { opacity: 1 },
+                        '50%': { opacity: 0.5 },
+                        '100%': { opacity: 1 },
+                      },
+                    }}
+                  />
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    AI Detection Accuracy
+                  </Typography>
+                </Box>
+                <Typography 
+                  variant="h4" 
+                  fontWeight={800} 
+                  sx={{
+                    mb: 1,
+                    background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.success.main})`,
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}
+                >
                   94.7%
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.4 }}>
                   Our Vision Transformer model outperforms traditional methods
                 </Typography>
               </Box>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Box, Typography, Button, 
-  Tab, Tabs, Badge, 
+  Tab, Tabs, 
   useTheme, CircularProgress,
   Snackbar, Alert
 } from '@mui/material';
@@ -133,7 +133,7 @@ function Repair() {
         setError(null);
         
         // Show success notification
-        setSnackbarMessage(`Repair assigned to ${worker.name} successfully`);
+        setSnackbarMessage(`Assigned to ${worker.name}`);
         setSnackbarSeverity('success');
         setSnackbarOpen(true);
         
@@ -144,7 +144,7 @@ function Repair() {
       setError(`Failed to assign repair: ${err.message || 'Unknown error'}`);
       
       // Show error notification
-      setSnackbarMessage(`Failed to assign repair: ${err.message || 'Unknown error'}`);
+      setSnackbarMessage(`Failed: ${err.message || 'Try again'}`);
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
     }
@@ -167,7 +167,7 @@ function Repair() {
         console.log(`Repair status updated successfully to ${newStatus}`, response);
         
         // Show success notification
-        setSnackbarMessage(`Repair status updated to ${newStatus}`);
+        setSnackbarMessage(`Status: ${newStatus}`);
         setSnackbarSeverity('success');
         setSnackbarOpen(true);
         
@@ -178,7 +178,7 @@ function Repair() {
         setError('Response received but operation may have failed');
         
         // Show warning notification
-        setSnackbarMessage('Status update may have failed. Please check and try again.');
+        setSnackbarMessage('Verification needed');
         setSnackbarSeverity('warning');
         setSnackbarOpen(true);
         
@@ -245,7 +245,7 @@ function Repair() {
         setFieldWorkers(prevWorkers => [...prevWorkers, newWorker]);
         
         // Show success notification
-        setSnackbarMessage(`Field worker ${workerData.name} added successfully`);
+        setSnackbarMessage(`Added: ${workerData.name}`);
         setSnackbarSeverity('success');
         setSnackbarOpen(true);
         
@@ -256,7 +256,7 @@ function Repair() {
       setError(`Failed to add field worker: ${err.message || 'Unknown error'}`);
       
       // Show error notification
-      setSnackbarMessage(`Failed to add field worker: ${err.message || 'Unknown error'}`);
+      setSnackbarMessage(`Error: ${err.message || 'Could not add'}`);
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
       
@@ -315,7 +315,7 @@ function Repair() {
         );
         
         // Show success notification
-        setSnackbarMessage(`Field worker ${workerData.name} updated successfully`);
+        setSnackbarMessage(`Updated: ${workerData.name}`);
         setSnackbarSeverity('success');
         setSnackbarOpen(true);
         
@@ -326,7 +326,7 @@ function Repair() {
       setError(`Failed to update field worker: ${err.message || 'Unknown error'}`);
       
       // Show error notification
-      setSnackbarMessage(`Failed to update field worker: ${err.message || 'Unknown error'}`);
+      setSnackbarMessage(`Error: ${err.message || 'Could not update'}`);
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
       
@@ -361,7 +361,7 @@ function Repair() {
         );
         
         // Show success notification
-        setSnackbarMessage(`Field worker ${worker.name} deleted successfully`);
+        setSnackbarMessage(`Removed: ${worker.name}`);
         setSnackbarSeverity('success');
         setSnackbarOpen(true);
         
@@ -372,7 +372,7 @@ function Repair() {
       setError(`Failed to delete field worker: ${err.message || 'Unknown error'}`);
       
       // Show error notification
-      setSnackbarMessage(`Failed to delete field worker: ${err.message || 'Unknown error'}`);
+      setSnackbarMessage(`Error: ${err.message || 'Could not remove'}`);
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
       
@@ -395,16 +395,16 @@ function Repair() {
       const assignments = response?.assignments || [];
       
       if (assignments && assignments.length > 0) {
-        // Format a message with assignment details
+        // Format a message with assignment details in a minimal format
         const assignmentDetails = assignments.map((a, idx) => 
-          `${idx + 1}. Report #${a.reportId}\n   📍 ${a.location?.address || 'Unknown location'}\n   📊 Status: ${a.status}\n   🔍 Type: ${a.damageType}`
-        ).join('\n\n');
+          `${a.reportId}: ${a.damageType} (${a.status})`
+        ).join('\n');
         
         setSnackbarSeverity('info');
-        setSnackbarMessage(`${worker.name}'s Assignments (${assignments.length}):\n\n${assignmentDetails}`);
+        setSnackbarMessage(`${worker.name}: ${assignments.length} assigned\n${assignmentDetails}`);
       } else {
         setSnackbarSeverity('info');
-        setSnackbarMessage(`${worker.name} has no current assignments.`);
+        setSnackbarMessage(`${worker.name}: No assignments`);
       }
       
       setSnackbarOpen(true);
@@ -414,7 +414,7 @@ function Repair() {
       setError(`Failed to fetch assignments: ${err.message || 'Unknown error'}`);
       
       setSnackbarSeverity('error');
-      setSnackbarMessage(`Failed to fetch assignments: ${err.message || 'Unknown error'}`);
+      setSnackbarMessage(`Error: Could not fetch assignments`);
       setSnackbarOpen(true);
       
       return [];
@@ -423,39 +423,43 @@ function Repair() {
 
   return (
     <>
-      
-      <Tabs 
-        value={tabValue} 
-        onChange={handleTabChange} 
-        sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}
-      >
-        <Tab 
-          label={
-            <Badge badgeContent={pendingRepairs.length} color="warning" max={99}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <AssignmentIcon sx={{ mr: 1 }} />
-                Pending Assignments
-              </Box>
-            </Badge>
-          } 
-        />
-        <Tab 
-          label={
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <BuildIcon sx={{ mr: 1 }} />
-              Active Repairs
-            </Box>
-          } 
-        />
-        <Tab 
-          label={
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <PersonIcon sx={{ mr: 1 }} />
-              Field Workers
-            </Box>
-          } 
-        />
-      </Tabs>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+        <Tabs 
+          value={tabValue} 
+          onChange={handleTabChange}
+          indicatorColor="primary"
+          textColor="primary"
+          variant="standard"
+        >
+          <Tab 
+            label="Pending" 
+            icon={<AssignmentIcon sx={{ fontSize: '1rem' }} />}
+            iconPosition="start"
+            sx={{ minHeight: '40px', fontSize: '0.875rem', textTransform: 'none', fontWeight: 500 }}
+          />
+          <Tab 
+            label="Active" 
+            icon={<BuildIcon sx={{ fontSize: '1rem' }} />}
+            iconPosition="start"
+            sx={{ minHeight: '40px', fontSize: '0.875rem', textTransform: 'none', fontWeight: 500 }}
+          />
+          <Tab 
+            label="Personnel" 
+            icon={<PersonIcon sx={{ fontSize: '1rem' }} />}
+            iconPosition="start"
+            sx={{ minHeight: '40px', fontSize: '0.875rem', textTransform: 'none', fontWeight: 500 }}
+          />
+        </Tabs>
+        {pendingRepairs.length > 0 && (
+          <Typography 
+            variant="caption" 
+            color="text.secondary" 
+            sx={{ ml: 2, fontSize: '0.75rem', position: 'relative', top: '-4px' }}
+          >
+            {pendingRepairs.length} pending
+          </Typography>
+        )}
+      </Box>
       
       {/* Pending Assignments Tab */}
       {tabValue === 0 && (
@@ -480,18 +484,22 @@ function Repair() {
       {tabValue === 2 && (
         <>
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
-              <CircularProgress />
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 120 }}>
+              <CircularProgress size={20} thickness={3} />
             </Box>
           ) : error ? (
-            <Box sx={{ textAlign: 'center', color: 'error.main', py: 3 }}>
-              <Typography>{error}</Typography>
+            <Box sx={{ textAlign: 'left', py: 2, px: 1 }}>
+              <Typography variant="caption" color="error" sx={{ display: 'block', mb: 1, fontWeight: 500 }}>
+                {error}
+              </Typography>
               <Button 
-                variant="contained" 
-                sx={{ mt: 2 }}
+                variant="text" 
+                size="small"
+                color="primary"
                 onClick={() => window.location.reload()}
+                sx={{ fontSize: '0.75rem', p: 0.5 }}
               >
-                Retry
+                Reload
               </Button>
             </Box>
           ) : (
@@ -511,19 +519,23 @@ function Repair() {
       {/* Snackbar for status updates and notifications */}
       <Snackbar
         open={snackbarOpen}
-        autoHideDuration={6000}
+        autoHideDuration={4000}
         onClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         <Alert 
           onClose={handleSnackbarClose} 
           severity={snackbarSeverity} 
-          variant="filled"
+          variant="standard"
           sx={{ 
+            py: 0.5,
             width: '100%', 
-            maxWidth: '500px',
-            whiteSpace: 'pre-wrap', 
-            overflowWrap: 'break-word'
+            maxWidth: '320px',
+            whiteSpace: 'pre-line', 
+            overflowWrap: 'break-word',
+            '& .MuiAlert-icon': { fontSize: '0.875rem', py: 0.5 },
+            '& .MuiAlert-message': { fontSize: '0.8125rem', py: 0.5 },
+            '& .MuiAlert-action': { pt: 0, pb: 0, ml: 0.5 }
           }}
         >
           {snackbarMessage}

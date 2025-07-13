@@ -154,35 +154,37 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
     }}>
       {/* Header Section */}
       <Box sx={{
-        p: 1,
+        py: 1.5,
+        px: 2,
         display: 'flex',
         alignItems: 'center',
-        gap: 2,
-        background: theme.palette.mode === 'dark' ? alpha(theme.palette.background.default, 0.6) : '#f8f9fa',
-        borderBottom: `1px solid ${theme.palette.divider}`,
+        gap: 1.5,
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+        height: '60px',
       }}>
         <Avatar sx={{
-          background: theme.palette.primary.main,
-          width: 48,
-          height: 48,
-          fontSize: '1.25rem',
-          fontWeight: 600,
+          bgcolor: 'primary.main',
+          width: 32,
+          height: 32,
+          fontSize: '0.875rem',
+          fontWeight: 500,
         }}>
           SS
         </Avatar>
         <Box>
-          <Typography variant="h6" sx={{
-            fontWeight: 600,
-            fontSize: '1.125rem',
-            color: theme.palette.text.primary,
-            mb: 0,
+          <Typography variant="subtitle2" sx={{
+            fontWeight: 500,
+            fontSize: '0.875rem',
+            lineHeight: 1.2,
           }}>
             SafeStreets
           </Typography>
           <Typography variant="caption" sx={{
-            color: theme.palette.text.secondary,
-            fontSize: '0.75rem',
-            fontWeight: 500,
+            color: 'text.secondary',
+            fontSize: '0.7rem',
+            lineHeight: 1.2,
+            display: 'block',
           }}>
             Admin Portal
           </Typography>
@@ -190,17 +192,18 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
       </Box>
 
       {/* Navigation Section */}
-      <Box sx={{ flex: 1, py: 2, overflow: 'auto' }}>
+      <Box sx={{ flex: 1, pt: 1.5, pb: 1, overflow: 'auto' }}>
         <Typography 
-          variant="overline" 
+          variant="caption" 
           sx={{
-            color: theme.palette.text.secondary,
-            px: 3,
+            color: 'text.secondary',
+            px: 2.5,
             mb: 1,
-            fontSize: '0.75rem',
-            fontWeight: 600,
-            letterSpacing: '0.05em',
+            fontSize: '0.7rem',
+            fontWeight: 500,
+            letterSpacing: '0.02em',
             display: 'block',
+            opacity: 0.8,
           }}
         >
           NAVIGATION
@@ -211,51 +214,55 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
             .map((item) => {
               const isSelected = location.pathname === item.path;
               return (
-              <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
+              <ListItem key={item.text} disablePadding sx={{ mb: 0.25 }}>
                 <ListItemButton
                   onClick={() => handleNav(item.path)}
                   selected={isSelected}
                   sx={{
-                    minHeight: 48,
-                    px: 3,
-                    py: 1.5,
-                    mx: 1,
-                    borderRadius: 1,
+                    minHeight: 40,
+                    px: 2,
+                    py: 1,
+                    mx: 0.75,
+                    borderRadius: 0.75,
                     transition: 'all 0.15s ease',
                     '&:before': {
                       content: '""',
                       position: 'absolute',
                       left: 0,
-                      top: isSelected ? '20%' : '50%',
-                      height: isSelected ? '60%' : 0,
-                      width: 3,
-                      backgroundColor: theme.palette.primary.main,
+                      top: isSelected ? '25%' : '50%',
+                      height: isSelected ? '50%' : 0,
+                      width: 2,
+                      bgcolor: 'primary.main',
+                      borderTopRightRadius: 2,
+                      borderBottomRightRadius: 2,
                       transition: 'all 0.15s ease',
                     },
                     '&.Mui-selected': {
-                      backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                      bgcolor: alpha(theme.palette.primary.main, 0.06),
                       '&:hover': {
-                        backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                        bgcolor: alpha(theme.palette.primary.main, 0.08),
                       },
                       '& .MuiListItemIcon-root': {
-                        color: theme.palette.primary.main,
+                        color: 'primary.main',
                       },
                       '& .MuiListItemText-primary': {
-                        fontWeight: 600,
-                        color: theme.palette.primary.main,
+                        fontWeight: 500,
+                        color: 'primary.main',
                       },
                     },
                     '&:hover': {
-                      backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                      bgcolor: alpha(theme.palette.primary.main, 0.04),
                     }
                   }}
                 >
                   <ListItemIcon sx={{
-                    minWidth: 40,
+                    minWidth: 36,
                     color: isSelected 
-                      ? theme.palette.primary.main 
-                      : theme.palette.text.secondary,
-                    transition: 'color 0.15s ease',
+                      ? 'primary.main' 
+                      : 'text.secondary',
+                    '& .MuiSvgIcon-root': {
+                      fontSize: '1.125rem',
+                    }
                   }}>
                     {item.icon}
                   </ListItemIcon>
@@ -263,39 +270,40 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
                   <ListItemText 
                     primary={item.text}
                     primaryTypographyProps={{
-                      fontSize: '0.875rem',
-                      fontWeight: isSelected ? 600 : 500,
-                      color: isSelected ? theme.palette.primary.main : theme.palette.text.primary,
+                      fontSize: '0.8125rem',
+                      fontWeight: 400,
+                      color: isSelected ? 'primary.main' : 'text.primary',
                     }}
                   />
 
                   {/* Badge */}
                   {item.badge && (
-                    <Box sx={{ ml: 1 }}>
+                    <Box sx={{ ml: 0.5 }}>
                       {typeof item.badge === 'number' ? (
                         <Chip 
                           label={item.badge} 
                           size="small"
                           sx={{
-                            height: 20,
-                            fontSize: '0.7rem',
-                            fontWeight: 600,
-                            backgroundColor: theme.palette.error.main,
-                            color: theme.palette.error.contrastText,
-                            '& .MuiChip-label': { px: 1 },
+                            height: 16,
+                            fontSize: '0.625rem',
+                            fontWeight: 500,
+                            bgcolor: 'error.main',
+                            color: '#fff',
+                            '& .MuiChip-label': { px: 0.75 },
                           }}
                         />
                       ) : (
                         <Chip 
-                          label={item.badge} 
+                          label={item.badge}
                           size="small"
+                          variant="outlined"
                           sx={{
-                            height: 20,
-                            fontSize: '0.65rem',
-                            fontWeight: 600,
-                            backgroundColor: theme.palette.primary.main,
-                            color: theme.palette.primary.contrastText,
-                            '& .MuiChip-label': { px: 1 },
+                            height: 16,
+                            fontSize: '0.625rem',
+                            fontWeight: 500,
+                            borderColor: 'primary.main',
+                            color: 'primary.main',
+                            '& .MuiChip-label': { px: 0.75 },
                           }}
                         />
                       )}
@@ -309,36 +317,36 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
       </Box>
 
       {/* Footer Section */}
-      <Box sx={{ p: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
+      <Box sx={{ p: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
         <Button
-          variant="outlined"
+          variant="text"
           onClick={handleLogout}
-          startIcon={<LogoutIcon />}
+          startIcon={<LogoutIcon sx={{ fontSize: '1rem' }} />}
           fullWidth
+          size="small"
           sx={{
-            borderRadius: 1,
-            py: 1,
+            borderRadius: 0.75,
+            py: 0.75,
+            justifyContent: 'flex-start',
             textTransform: 'none',
-            fontWeight: 500,
-            borderColor: theme.palette.mode === 'dark' ? theme.palette.grey[700] : '#d1d5db',
-            color: theme.palette.text.secondary,
+            fontWeight: 400,
+            fontSize: '0.8125rem',
+            color: 'text.secondary',
             '&:hover': {
-              borderColor: theme.palette.error.main,
-              backgroundColor: alpha(theme.palette.error.main, 0.04),
-              color: theme.palette.error.main,
+              color: 'error.main',
+              bgcolor: alpha(theme.palette.error.main, 0.04),
             },
-            transition: 'all 0.15s ease',
           }}
         >
           Sign Out
         </Button>
 
         <Typography variant="caption" sx={{ 
-          mt: 2, 
-          color: theme.palette.text.secondary, 
+          mt: 1.5, 
+          color: 'text.disabled', 
           textAlign: 'center',
           display: 'block',
-          fontSize: '0.7rem',
+          fontSize: '0.6875rem',
         }}>
           SafeStreets Portal v2.0
         </Typography>
@@ -366,7 +374,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
             boxSizing: 'border-box',
             width: DRAWER_WIDTH,
             borderRight: 'none',
-            boxShadow: theme.shadows[8],
+            boxShadow: 3,
           },
         }}
       >
@@ -381,10 +389,9 @@ const Sidebar = ({ mobileOpen, onDrawerToggle, onLogout }) => {
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
             width: DRAWER_WIDTH,
-            borderRight: `1px solid ${theme.palette.divider}`,
-            boxShadow: theme.palette.mode === 'dark' 
-              ? '2px 0 10px rgba(0, 0, 0, 0.3)' 
-              : '2px 0 10px rgba(0, 0, 0, 0.05)',
+            borderRight: '1px solid',
+            borderColor: 'divider',
+            boxShadow: 'none',
           },
         }}
         open

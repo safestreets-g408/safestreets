@@ -11,8 +11,6 @@ import {
   ListItemText,
   Avatar,
   Button,
-  Card,
-  CardContent,
   Grid,
   useTheme,
   alpha
@@ -349,47 +347,67 @@ const AiChatInterface = () => {
   };
   
   return (
-    <Box
+    <Paper
+      elevation={0}
       sx={{
         display: 'flex',
-        height: 'calc(100vh - 120px)',
+        height: 'calc(100vh - 160px)',
         bgcolor: 'background.default',
-        borderRadius: 2,
+        borderRadius: 1,
         overflow: 'hidden',
-        boxShadow: 3
+        border: '1px solid',
+        borderColor: 'divider'
       }}
     >
       {/* Chat list sidebar */}
       <Box
         sx={{
-          width: 300,
-          borderRight: `1px solid ${theme.palette.divider}`,
-          bgcolor: alpha(theme.palette.background.paper, 0.8),
+          width: 280,
+          borderRight: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.default',
           display: { xs: activeChat ? 'none' : 'block', sm: 'block' }
         }}
       >
         <Box
           sx={{
             p: 2,
-            borderBottom: `1px solid ${theme.palette.divider}`,
+            borderBottom: '1px solid',
+            borderColor: 'divider',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center'
           }}
         >
-          <Typography variant="h6" color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <AutoAwesomeIcon color="primary" />
-            AI Assistant
+          <Typography 
+            variant="subtitle2" 
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 0.75,
+              fontWeight: 500,
+              color: 'text.primary'
+            }}
+          >
+            <AutoAwesomeIcon sx={{ fontSize: '1rem' }} color="primary" />
+            Conversations
           </Typography>
           <Button
-            variant="contained"
+            variant="text"
+            color="primary"
             size="small"
+            sx={{ 
+              minWidth: 0,
+              textTransform: 'none',
+              fontWeight: 500,
+              px: 1
+            }}
             onClick={() => {
               setActiveChat(null);
               setInputMessage('');
             }}
           >
-            New Chat
+            New
           </Button>
         </Box>
         
@@ -399,34 +417,73 @@ const AiChatInterface = () => {
           </Box>
         )}
         
-        <List sx={{ overflow: 'auto', maxHeight: 'calc(100vh - 180px)' }}>
+        <List 
+          sx={{ 
+            overflow: 'auto', 
+            maxHeight: 'calc(100vh - 220px)',
+            py: 0.5,
+            px: 1
+          }}
+        >
           {chats.length > 0 ? (
             chats.map((chat) => (
               <ListItem
                 key={chat._id}
                 button
+                disableGutters
                 selected={activeChat && activeChat._id === chat._id}
                 onClick={() => handleSelectChat(chat)}
                 sx={{
+                  mb: 0.5,
+                  borderRadius: 1,
+                  py: 1,
+                  px: 1.5,
                   '&.Mui-selected': {
-                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                    bgcolor: theme => alpha(theme.palette.primary.main, 0.08),
+                    '&:hover': {
+                      bgcolor: theme => alpha(theme.palette.primary.main, 0.12)
+                    }
+                  },
+                  '&:hover': {
+                    bgcolor: theme => alpha(theme.palette.action.hover, 0.04)
                   }
                 }}
               >
                 <ListItemText
                   primary={chat.title || 'New Conversation'}
-                  secondary={new Date(chat.updatedAt).toLocaleDateString()}
+                  secondary={new Date(chat.updatedAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                  })}
                   primaryTypographyProps={{
                     noWrap: true,
-                    sx: { fontWeight: activeChat && activeChat._id === chat._id ? 600 : 400 }
+                    sx: { 
+                      fontWeight: activeChat && activeChat._id === chat._id ? 500 : 400,
+                      color: 'text.primary',
+                      fontSize: '0.85rem'
+                    }
+                  }}
+                  secondaryTypographyProps={{
+                    sx: { fontSize: '0.75rem', color: 'text.secondary' }
                   }}
                 />
               </ListItem>
             ))
           ) : (
             !isLoading && (
-              <Box sx={{ p: 3, textAlign: 'center' }}>
-                <Typography color="text.secondary">No conversations yet</Typography>
+              <Box sx={{ 
+                p: 3, 
+                textAlign: 'center'
+              }}>
+                <Typography 
+                  color="text.secondary"
+                  sx={{ 
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  No conversations yet
+                </Typography>
               </Box>
             )
           )}
@@ -441,16 +498,37 @@ const AiChatInterface = () => {
             <Box
               sx={{
                 p: 2,
-                borderBottom: `1px solid ${theme.palette.divider}`,
+                borderBottom: '1px solid',
+                borderColor: 'divider',
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'center',
-                backgroundColor: theme.palette.background.paper
+                alignItems: 'center'
               }}
             >
-              <Typography variant="h6">{activeChat.title || 'Conversation with AI Assistant'}</Typography>
-              <IconButton color="error" onClick={handleClearChat} title="Clear conversation history">
-                <DeleteIcon />
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <AutoAwesomeIcon 
+                  color="primary"
+                  fontSize="small"
+                  sx={{ mr: 1 }}
+                />
+                <Typography 
+                  variant="subtitle2"
+                  sx={{
+                    fontWeight: 500,
+                    color: 'text.primary'
+                  }}
+                >
+                  {activeChat.title || 'Conversation with AI Assistant'}
+                </Typography>
+              </Box>
+              <IconButton 
+                color="default" 
+                size="small"
+                sx={{ padding: 0.5 }}
+                onClick={handleClearChat} 
+                title="Clear conversation history"
+              >
+                <DeleteIcon fontSize="small" />
               </IconButton>
             </Box>
             
@@ -462,7 +540,8 @@ const AiChatInterface = () => {
                 p: 2,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 2
+                gap: 2,
+                bgcolor: 'background.default'
               }}
             >
               {activeChat.messages.map((message) => (
@@ -471,52 +550,78 @@ const AiChatInterface = () => {
                   sx={{
                     display: 'flex',
                     alignItems: 'flex-start',
-                    mb: 2,
+                    mb: 1.5,
                     opacity: message.pending ? 0.7 : 1
                   }}
                 >
                   <Avatar
                     sx={{
-                      mr: 2,
-                      bgcolor: message.role === 'user' ? 'primary.main' : 'secondary.main'
+                      mr: 1.5,
+                      bgcolor: message.role === 'user' 
+                        ? theme => alpha(theme.palette.primary.main, 0.1)
+                        : theme => alpha(theme.palette.success.main, 0.1),
+                      color: message.role === 'user' ? 'primary.main' : 'success.main',
+                      width: 32,
+                      height: 32
                     }}
                   >
-                    {message.role === 'user' ? <PersonIcon /> : <AutoAwesomeIcon />}
+                    {message.role === 'user' ? <PersonIcon fontSize="small" /> : <AutoAwesomeIcon fontSize="small" />}
                   </Avatar>
                   <Paper
-                    elevation={message.role === 'ai' ? 2 : 1}
+                    elevation={0}
                     sx={{
                       p: 2,
                       maxWidth: '85%',
-                      borderRadius: 2,
-                      borderLeft: message.role === 'ai' ? `4px solid ${theme.palette.secondary.main}` : 'none',
+                      borderRadius: 1,
                       bgcolor: message.role === 'user'
-                        ? alpha(theme.palette.primary.main, 0.1)
-                        : alpha(theme.palette.secondary.main, 0.1)
+                        ? theme => alpha(theme.palette.primary.main, 0.04)
+                        : theme => alpha(theme.palette.background.paper, 1),
+                      border: '1px solid',
+                      borderColor: 'divider'
                     }}
                   >
                     <Typography
-                      variant="subtitle2"
-                      color={message.role === 'user' ? 'primary' : 'secondary'}
-                      gutterBottom
+                      variant="caption"
+                      sx={{
+                        fontWeight: 500,
+                        display: 'block',
+                        mb: 0.75,
+                        color: message.role === 'user' ? 'text.secondary' : 'text.secondary'
+                      }}
                     >
                       {message.role === 'user' ? user?.name || 'You' : 'SafeStreets AI'}
                     </Typography>
                     
                     <Box sx={{ 
-                      '& p': { mt: 0, mb: 1 }, 
+                      '& p': { 
+                        mt: 0, 
+                        mb: 1.5,
+                        lineHeight: 1.6,
+                        fontSize: '0.85rem',
+                        color: 'text.primary'
+                      }, 
                       '& code': { 
                         p: 0.5, 
                         borderRadius: 1, 
-                        bgcolor: alpha('#000', 0.1) 
+                        bgcolor: 'background.default',
+                        color: 'primary.main',
+                        fontFamily: '"Roboto Mono", monospace',
+                        fontSize: '0.85rem'
+                      },
+                      '& ul, & ol': {
+                        pl: 2,
+                        mb: 1
+                      },
+                      '& li': {
+                        mb: 0.5
                       }
                     }}>
                       <MessageContent content={message.content} />
                     </Box>
                     
                     {message.pending && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                        <CircularProgress size={14} sx={{ mr: 1 }} />
+                      <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                        <CircularProgress size={12} sx={{ mr: 0.75 }} />
                         <Typography variant="caption" color="text.secondary">Sending...</Typography>
                       </Box>
                     )}
@@ -530,8 +635,9 @@ const AiChatInterface = () => {
             <Box
               sx={{
                 p: 2,
-                backgroundColor: theme.palette.background.paper,
-                borderTop: `1px solid ${theme.palette.divider}`
+                backgroundColor: 'background.paper',
+                borderTop: '1px solid',
+                borderColor: 'divider'
               }}
             >
               <Box
@@ -544,7 +650,7 @@ const AiChatInterface = () => {
                   display: 'flex', 
                   gap: 1, 
                   position: 'relative',
-                  alignItems: 'center'
+                  alignItems: 'flex-end'
                 }}
               >
                 <TextField
@@ -555,7 +661,8 @@ const AiChatInterface = () => {
                   onChange={(e) => setInputMessage(e.target.value)}
                   disabled={isLoading}
                   multiline
-                  maxRows={4}
+                  minRows={1}
+                  maxRows={3}
                   onKeyDown={(e) => {
                     // Send message on Enter key (but not with Shift for new line)
                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -567,7 +674,18 @@ const AiChatInterface = () => {
                   }}
                   sx={{
                     '& .MuiOutlinedInput-root': {
-                      borderRadius: 2
+                      borderRadius: 1,
+                      backgroundColor: 'background.paper',
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'primary.main'
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'primary.main',
+                        borderWidth: '1px'
+                      }
+                    },
+                    '& .MuiOutlinedInput-input': {
+                      padding: '12px 14px'
                     }
                   }}
                 />
@@ -575,19 +693,28 @@ const AiChatInterface = () => {
                   color="primary"
                   type="submit"
                   disabled={isLoading || !inputMessage.trim()}
+                  size="small"
                   sx={{
-                    height: 56,
-                    width: 56,
-                    alignSelf: 'flex-end',
-                    zIndex: 2,
-                    position: 'relative'
+                    height: 40,
+                    width: 40,
+                    borderRadius: 1,
+                    bgcolor: isLoading || !inputMessage.trim()
+                      ? 'transparent'
+                      : alpha(theme => theme.palette.primary.main, 0.05)
                   }}
                 >
-                  {isLoading ? <CircularProgress size={24} /> : <SendIcon />}
+                  {isLoading ? <CircularProgress size={20} color="inherit" /> : <SendIcon fontSize="small" />}
                 </IconButton>
               </Box>
               {error && (
-                <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
+                <Typography 
+                  variant="caption" 
+                  color="error" 
+                  sx={{ 
+                    mt: 1, 
+                    display: 'block'
+                  }}
+                >
                   {error}
                 </Typography>
               )}
@@ -604,75 +731,138 @@ const AiChatInterface = () => {
               p: 3
             }}
           >
-            <Card sx={{ maxWidth: 600, width: '100%', mb: 4, borderTop: `4px solid ${theme.palette.secondary.main}` }}>
-              <CardContent>
+            <Paper 
+              elevation={0}
+              sx={{ 
+                maxWidth: 700, 
+                width: '100%', 
+                mb: 4,
+                borderRadius: 2,
+                overflow: 'hidden',
+                bgcolor: 'background.paper',
+                border: '1px solid',
+                borderColor: theme => theme.palette.divider,
+                position: 'relative'
+              }}
+            >
+              <Box sx={{ p: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
                   <Avatar sx={{ 
                     mr: 2, 
-                    bgcolor: 'secondary.main',
-                    width: 56,
-                    height: 56
+                    bgcolor: theme => alpha(theme.palette.success.main, 0.1),
+                    width: 48,
+                    height: 48,
+                    color: 'success.main'
                   }}>
-                    <AutoAwesomeIcon fontSize="large" />
+                    <AutoAwesomeIcon />
                   </Avatar>
                   <Box>
-                    <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                    <Typography 
+                      variant="h5" 
+                      sx={{ 
+                        fontWeight: 600,
+                        color: 'text.primary',
+                        mb: 0.5
+                      }}
+                    >
                       SafeStreets AI Assistant
                     </Typography>
-                    <Typography variant="subtitle1" color="text.secondary">
+                    <Typography 
+                      variant="body2" 
+                      sx={{
+                        color: 'text.secondary',
+                        fontWeight: 400
+                      }}
+                    >
                       Professional Consultation for Infrastructure Management
                     </Typography>
                   </Box>
                 </Box>
-                <Typography variant="body1" paragraph sx={{ mb: 3 }}>
+
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    mb: 3,
+                    color: 'text.secondary',
+                    fontSize: '0.9rem',
+                    lineHeight: 1.6
+                  }}
+                >
                   Welcome to your professional road infrastructure management assistant, powered by Google's Gemini AI. How can I assist you today?
                 </Typography>
-                <Grid container spacing={3}>
+                
+                <Grid container spacing={2}>
                   <Grid item xs={12} sm={6}>
-                    <Box sx={{ 
-                      backgroundColor: alpha(theme.palette.secondary.main, 0.1), 
-                      p: 2, 
-                      borderRadius: 2,
-                      height: '100%'
-                    }}>
-                      <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600, color: theme.palette.secondary.main }}>
+                    <Paper 
+                      elevation={0}
+                      sx={{ 
+                        p: 2, 
+                        borderRadius: 2,
+                        height: '100%',
+                        border: '1px solid',
+                        borderColor: theme => theme.palette.divider
+                      }}
+                    >
+                      <Typography 
+                        variant="subtitle2"
+                        sx={{ 
+                          fontWeight: 600, 
+                          mb: 1.5,
+                          display: 'flex',
+                          alignItems: 'center',
+                          color: 'text.primary'
+                        }}
+                      >
                         Technical Analysis
                       </Typography>
-                      <Typography variant="body2" component="div">
-                        <Box component="ul" sx={{ pl: 2, mb: 0 }}>
-                          <Box component="li" sx={{ mb: 1 }}>Detailed damage classification</Box>
-                          <Box component="li" sx={{ mb: 1 }}>Severity assessment frameworks</Box>
-                          <Box component="li" sx={{ mb: 1 }}>Priority-based maintenance planning</Box>
-                          <Box component="li" sx={{ mb: 0 }}>Cost-benefit analysis</Box>
+                      <Typography variant="body2" component="div" sx={{ color: 'text.secondary' }}>
+                        <Box component="ul" sx={{ pl: 2, mb: 0, mt: 0 }}>
+                          <Box component="li" sx={{ mb: 1, fontSize: '0.85rem' }}>Detailed damage classification</Box>
+                          <Box component="li" sx={{ mb: 1, fontSize: '0.85rem' }}>Severity assessment frameworks</Box>
+                          <Box component="li" sx={{ mb: 1, fontSize: '0.85rem' }}>Priority-based maintenance planning</Box>
+                          <Box component="li" sx={{ mb: 0, fontSize: '0.85rem' }}>Cost-benefit analysis</Box>
                         </Box>
                       </Typography>
-                    </Box>
+                    </Paper>
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <Box sx={{ 
-                      backgroundColor: alpha(theme.palette.primary.main, 0.1), 
-                      p: 2, 
-                      borderRadius: 2,
-                      height: '100%' 
-                    }}>
-                      <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600, color: theme.palette.primary.main }}>
+                    <Paper 
+                      elevation={0}
+                      sx={{ 
+                        p: 2, 
+                        borderRadius: 2,
+                        height: '100%',
+                        border: '1px solid',
+                        borderColor: theme => theme.palette.divider
+                      }}
+                    >
+                      <Typography 
+                        variant="subtitle2"
+                        sx={{ 
+                          fontWeight: 600, 
+                          mb: 1.5,
+                          display: 'flex',
+                          alignItems: 'center',
+                          color: 'text.primary'
+                        }}
+                      >
                         Administrative Support
                       </Typography>
-                      <Typography variant="body2" component="div">
-                        <Box component="ul" sx={{ pl: 2, mb: 0 }}>
-                          <Box component="li" sx={{ mb: 1 }}>Resource allocation optimization</Box>
-                          <Box component="li" sx={{ mb: 1 }}>Workflow management strategies</Box>
-                          <Box component="li" sx={{ mb: 1 }}>Regulatory compliance assistance</Box>
-                          <Box component="li" sx={{ mb: 0 }}>Data-driven decision support</Box>
+                      <Typography variant="body2" component="div" sx={{ color: 'text.secondary' }}>
+                        <Box component="ul" sx={{ pl: 2, mb: 0, mt: 0 }}>
+                          <Box component="li" sx={{ mb: 1, fontSize: '0.85rem' }}>Resource allocation optimization</Box>
+                          <Box component="li" sx={{ mb: 1, fontSize: '0.85rem' }}>Workflow management strategies</Box>
+                          <Box component="li" sx={{ mb: 1, fontSize: '0.85rem' }}>Regulatory compliance assistance</Box>
+                          <Box component="li" sx={{ mb: 0, fontSize: '0.85rem' }}>Data-driven decision support</Box>
                         </Box>
                       </Typography>
-                    </Box>
+                    </Paper>
                   </Grid>
                 </Grid>
-              </CardContent>
-            </Card>
+              </Box>
+            </Paper>
             
-            <Box sx={{ width: '100%', maxWidth: 600 }}>
+            <Box sx={{ width: '100%', maxWidth: 700 }}>
               <TextField
                 fullWidth
                 variant="outlined"
@@ -680,17 +870,38 @@ const AiChatInterface = () => {
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 multiline
-                rows={3}
-                sx={{ mb: 2 }}
+                rows={2}
+                sx={{ 
+                  mb: 2,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 1,
+                    backgroundColor: 'background.paper',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'primary.main'
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'success.main',
+                      borderWidth: '1px'
+                    }
+                  }
+                }}
               />
               <Button
                 fullWidth
                 variant="contained"
                 color="primary"
-                size="large"
-                startIcon={isCreatingChat ? <CircularProgress size={20} color="inherit" /> : <AutoAwesomeIcon />}
+                size="medium"
+                startIcon={isCreatingChat ? <CircularProgress size={18} color="inherit" /> : <AutoAwesomeIcon />}
                 onClick={handleCreateChat}
                 disabled={isCreatingChat || !inputMessage.trim()}
+                sx={{
+                  py: 1,
+                  borderRadius: 1,
+                  textTransform: 'none',
+                  fontWeight: 500
+                }}
               >
                 Start New Conversation
               </Button>
@@ -698,7 +909,7 @@ const AiChatInterface = () => {
           </Box>
         )}
       </Box>
-    </Box>
+    </Paper>
   );
 };
 

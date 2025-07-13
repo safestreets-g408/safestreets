@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { useTheme } from '@mui/material/styles';
+import { useTheme, alpha } from '@mui/material/styles';
 import { Box } from '@mui/material';
 import { 
   Navigation,
@@ -97,7 +97,7 @@ const Landing = () => {
     { title: 'Operational Efficiency', value: '45%', description: 'Streamlined workflows and automated reporting' }
   ];
 
-  // Generate feature icon colors from the theme
+  // Generate feature icon colors with enhanced dark mode support
   const getFeatureColors = () => {
     const mode = theme.palette.mode;
     return {
@@ -109,7 +109,10 @@ const Landing = () => {
       cyan: mode === 'dark' ? '#26C6DA' : '#00BCD4',
       lightGreen: mode === 'dark' ? '#9CCC65' : '#8BC34A',
       deepOrange: mode === 'dark' ? '#FF7043' : '#FF5722',
-      blueGrey: mode === 'dark' ? '#78909C' : '#607D8B'
+      blueGrey: mode === 'dark' ? '#78909C' : '#607D8B',
+      indigo: mode === 'dark' ? '#7986CB' : '#3F51B5',
+      teal: mode === 'dark' ? '#4DB6AC' : '#009688',
+      pink: mode === 'dark' ? '#F06292' : '#E91E63',
     };
   };
 
@@ -177,30 +180,63 @@ const Landing = () => {
       title: 'Mobile Application',
       description: 'React Native app for field workers with offline support',
       features: ['Image capture with GPS', 'Status tracking', 'Offline synchronization'],
-      icon: <PhoneAndroid sx={{ fontSize: 40 }} />
+      icon: <PhoneAndroid sx={{ fontSize: 40 }} />,
+      type: 'mobile'
     },
     {
       title: 'AI Model Server',
       description: 'Flask-based Vision Transformer inference server',
       features: ['ViT classification', 'CNN road validation', 'Damage severity assessment'],
-      icon: <SmartToy sx={{ fontSize: 40 }} />
+      icon: <SmartToy sx={{ fontSize: 40 }} />,
+      type: 'ai'
     },
     {
       title: 'Backend API',
       description: 'Node.js/Express REST API with MongoDB',
       features: ['Secure authentication', 'Data management', 'Task assignment'],
-      icon: <Storage sx={{ fontSize: 40 }} />
+      icon: <Storage sx={{ fontSize: 40 }} />,
+      type: 'backend'
     },
     {
       title: 'Admin Portal',
       description: 'React-based web dashboard with Material-UI',
       features: ['Analytics dashboard', 'Map visualization', 'Repair management'],
-      icon: <Computer sx={{ fontSize: 40 }} />
+      icon: <Computer sx={{ fontSize: 40 }} />,
+      type: 'frontend'
     }
   ];
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box 
+      sx={{ 
+        minHeight: '100vh', 
+        bgcolor: 'background.default',
+        position: 'relative',
+        overflow: 'hidden',
+        '&::before': {
+          content: '""',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: theme.palette.mode === 'dark'
+            ? `radial-gradient(circle at 20% 80%, ${alpha(theme.palette.primary.main, 0.1)} 0%, transparent 50%),
+               radial-gradient(circle at 80% 20%, ${alpha(theme.palette.secondary.main, 0.1)} 0%, transparent 50%),
+               radial-gradient(circle at 40% 40%, ${alpha(theme.palette.primary.dark, 0.05)} 0%, transparent 50%)`
+            : `radial-gradient(circle at 20% 80%, ${alpha(theme.palette.primary.main, 0.05)} 0%, transparent 50%),
+               radial-gradient(circle at 80% 20%, ${alpha(theme.palette.secondary.main, 0.05)} 0%, transparent 50%)`,
+          pointerEvents: 'none',
+          zIndex: -1,
+          animation: 'backgroundMove 20s ease-in-out infinite',
+        },
+        '@keyframes backgroundMove': {
+          '0%, 100%': { transform: 'translate(0, 0) scale(1)' },
+          '33%': { transform: 'translate(30px, -30px) scale(1.1)' },
+          '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+        },
+      }}
+    >
       {/* Navigation */}
       <Navigation 
         isAuthenticated={isAuthenticated}

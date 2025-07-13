@@ -773,49 +773,60 @@ function Reports() {
       onClose={() => setFiltersDialogOpen(false)}
       maxWidth="sm"
       fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 1,
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+        }
+      }}
     >
       <DialogTitle sx={{ 
-        pb: 2, 
+        py: 1.5,
+        px: 2,
         display: 'flex', 
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        borderBottom: '1px solid',
+        borderColor: 'divider'
       }}>
-        <Typography variant="h6">Filter Reports</Typography>
+        <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>Filter Reports</Typography>
         <IconButton 
           onClick={() => setFiltersDialogOpen(false)}
           size="small"
-          sx={{
-            color: colors.text.secondary,
-            '&:hover': { color: colors.text.primary }
-          }}
+          edge="end"
+          sx={{ color: 'text.secondary' }}
         >
-          <CloseIcon />
+          <CloseIcon fontSize="small" />
         </IconButton>
       </DialogTitle>
-      <DialogContent dividers>
-        <Grid container spacing={3}>
+      <DialogContent sx={{ py: 1.5, px: 2 }}>
+        <Grid container spacing={2}>
           <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
+              size="small"
               label="Date From"
               type="date"
               value={filters.dateFrom || ''}
               onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
               InputLabelProps={{ shrink: true }}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
+              size="small"
               label="Date To"
               type="date"
               value={filters.dateTo || ''}
               onChange={(e) => handleFilterChange('dateTo', e.target.value)}
               InputLabelProps={{ shrink: true }}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
+            <FormControl fullWidth size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}>
               <InputLabel>Severity</InputLabel>
               <Select
                 value={filters.severity}
@@ -830,7 +841,7 @@ function Reports() {
             </FormControl>
           </Grid>
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
+            <FormControl fullWidth size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}>
               <InputLabel>Region</InputLabel>
               <Select
                 value={filters.region}
@@ -845,7 +856,7 @@ function Reports() {
             </FormControl>
           </Grid>
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
+            <FormControl fullWidth size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}>
               <InputLabel>Damage Type</InputLabel>
               <Select
                 value={filters.damageType}
@@ -860,7 +871,7 @@ function Reports() {
             </FormControl>
           </Grid>
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
+            <FormControl fullWidth size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}>
               <InputLabel>Priority</InputLabel>
               <Select
                 value={filters.priority}
@@ -876,20 +887,31 @@ function Reports() {
           </Grid>
         </Grid>
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
+      <DialogActions sx={{ px: 2, py: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
         <Button 
+          size="small"
           onClick={() => {
             clearFilters();
             setFiltersDialogOpen(false);
           }}
-          color="inherit"
-          sx={{ mr: 1 }}
+          sx={{ 
+            color: 'text.secondary',
+            textTransform: 'none',
+            fontWeight: 500,
+          }}
         >
           Clear All
         </Button>
         <Button 
-          variant="contained" 
+          variant="outlined" 
+          size="small"
           onClick={() => setFiltersDialogOpen(false)}
+          sx={{ 
+            borderColor: 'divider', 
+            color: 'text.primary',
+            textTransform: 'none',
+            fontWeight: 500,
+          }}
         >
           Apply Filters
         </Button>
@@ -901,84 +923,115 @@ function Reports() {
     <Paper 
       elevation={0}
       sx={{ 
-        borderRadius: 2,
-        border: `1px solid ${colors.border}`,
         overflow: 'hidden',
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: 1,
       }}
     >
       <Box sx={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr>
-              <th style={{ padding: 8, borderBottom: `1px solid ${theme.palette.divider}` }}>Report ID</th>
+            <tr style={{ backgroundColor: 'background.default' }}>
+              <th style={{ padding: '8px 12px', fontWeight: 500, color: 'text.secondary', fontSize: '0.875rem', textAlign: 'left', borderBottom: '1px solid', borderBottomColor: 'divider' }}>
+                Report ID
+              </th>
               {isSuperAdmin && allTenantsReports && (
-                <th style={{ padding: 8, borderBottom: `1px solid ${theme.palette.divider}` }}>Tenant</th>
+                <th style={{ padding: '8px 12px', fontWeight: 500, color: 'text.secondary', fontSize: '0.875rem', textAlign: 'left', borderBottom: '1px solid', borderBottomColor: 'divider' }}>
+                  Tenant
+                </th>
               )}
-              <th style={{ padding: 8, borderBottom: `1px solid ${theme.palette.divider}` }}>Date</th>
-              <th style={{ padding: 8, borderBottom: `1px solid ${theme.palette.divider}` }}>Region</th>
-              <th style={{ padding: 8, borderBottom: `1px solid ${theme.palette.divider}` }}>Type</th>
-              <th style={{ padding: 8, borderBottom: `1px solid ${theme.palette.divider}` }}>Severity</th>
-              <th style={{ padding: 8, borderBottom: `1px solid ${theme.palette.divider}` }}>Status</th>
-              <th style={{ padding: 8, borderBottom: `1px solid ${theme.palette.divider}` }}>Actions</th>
+              <th style={{ padding: '8px 12px', fontWeight: 500, color: 'text.secondary', fontSize: '0.875rem', textAlign: 'left', borderBottom: '1px solid', borderBottomColor: 'divider' }}>
+                Date
+              </th>
+              <th style={{ padding: '8px 12px', fontWeight: 500, color: 'text.secondary', fontSize: '0.875rem', textAlign: 'left', borderBottom: '1px solid', borderBottomColor: 'divider' }}>
+                Region
+              </th>
+              <th style={{ padding: '8px 12px', fontWeight: 500, color: 'text.secondary', fontSize: '0.875rem', textAlign: 'left', borderBottom: '1px solid', borderBottomColor: 'divider' }}>
+                Type
+              </th>
+              <th style={{ padding: '8px 12px', fontWeight: 500, color: 'text.secondary', fontSize: '0.875rem', textAlign: 'left', borderBottom: '1px solid', borderBottomColor: 'divider' }}>
+                Severity
+              </th>
+              <th style={{ padding: '8px 12px', fontWeight: 500, color: 'text.secondary', fontSize: '0.875rem', textAlign: 'left', borderBottom: '1px solid', borderBottomColor: 'divider' }}>
+                Status
+              </th>
+              <th style={{ padding: '8px 12px', fontWeight: 500, color: 'text.secondary', fontSize: '0.875rem', textAlign: 'center', borderBottom: '1px solid', borderBottomColor: 'divider' }}>
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
             {paginatedReports().map((report, index) => (
-              <tr key={report._id} style={{ 
+              <tr 
+                key={report._id} 
+                style={{ 
                   cursor: 'pointer',
-                  backgroundColor: index % 2 === 0 
-                    ? theme.palette.mode === 'dark' 
-                      ? alpha(theme.palette.background.default, 0.5) 
-                      : theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.grey[50] 
-                    : 'inherit'
-                }} onClick={(e) => {
-                  // Only trigger handleViewReport if not clicking on the actions cell
-                  // This prevents conflicts with button click handlers
+                  borderBottom: '1px solid',
+                  borderBottomColor: 'divider',
+                  backgroundColor: index % 2 === 0 ? 'rgba(0, 0, 0, 0.01)' : 'inherit',
+                  transition: 'background-color 0.2s',
+                  '&:hover': {
+                    backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                  }
+                }} 
+                onClick={(e) => {
                   if (!e.target.closest('td:last-child')) {
                     handleViewReport(report);
                   }
-                }}>
-                <td style={{ padding: 8, fontWeight: 500, color: colors.primary }}>
-                  {report.reportId}
+                }}
+              >
+                <td style={{ padding: '8px 12px', fontSize: '0.875rem', color: 'text.primary' }}>
+                  <Typography variant="body2" fontWeight="500" color="primary">
+                    {report.reportId}
+                  </Typography>
                 </td>
                 {isSuperAdmin && allTenantsReports && (
-                  <td style={{ padding: 8 }}>
+                  <td style={{ padding: '8px 12px', fontSize: '0.875rem' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <BusinessIcon fontSize="small" color="primary" />
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      <BusinessIcon sx={{ fontSize: '0.875rem', color: 'text.secondary' }} />
+                      <Typography variant="body2">
                         {report.tenantInfo?.organizationName || report.tenantInfo?.name || 'Unknown'}
                       </Typography>
                     </Box>
                   </td>
                 )}
-                <td style={{ padding: 8 }}>
+                <td style={{ padding: '8px 12px', fontSize: '0.875rem', color: 'text.secondary' }}>
                   {new Date(report.createdAt).toLocaleDateString()}
                 </td>
-                <td style={{ padding: 8 }}>{report.region}</td>
-                <td style={{ padding: 8 }}>{report.damageType}</td>
-                <td style={{ padding: 8 }}>
+                <td style={{ padding: '8px 12px', fontSize: '0.875rem', color: 'text.secondary' }}>{report.region}</td>
+                <td style={{ padding: '8px 12px', fontSize: '0.875rem', color: 'text.secondary' }}>{report.damageType}</td>
+                <td style={{ padding: '8px 12px', fontSize: '0.875rem' }}>
                   <Chip 
                     label={report.severity}
                     color={getSeverityColor(report.severity)}
                     size="small"
+                    variant="outlined"
                     sx={{
-                      fontWeight: 600,
-                      borderRadius: 1,
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                      height: '22px',
+                      borderRadius: '4px',
+                      '.MuiChip-label': { px: 1 }
                     }}
                   />
                 </td>
-                <td style={{ padding: 8 }}>
+                <td style={{ padding: '8px 12px', fontSize: '0.875rem' }}>
                   <Chip 
                     label={report.status}
                     color={getStatusColor(report.status)}
                     size="small"
+                    variant="outlined"
                     sx={{
-                      fontWeight: 600,
-                      borderRadius: 1,
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                      height: '22px',
+                      borderRadius: '4px',
+                      '.MuiChip-label': { px: 1 }
                     }}
                   />
                 </td>
-                <td style={{ padding: 8 }}>
+                <td style={{ padding: '8px 12px', textAlign: 'center' }}>
                   <ReportActions 
                     report={report}
                     onView={handleViewReport}
@@ -992,11 +1045,13 @@ function Reports() {
             ))}
             {paginatedReports().length === 0 && (
               <tr>
-                <td colSpan={isSuperAdmin && allTenantsReports ? 8 : 7} style={{ textAlign: 'center', padding: 24, color: theme.palette.text.secondary }}>
-                  {isSuperAdmin && !selectedTenant && !allTenantsReports ? 
-                    'Please select a tenant or choose "Show All Tenants" to view reports.' :
-                    'No reports found.'
-                  }
+                <td colSpan={isSuperAdmin && allTenantsReports ? 8 : 7} style={{ textAlign: 'center', padding: '24px', color: 'text.secondary' }}>
+                  <Typography variant="body2">
+                    {isSuperAdmin && !selectedTenant && !allTenantsReports ? 
+                      'Please select a tenant or choose "Show All Tenants" to view reports.' :
+                      'No reports found.'
+                    }
+                  </Typography>
                 </td>
               </tr>
             )}
@@ -1007,19 +1062,28 @@ function Reports() {
   );
 
   const renderGrid = () => (
-    <Grid container spacing={3}>
+    <Grid container spacing={2}>
       {paginatedReports().length === 0 ? (
         <Grid item xs={12}>
-          <Paper sx={{ p: 4, textAlign: 'center', bgcolor: 'background.paper' }}>
-            <Typography variant="h6" color="text.secondary" gutterBottom>
+          <Paper 
+            elevation={0} 
+            sx={{ 
+              p: 3, 
+              textAlign: 'center', 
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 1,
+            }}
+          >
+            <Typography variant="subtitle1" color="text.secondary" gutterBottom fontWeight={500}>
               {isSuperAdmin && !selectedTenant && !allTenantsReports ? 
-                '🏢 Select a tenant to view reports' :
-                '📄 No reports found'
+                'Select a tenant to view reports' :
+                'No reports found'
               }
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {isSuperAdmin && !selectedTenant && !allTenantsReports ? 
-                'Please select a tenant from the dropdown above or choose "Show All Tenants" to view reports.' :
+                'Please select a tenant from the dropdown above or choose "Show All Tenants".' :
                 'Try adjusting your filters or check back later.'
               }
             </Typography>
@@ -1027,50 +1091,62 @@ function Reports() {
         </Grid>
       ) : (
         paginatedReports().map(report => (
-          <Grid item xs={12} sm={6} md={4} key={report.id}>
+          <Grid item xs={12} sm={6} md={4} key={report._id || report.id}>
             <Card 
+              elevation={0}
               sx={{ 
                 height: '100%',
-                borderRadius: 2,
-                transition: 'box-shadow 0.2s ease-in-out',
-                '&:hover': {
-                  boxShadow: '0 4px 8px rgba(0, 0, 0, 0.15)',
-                },
+                borderRadius: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 position: 'relative',
-                overflow: 'visible',
-                border: `1px solid ${colors.border}`,
+                overflow: 'hidden',
+                border: '1px solid',
+                borderColor: 'divider',
+                transition: 'border-color 0.2s',
+                '&:hover': {
+                  borderColor: 'primary.main',
+                  cursor: 'pointer',
+                },
                 '&::before': {
                   content: '""',
                   position: 'absolute',
                   top: 0,
                   left: 0,
                   right: 0,
-                  height: '4px',
+                  height: '3px',
                   background: getSeverityBarColor(report.severity),
-                  borderRadius: '8px 8px 0 0',
                 }
               }}
+              onClick={() => handleViewReport(report)}
             >
-              <CardContent sx={{ flex: 1 }}>
+              <CardContent sx={{ flex: 1, p: 2 }}>
                 <Box sx={{ mb: 2 }}>
-                  <Typography variant="h6" component="div" gutterBottom>
-                    {report.id}
+                  <Typography variant="subtitle1" fontWeight={500} color="primary" gutterBottom>
+                    {report.reportId}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" color="text.secondary" fontSize="0.75rem">
                     {new Date(report.createdAt).toLocaleDateString()}
                   </Typography>
                   
                   {/* Show tenant info for super admin viewing all tenants */}
                   {isSuperAdmin && allTenantsReports && report.tenantInfo && (
-                    <Box sx={{ mt: 1, p: 1, bgcolor: theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.2) : '#e3f2fd', borderRadius: 1 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <BusinessIcon fontSize="small" color="primary" />
-                        <Typography variant="caption" color="primary" sx={{ fontWeight: 600 }}>
-                          {report.tenantInfo.organizationName || report.tenantInfo.name}
-                        </Typography>
-                      </Box>
+                    <Box sx={{ 
+                      mt: 1, 
+                      py: 0.5, 
+                      px: 1, 
+                      bgcolor: 'background.default',
+                      borderRadius: 0.5, 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 0.5,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                    }}>
+                      <BusinessIcon sx={{ fontSize: '0.875rem', color: 'text.secondary' }} />
+                      <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                        {report.tenantInfo.organizationName || report.tenantInfo.name}
+                      </Typography>
                     </Box>
                   )}
                 </Box>
@@ -1080,22 +1156,43 @@ function Reports() {
                     label={report.severity}
                     color={getSeverityColor(report.severity)}
                     size="small"
-                    sx={{ fontWeight: 600 }}
+                    variant="outlined"
+                    sx={{
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                      height: '22px',
+                      borderRadius: '4px',
+                      '.MuiChip-label': { px: 1 }
+                    }}
                   />
                   <Chip 
                     label={report.status}
                     color={getStatusColor(report.status)}
                     size="small"
-                    sx={{ fontWeight: 600 }}
+                    variant="outlined"
+                    sx={{
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                      height: '22px',
+                      borderRadius: '4px',
+                      '.MuiChip-label': { px: 1 }
+                    }}
                   />
                 </Stack>
 
-                <Typography variant="body2" paragraph>
+                <Typography variant="body2" sx={{ 
+                  mb: 2, 
+                  overflow: 'hidden', 
+                  textOverflow: 'ellipsis', 
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                }}>
                   {report.description}
                 </Typography>
 
                 <Box sx={{ mt: 'auto' }}>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                  <Typography variant="caption" color="text.secondary" display="block">
                     {report.region} • {report.damageType}
                   </Typography>
                 </Box>
@@ -1103,23 +1200,30 @@ function Reports() {
 
               <Box 
                 sx={{ 
-                  p: 2, 
-                  pt: 0,
-                  borderTop: `1px solid ${colors.border}`,
+                  px: 2, 
+                  py: 1.5,
+                  borderTop: '1px solid',
+                  borderColor: 'divider',
                   display: 'flex',
-                  justifyContent: 'flex-end'
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
                 }}
               >
+                <Typography variant="caption" color="text.secondary">
+                  Priority: {report.priority || 'N/A'}
+                </Typography>
                 <Button
                   size="small"
-                  variant="contained"
-                  onClick={() => handleViewReport(report)}
+                  variant="text"
+                  color="primary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleViewReport(report);
+                  }}
                   sx={{
-                    bgcolor: colors.primary,
-                    color: 'white',
-                    '&:hover': {
-                      bgcolor: colors.primaryDark,
-                    },
+                    fontWeight: 500,
+                    textTransform: 'none',
+                    p: 0.5,
                   }}
                 >
                   View Details
@@ -1144,14 +1248,23 @@ function Reports() {
       }}
       maxWidth="md"
       fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 1,
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+        }
+      }}
     >
       <DialogTitle sx={{ 
-        pb: 2, 
+        py: 1.5,
+        px: 2,
         display: 'flex', 
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        borderBottom: '1px solid',
+        borderColor: 'divider'
       }}>
-        <Typography variant="h6">Edit Report</Typography>
+        <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>Edit Report</Typography>
         <IconButton 
           onClick={() => {
             if (!actionLoading) {
@@ -1160,36 +1273,38 @@ function Reports() {
             }
           }}
           size="small"
+          edge="end"
           disabled={actionLoading}
-          sx={{
-            color: colors.text.secondary,
-            '&:hover': { color: colors.text.primary }
-          }}
+          sx={{ color: 'text.secondary' }}
         >
-          <CloseIcon />
+          <CloseIcon fontSize="small" />
         </IconButton>
       </DialogTitle>
-      <DialogContent dividers>
+      <DialogContent sx={{ py: 2, px: 2 }}>
         {editReportData && (
-          <Grid container spacing={3}>
+          <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
+                size="small"
                 label="Report ID"
                 value={editReportData.reportId || ''}
                 disabled
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
+                size="small"
                 label="Date Created"
                 value={new Date(editReportData.createdAt).toLocaleString() || ''}
                 disabled
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
+              <FormControl fullWidth size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}>
                 <InputLabel>Damage Type</InputLabel>
                 <Select
                   value={editReportData.damageType || ''}
@@ -1204,7 +1319,7 @@ function Reports() {
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
+              <FormControl fullWidth size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}>
                 <InputLabel>Severity</InputLabel>
                 <Select
                   value={editReportData.severity || ''}
@@ -1220,7 +1335,7 @@ function Reports() {
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
+              <FormControl fullWidth size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}>
                 <InputLabel>Priority</InputLabel>
                 <Select
                   value={editReportData.priority || ''}
@@ -1235,7 +1350,7 @@ function Reports() {
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
+              <FormControl fullWidth size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}>
                 <InputLabel>Status</InputLabel>
                 <Select
                   value={editReportData.status || ''}
@@ -1254,64 +1369,84 @@ function Reports() {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
+                size="small"
                 label="Region"
                 value={editReportData.region || ''}
                 onChange={(e) => setEditReportData({...editReportData, region: e.target.value})}
                 disabled={actionLoading}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
+                size="small"
                 label="Location"
                 value={editReportData.location || ''}
                 onChange={(e) => setEditReportData({...editReportData, location: e.target.value})}
                 disabled={actionLoading}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
               />
             </Grid>
             <Grid item xs={12}>
               <TextField
                 fullWidth
+                size="small"
                 label="Description"
                 multiline
-                rows={4}
+                rows={3}
                 value={editReportData.description || ''}
                 onChange={(e) => setEditReportData({...editReportData, description: e.target.value})}
                 disabled={actionLoading}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
               />
             </Grid>
             <Grid item xs={12}>
               <TextField
                 fullWidth
+                size="small"
                 label="Action Required"
                 multiline
                 rows={2}
                 value={editReportData.action || ''}
                 onChange={(e) => setEditReportData({...editReportData, action: e.target.value})}
                 disabled={actionLoading}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
               />
             </Grid>
           </Grid>
         )}
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
+      <DialogActions sx={{ px: 2, py: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
         <Button 
+          size="small"
           onClick={() => {
             if (!actionLoading) {
               setEditReportOpen(false);
               setEditReportData(null);
             }
           }}
-          color="inherit"
+          sx={{ 
+            color: 'text.secondary',
+            textTransform: 'none',
+            fontWeight: 500,
+          }}
           disabled={actionLoading}
         >
           Cancel
         </Button>
         <Button 
-          variant="contained" 
+          variant="outlined"
+          size="small"
           onClick={handleSaveEdit}
           disabled={actionLoading}
-          startIcon={actionLoading ? <CircularProgress size={20} color="inherit" /> : null}
+          startIcon={actionLoading ? <CircularProgress size={16} color="inherit" /> : null}
+          sx={{ 
+            borderColor: 'divider',
+            color: 'text.primary',
+            textTransform: 'none',
+            fontWeight: 500,
+          }}
         >
           {actionLoading ? 'Saving...' : 'Save Changes'}
         </Button>
@@ -1329,36 +1464,75 @@ function Reports() {
           setReportToDelete(null);
         }
       }}
-      maxWidth="sm"
+      maxWidth="xs"
       fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 1,
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+        }
+      }}
     >
-      <DialogTitle sx={{ pb: 2 }}>
-        <Typography variant="h6">Confirm Delete</Typography>
-      </DialogTitle>
-      <DialogContent>
-        <Typography>
-          Are you sure you want to delete the report {reportToDelete?.reportId}? This action cannot be undone.
-        </Typography>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button 
+      <DialogTitle sx={{ 
+        py: 1.5,
+        px: 2,
+        display: 'flex', 
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderBottom: '1px solid',
+        borderColor: 'divider'
+      }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>Confirm Delete</Typography>
+        <IconButton 
           onClick={() => {
             if (!actionLoading) {
               setDeleteDialogOpen(false);
               setReportToDelete(null);
             }
           }}
-          color="inherit"
+          edge="end"
+          size="small"
+          disabled={actionLoading}
+          sx={{ color: 'text.secondary' }}
+        >
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent sx={{ py: 2, px: 2 }}>
+        <Typography variant="body2">
+          Are you sure you want to delete the report <strong>{reportToDelete?.reportId}</strong>? This action cannot be undone.
+        </Typography>
+      </DialogContent>
+      <DialogActions sx={{ px: 2, py: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+        <Button 
+          size="small"
+          onClick={() => {
+            if (!actionLoading) {
+              setDeleteDialogOpen(false);
+              setReportToDelete(null);
+            }
+          }}
+          sx={{ 
+            color: 'text.secondary',
+            textTransform: 'none',
+            fontWeight: 500,
+          }}
           disabled={actionLoading}
         >
           Cancel
         </Button>
         <Button 
-          variant="contained" 
+          variant="outlined"
+          size="small"
           color="error"
           onClick={confirmDeleteReport}
           disabled={actionLoading}
-          startIcon={actionLoading ? <CircularProgress size={20} color="inherit" /> : null}
+          startIcon={actionLoading ? <CircularProgress size={16} color="inherit" /> : null}
+          sx={{ 
+            borderColor: 'error.main',
+            textTransform: 'none',
+            fontWeight: 500,
+          }}
         >
           {actionLoading ? 'Deleting...' : 'Delete'}
         </Button>
@@ -1368,25 +1542,25 @@ function Reports() {
 
   return (
     <>
-      <Box sx={{ py: 3 }}>
+      <Box sx={{ py: 2 }}>
         <Box
           sx={{
             display: 'flex',
             flexDirection: { xs: 'column', md: 'row' },
             justifyContent: 'space-between',
             alignItems: { xs: 'stretch', md: 'center' },
-            mb: 4,
-            gap: 2,
+            mb: 3,
+            gap: 1.5,
           }}
         >
           {/* Super Admin Tenant Selection */}
           {isSuperAdmin && (
             <Box sx={{ mb: { xs: 2, md: 0 } }}>
-              <Typography variant="h6" sx={{ mb: 2, color: colors.primary, fontWeight: 600 }}>
-                🏢 Tenant Reports
+              <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 500 }}>
+                Tenant Reports
               </Typography>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <FormControl sx={{ minWidth: 200 }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="center">
+                <FormControl size="small" sx={{ minWidth: 200, '& .MuiOutlinedInput-root': { borderRadius: 1 } }}>
                   <InputLabel>Select Tenant</InputLabel>
                   <Select
                     value={selectedTenant}
@@ -1400,7 +1574,7 @@ function Reports() {
                     {(tenants || []).map((tenant) => (
                       <MenuItem key={tenant._id} value={tenant._id}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <BusinessIcon fontSize="small" />
+                          <BusinessIcon sx={{ fontSize: '0.875rem', color: 'text.secondary' }} />
                           <Typography variant="body2">
                             {tenant.organizationName || tenant.name}
                           </Typography>
@@ -1411,27 +1585,15 @@ function Reports() {
                 </FormControl>
                 
                 <Button
-                  variant={allTenantsReports ? 'contained' : 'outlined'}
+                  variant={allTenantsReports ? 'outlined' : 'text'}
+                  size="small"
                   onClick={handleAllTenantsToggle}
                   sx={{
-                    px: 3,
-                    py: 1.5,
-                    borderRadius: 2,
+                    borderColor: allTenantsReports ? 'primary.main' : 'transparent',
+                    color: allTenantsReports ? 'primary.main' : 'text.secondary',
                     textTransform: 'none',
-                    fontWeight: 600,
-                    ...(allTenantsReports ? {
-                      bgcolor: colors.warning,
-                      color: 'white',
-                      '&:hover': {
-                        bgcolor: theme.palette.warning.dark,
-                      },
-                    } : {
-                      borderColor: colors.warning,
-                      color: colors.warning,
-                      '&:hover': {
-                        bgcolor: alpha(theme.palette.warning.main, 0.1),
-                      },
-                    })
+                    fontWeight: 500,
+                    px: 2,
                   }}
                 >
                   {allTenantsReports ? 'Showing All Tenants' : 'Show All Tenants'}
@@ -1460,90 +1622,90 @@ function Reports() {
 
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
-            spacing={2}
+            spacing={1.5}
             sx={{ minWidth: { sm: '400px' } }}
           >
             <Button
-              variant="contained"
-              startIcon={<FilterListIcon />}
+              variant="outlined"
+              size="small"
+              startIcon={<FilterListIcon fontSize="small" />}
               onClick={() => setFiltersDialogOpen(true)}
               sx={{
-                bgcolor: colors.primary,
-                color: 'white',
+                borderColor: 'divider',
+                color: 'text.primary',
                 '&:hover': {
-                  bgcolor: colors.primaryDark,
+                  bgcolor: 'background.default',
                 },
-                px: 3,
+                px: 2,
+                textTransform: 'none',
+                fontWeight: 500,
               }}
             >
               Filters
             </Button>
 
-            <Box sx={{ display: 'flex', gap: 1 }}>
+            <Box sx={{ display: 'flex', gap: 0.5, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
               <Button
-                variant={viewMode === 'grid' ? 'contained' : 'outlined'}
+                variant="text"
                 onClick={() => setViewMode('grid')}
                 sx={{
                   minWidth: 'auto',
-                  px: 2,
-                  ...(viewMode === 'grid' ? {
-                    bgcolor: colors.primary,
-                    color: 'white',
-                    '&:hover': {
-                      bgcolor: colors.primaryDark,
-                    },
-                  } : {
-                    borderColor: colors.border,
-                  })
+                  px: 1.5,
+                  borderRadius: 0,
+                  color: viewMode === 'grid' ? 'primary.main' : 'text.secondary',
+                  bgcolor: viewMode === 'grid' ? 'action.selected' : 'transparent',
                 }}
               >
-                <GridViewIcon />
+                <GridViewIcon fontSize="small" />
               </Button>
               <Button
-                variant={viewMode === 'table' ? 'contained' : 'outlined'}
+                variant="text"
                 onClick={() => setViewMode('table')}
                 sx={{
                   minWidth: 'auto',
-                  px: 2,
-                  ...(viewMode === 'table' ? {
-                    bgcolor: colors.primary,
-                    color: 'white',
-                    '&:hover': {
-                      bgcolor: colors.primaryDark,
-                    },
-                  } : {
-                    borderColor: colors.border,
-                  })
+                  px: 1.5,
+                  borderRadius: 0,
+                  color: viewMode === 'table' ? 'primary.main' : 'text.secondary',
+                  bgcolor: viewMode === 'table' ? 'action.selected' : 'transparent',
                 }}
               >
-                <TableRowsIcon />
+                <TableRowsIcon fontSize="small" />
               </Button>
             </Box>
 
             <Button
-              variant="contained"
-              startIcon={<AssignmentIcon />}
+              variant="outlined"
+              size="small"
+              startIcon={<AssignmentIcon fontSize="small" />}
               onClick={handleViewAiReports}
               sx={{
-                bgcolor: colors.warning,
-                color: 'white',
+                borderColor: 'divider',
+                color: 'text.primary',
                 '&:hover': {
-                  bgcolor: theme.palette.warning.dark,
+                  bgcolor: 'background.default',
                 },
+                px: 2,
+                textTransform: 'none',
+                fontWeight: 500,
               }}
             >
               AI Reports
             </Button>
 
             <Button
-              variant="contained"
-              startIcon={<FileDownloadIcon />}
+              variant="outlined"
+              size="small"
+              startIcon={<FileDownloadIcon fontSize="small" />}
               onClick={(e) => setAnchorEl(e.currentTarget)}
               sx={{
-                bgcolor: colors.success,
+                borderColor: 'divider',
+                color: 'text.primary',
                 '&:hover': {
-                  bgcolor: theme.palette.success.dark,
+                  bgcolor: 'background.default',
                 },
+                px: 2,
+                textTransform: 'none',
+                fontWeight: 500,
               }}
             >
               Export
@@ -1554,48 +1716,56 @@ function Reports() {
         {/* Tenant Summary Stats for Super Admin */}
         {isSuperAdmin && allTenantsReports && reports.length > 0 && (
           <Box sx={{ mb: 3 }}>
-            <Paper sx={{ p: 3, borderRadius: 2, bgcolor: 'background.paper' }}>
-              <Typography variant="h6" sx={{ mb: 2, color: colors.primary, fontWeight: 600 }}>
-                📊 Tenant Summary
+            <Paper 
+              elevation={0}
+              sx={{ 
+                p: 2, 
+                borderRadius: 1, 
+                border: '1px solid',
+                borderColor: 'divider',
+              }}
+            >
+              <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 500 }}>
+                Summary
               </Typography>
-              <Grid container spacing={3}>
+              <Grid container spacing={2}>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Box sx={{ textAlign: 'center' }}>
-                    <Typography variant="h4" sx={{ fontWeight: 700, color: colors.primary }}>
-                      {(tenants || []).length}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                  <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
                       Total Tenants
                     </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 500 }}>
+                      {(tenants || []).length}
+                    </Typography>
                   </Box>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Box sx={{ textAlign: 'center' }}>
-                    <Typography variant="h4" sx={{ fontWeight: 700, color: colors.success }}>
-                      {reports.length}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                  <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
                       Total Reports
                     </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 500 }}>
+                      {reports.length}
+                    </Typography>
                   </Box>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Box sx={{ textAlign: 'center' }}>
-                    <Typography variant="h4" sx={{ fontWeight: 700, color: colors.error }}>
-                      {reports.filter(r => r.severity === 'HIGH' || r.severity === 'CRITICAL').length}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                  <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
                       High Priority
                     </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 500, color: 'error.main' }}>
+                      {reports.filter(r => r.severity === 'HIGH' || r.severity === 'CRITICAL').length}
+                    </Typography>
                   </Box>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                  <Box sx={{ textAlign: 'center' }}>
-                    <Typography variant="h4" sx={{ fontWeight: 700, color: colors.warning }}>
-                      {reports.filter(r => r.status === 'Pending').length}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                  <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
                       Pending
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 500 }}>
+                      {reports.filter(r => r.status === 'Pending').length}
                     </Typography>
                   </Box>
                 </Grid>
@@ -1605,27 +1775,33 @@ function Reports() {
         )}
 
         {/* Active Filters */}
-        <Box sx={{ mb: 3 }}>
+        <Box sx={{ mb: 2 }}>
           <Stack
             direction="row"
-            spacing={1}
+            spacing={0.5}
             flexWrap="wrap"
-            sx={{ gap: 1 }}
+            sx={{ gap: 0.5 }}
           >
             {Object.entries(filters).map(([key, value]) => {
               if (!value) return null;
               return (
                 <Chip
                   key={key}
+                  size="small"
                   label={`${key}: ${value}`}
                   onDelete={() => handleFilterDelete(key)}
+                  variant="outlined"
                   sx={{
-                    bgcolor: colors.border,
-                    color: colors.text.primary,
+                    borderColor: 'divider',
+                    color: 'text.primary',
                     '& .MuiChip-deleteIcon': {
-                      color: colors.text.secondary,
+                      color: 'text.secondary',
+                      fontSize: '0.75rem',
                     },
+                    fontSize: '0.75rem',
+                    height: '24px',
                     fontWeight: 500,
+                    borderRadius: 0.5,
                   }}
                 />
               );
@@ -1642,12 +1818,12 @@ function Reports() {
                 flexDirection: 'column',
                 justifyContent: 'center',
                 alignItems: 'center',
-                minHeight: '400px',
+                minHeight: '300px',
                 gap: 2
               }}
             >
-              <CircularProgress size={60} />
-              <Typography variant="h6" color="text.secondary">
+              <CircularProgress size={40} thickness={4} sx={{ color: 'primary.main' }} />
+              <Typography variant="body2" color="text.secondary">
                 {isSuperAdmin && allTenantsReports 
                   ? 'Loading reports from all tenants...' 
                   : isSuperAdmin && selectedTenant 
@@ -1658,15 +1834,18 @@ function Reports() {
             </Box>
           ) : fetchError ? (
             <Paper
+              elevation={0}
               sx={{
-                p: 3,
+                p: 2,
                 textAlign: 'center',
-                bgcolor: alpha(theme.palette.error.main, 0.1),
-                border: `1px solid ${colors.error}`,
-                borderRadius: 2,
+                border: '1px solid',
+                borderColor: 'error.light',
+                borderRadius: 1,
+                backgroundColor: 'rgba(244, 67, 54, 0.05)',
+                my: 2,
               }}
             >
-              <Typography color="error.main">{fetchError}</Typography>
+              <Typography variant="body2" color="error.main">{fetchError}</Typography>
             </Paper>
           ) : (
             <>
@@ -1678,7 +1857,7 @@ function Reports() {
                 sx={{ 
                   display: 'flex', 
                   justifyContent: 'center',
-                  mt: 4,
+                  mt: 3,
                 }}
               >
                 <Pagination
@@ -1686,7 +1865,7 @@ function Reports() {
                   page={page}
                   onChange={handlePageChange}
                   color="primary"
-                  size="large"
+                  size="small"
                   showFirstButton
                   showLastButton
                   siblingCount={1}
@@ -1694,7 +1873,12 @@ function Reports() {
                   sx={{
                     '& .MuiPaginationItem-root': {
                       borderRadius: 1,
+                      minWidth: '30px',
+                      height: '30px',
                     },
+                    '& .MuiPaginationItem-page.Mui-selected': {
+                      fontWeight: 600,
+                    }
                   }}
                 />
               </Box>
@@ -1724,18 +1908,42 @@ function Reports() {
             vertical: 'top',
             horizontal: 'right',
           }}
+          PaperProps={{
+            elevation: 1,
+            sx: { 
+              minWidth: 150,
+              borderRadius: 1,
+              border: '1px solid',
+              borderColor: 'divider',
+              boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)'
+            }
+          }}
         >
-          <MenuItem onClick={() => handleExport('csv')}>
-            <ListItemIcon>
-              <FileDownloadIcon fontSize="small" />
+          <MenuItem 
+            onClick={() => handleExport('csv')}
+            sx={{ 
+              py: 1, 
+              fontSize: '0.875rem',
+              '&:hover': { backgroundColor: 'background.default' } 
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 36 }}>
+              <FileDownloadIcon fontSize="small" sx={{ fontSize: '1rem', color: 'text.secondary' }} />
             </ListItemIcon>
-            <ListItemText>Export as CSV</ListItemText>
+            <ListItemText primary="Export as CSV" primaryTypographyProps={{ fontSize: '0.875rem' }} />
           </MenuItem>
-          <MenuItem onClick={() => handleExport('pdf')}>
-            <ListItemIcon>
-              <FileDownloadIcon fontSize="small" />
+          <MenuItem 
+            onClick={() => handleExport('pdf')}
+            sx={{ 
+              py: 1, 
+              fontSize: '0.875rem',
+              '&:hover': { backgroundColor: 'background.default' } 
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 36 }}>
+              <FileDownloadIcon fontSize="small" sx={{ fontSize: '1rem', color: 'text.secondary' }} />
             </ListItemIcon>
-            <ListItemText>Export as PDF</ListItemText>
+            <ListItemText primary="Export as PDF" primaryTypographyProps={{ fontSize: '0.875rem' }} />
           </MenuItem>
         </Menu>
 

@@ -1,22 +1,32 @@
 import React from 'react';
-import { Box, Typography, Paper } from '@mui/material';
+import { Box, Typography, Container } from '@mui/material';
 import AiChatInterface from '../components/aiChat/AiChatInterface';
+import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
 
 const AiChatPage = () => {
   return (
-    <Box>
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h4" gutterBottom>
+    <Container maxWidth="lg" sx={{ py: 1.5 }}>
+      <Box sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+        <SmartToyOutlinedIcon 
+          sx={{ 
+            mr: 1, 
+            fontSize: '1rem',
+            color: 'text.secondary'
+          }} 
+        />
+        <Typography 
+          variant="subtitle1" 
+          sx={{ 
+            fontWeight: 500,
+            color: 'text.primary'
+          }}
+        >
           AI Assistant
         </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Ask our Gemini-powered AI assistant questions about road maintenance, damage assessment, 
-          or get help with administrative tasks.
-        </Typography>
-      </Paper>
+      </Box>
       
       <AiChatInterface />
-    </Box>
+    </Container>
   );
 };
 

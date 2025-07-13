@@ -1,16 +1,14 @@
 import React, { useState } from 'react';
 import {
   Box, Typography, Grid, Card, CardContent, CardActions,
-  Chip, Divider, IconButton, Tooltip, alpha,
+  Divider, IconButton, Tooltip,
   TextField, FormControl, InputLabel, Select, MenuItem,
-  Avatar, useTheme, Paper
+  useTheme, Paper
 } from '@mui/material';
-import PersonIcon from '@mui/icons-material/Person';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import CircularProgress from '@mui/material/CircularProgress';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
 import SearchIcon from '@mui/icons-material/Search';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
@@ -65,34 +63,35 @@ function ActiveRepairs({ assignedRepairs = [], fieldWorkers = [], onStatusChange
   });
 
   return (
-    <Paper sx={{ p: 2, borderRadius: 2, boxShadow: 3 }}>
+    <Paper sx={{ p: 2, borderRadius: 1, boxShadow: 1 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6">
+        <Typography variant="h6" sx={{ fontWeight: 500 }}>
           Active Repair Tasks
         </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <TextField
-            placeholder="Search repairs..."
+            placeholder="Search"
             size="small"
+            variant="outlined"
             InputProps={{
               startAdornment: (
-                <SearchIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
+                <SearchIcon fontSize="small" sx={{ mr: 0.5, color: 'text.secondary' }} />
               ),
             }}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            sx={{ width: 200 }}
+            sx={{ width: 180 }}
           />
           <Tooltip title="Refresh">
-            <IconButton>
-              <RefreshIcon />
+            <IconButton size="small">
+              <RefreshIcon fontSize="small" />
             </IconButton>
           </Tooltip>
         </Box>
       </Box>
 
-      <Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-        <FormControl size="small" sx={{ minWidth: 150 }}>
+      <Box sx={{ mb: 2, display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+        <FormControl size="small" sx={{ minWidth: 140 }} variant="outlined">
           <InputLabel>Status</InputLabel>
           <Select
             value={statusFilter}
@@ -108,21 +107,21 @@ function ActiveRepairs({ assignedRepairs = [], fieldWorkers = [], onStatusChange
           </Select>
         </FormControl>
 
-        <FormControl size="small" sx={{ minWidth: 150 }}>
-          <InputLabel>Field Worker</InputLabel>
+        <FormControl size="small" sx={{ minWidth: 140 }} variant="outlined">
+          <InputLabel>Personnel</InputLabel>
           <Select
             value={workerFilter}
-            label="Field Worker"
+            label="Personnel"
             onChange={(e) => setWorkerFilter(e.target.value)}
           >
-            <MenuItem value="all">All Workers</MenuItem>
+            <MenuItem value="all">All Personnel</MenuItem>
             {fieldWorkers.map(worker => (
               <MenuItem key={worker.id} value={worker.name}>{worker.name}</MenuItem>
             ))}
           </Select>
         </FormControl>
 
-        <FormControl size="small" sx={{ minWidth: 150 }}>
+        <FormControl size="small" sx={{ minWidth: 140 }} variant="outlined">
           <InputLabel>Region</InputLabel>
           <Select
             value={regionFilter}
@@ -142,15 +141,14 @@ function ActiveRepairs({ assignedRepairs = [], fieldWorkers = [], onStatusChange
       <Divider sx={{ mb: 2 }} />
 
       {filteredAssignedRepairs.length === 0 ? (
-        <Box sx={{ textAlign: 'center', py: 3 }}>
-          <SearchIcon color="action" sx={{ fontSize: 48, mb: 2 }} />
-          <Typography variant="h6">No matching repairs found</Typography>
+        <Box sx={{ textAlign: 'center', py: 2 }}>
+          <Typography variant="body1" sx={{ mb: 1, fontWeight: 500 }}>No records found</Typography>
           <Typography variant="body2" color="text.secondary">
-            Try adjusting your search or filter criteria
+            Adjust filters to view matching records
           </Typography>
         </Box>
       ) : (
-        <Grid container spacing={2}>
+        <Grid container spacing={1.5}>
           {filteredAssignedRepairs.map((repair) => (
             <Grid item xs={12} md={6} lg={4} key={repair._id || repair.id}>
               <Card
@@ -158,42 +156,37 @@ function ActiveRepairs({ assignedRepairs = [], fieldWorkers = [], onStatusChange
                   height: '100%',
                   display: 'flex',
                   flexDirection: 'column',
-                  borderLeft: `4px solid ${getStatusColor(repair.status)}`,
-                  transition: 'transform 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: 4
-                  }
+                  borderLeft: `3px solid ${getStatusColor(repair.status)}`,
+                  boxShadow: 1
                 }}
               >
-                <CardContent sx={{ flexGrow: 1 }}>
+                <CardContent sx={{ flexGrow: 1, pb: 1 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="subtitle1" fontWeight="bold">
-                      {repair.reportId || repair.id}
+                    <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>
+                      Report #{repair.reportId || repair.id}
                     </Typography>
-                    <Chip
-                      size="small"
-                      icon={getStatusIcon(repair.status)}
-                      label={repair.status}
+                    <Typography 
+                      variant="caption" 
                       sx={{
-                        bgcolor: alpha(getStatusColor(repair.status), 0.1),
                         color: getStatusColor(repair.status),
-                        fontWeight: 'bold'
+                        fontWeight: 500
                       }}
-                    />
+                    >
+                      {repair.status}
+                    </Typography>
                   </Box>
 
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Avatar sx={{ width: 24, height: 24, mr: 1, bgcolor: theme.palette.primary.main }}>
-                      <PersonIcon sx={{ fontSize: 16 }} />
-                    </Avatar>
+                    <Typography variant="body2" color="text.secondary" sx={{ mr: 0.5 }}>
+                      Personnel:
+                    </Typography>
                     <Typography variant="body2">
                       {repair.assignedTo ? repair.assignedTo.name : 'Unassigned'}
                     </Typography>
                   </Box>
 
                   <Typography variant="body2" color="text.secondary" gutterBottom>
-                    <LocationOnIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5 }} />
+                    <LocationOnIcon fontSize="small" sx={{ verticalAlign: 'text-top', mr: 0.5, fontSize: '0.9rem' }} />
                     {repair.region} Region
                   </Typography>
 
@@ -202,41 +195,43 @@ function ActiveRepairs({ assignedRepairs = [], fieldWorkers = [], onStatusChange
                     Assigned: {repair.assignedDate ? new Date(repair.assignedDate).toLocaleDateString() : 'N/A'}
                   </Typography>
 
-                  <Divider sx={{ my: 1 }} />
+                  <Divider sx={{ my: 0.5 }} />
 
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>Type:</strong> {repair.damageType}
-                  </Typography>
-
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>Severity:</strong> {repair.severity}
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <Box component="span" sx={{ color: 'text.secondary', width: '4.5rem', display: 'inline-block' }}>Type:</Box> 
+                    {repair.damageType}
                   </Typography>
 
-                  <Typography variant="body2">
-                    <strong>Notes:</strong>
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <Box component="span" sx={{ color: 'text.secondary', width: '4.5rem', display: 'inline-block' }}>Severity:</Box>
+                    {repair.severity}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    {repair.notes}
-                  </Typography>
+
+                  {repair.notes && (
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      <Box component="span" sx={{ color: 'text.secondary', width: '4.5rem', display: 'inline-block' }}>Notes:</Box>
+                      {repair.notes?.length > 50 ? repair.notes.substring(0, 50) + '...' : repair.notes}
+                    </Typography>
+                  )}
                 </CardContent>
-                <CardActions sx={{ justifyContent: 'space-between' }}>
-                  <FormControl size="small" sx={{ minWidth: 140, position: 'relative' }}>
-                    <InputLabel>Update Status</InputLabel>
+                <CardActions sx={{ pt: 0, pb: 1, px: 2 }}>
+                  <FormControl size="small" sx={{ minWidth: 130, position: 'relative' }} variant="outlined">
+                    <InputLabel>Status</InputLabel>
                     {changingStatusIds.includes(repair._id || repair.id) && (
                       <CircularProgress
-                        size={24}
+                        size={16}
                         sx={{
                           position: 'absolute',
                           top: '50%',
                           left: '50%',
-                          marginTop: '-12px',
-                          marginLeft: '-12px',
+                          marginTop: '-8px',
+                          marginLeft: '-8px',
                           zIndex: 1,
                         }}
                       />
                     )}
                     <Select
-                      label="Update Status"
+                      label="Status"
                       value={repair.status || ''}
                       onChange={(e) => {
                         const newStatus = e.target.value;
@@ -296,7 +291,7 @@ function ActiveRepairs({ assignedRepairs = [], fieldWorkers = [], onStatusChange
                   </FormControl>
                   <Tooltip title="View Details">
                     <IconButton color="primary">
-                      <MoreVertIcon />
+                      {/* More options icon */}
                     </IconButton>
                   </Tooltip>
                 </CardActions>

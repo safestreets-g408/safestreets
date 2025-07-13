@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Box, Typography, Grid, Card, CardContent, CardActions,
-  Button, Chip, Divider, IconButton, Tooltip, Avatar,
+  Button, Divider, IconButton, Tooltip,
   Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Paper, Alert, Snackbar
 } from '@mui/material';
@@ -132,7 +132,7 @@ function FieldWorker({
       
       setSnackbar({ 
         open: true, 
-        message: `Field worker ${workerData.name} was successfully updated`, 
+        message: `Personnel record updated: ${workerData.name}`, 
         severity: 'success' 
       });
     } else {
@@ -147,7 +147,7 @@ function FieldWorker({
       
       setSnackbar({ 
         open: true, 
-        message: `Field worker ${workerData.name} was successfully added`, 
+        message: `Personnel added: ${workerData.name}`, 
         severity: 'success' 
       });
     }
@@ -160,16 +160,16 @@ function FieldWorker({
       console.error('Cannot delete worker: Missing worker ID');
       setSnackbar({
         open: true,
-        message: 'Cannot delete worker: Missing worker ID',
+        message: 'Cannot remove record: Missing ID',
         severity: 'error'
       });
       return;
     }
     
-    if (window.confirm('Are you sure you want to delete this worker?')) {
+    if (window.confirm('Are you sure you want to remove this personnel record?')) {
       console.log('Deleting worker with ID:', workerId);
       onDeleteWorker(workerId);
-      setSnackbar({ open: true, message: 'Worker deleted successfully', severity: 'info' });
+      setSnackbar({ open: true, message: 'Personnel record removed', severity: 'info' });
     }
   };
 
@@ -179,38 +179,38 @@ function FieldWorker({
   };
 
   return (
-    <Paper sx={{ p: 2, borderRadius: 2, boxShadow: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6">
-          Field Worker Management
+    <Paper sx={{ p: 2, borderRadius: 1, boxShadow: 1 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+        <Typography variant="h6" sx={{ fontWeight: 500 }}>
+          Personnel Management
         </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Button
-            variant="contained"
-            startIcon={<PersonIcon />}
+            variant="outlined"
+            startIcon={<PersonIcon sx={{ fontSize: '1rem' }} />}
             size="small"
             onClick={() => handleDialogOpen('add')}
           >
-            Add Worker
+            Add Personnel
           </Button>
           <Tooltip title="Refresh">
-            <IconButton onClick={handleRefresh}>
-              <RefreshIcon />
+            <IconButton size="small" onClick={handleRefresh}>
+              <RefreshIcon fontSize="small" />
             </IconButton>
           </Tooltip>
         </Box>
       </Box>
-      <Divider sx={{ mb: 2 }} />
+      <Divider sx={{ mb: 1.5 }} />
 
-      <Grid container spacing={2}>
+      <Grid container spacing={1.5}>
         {fieldWorkers.length === 0 ? (
           <Grid item xs={12}>
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <Typography variant="h6" color="text.secondary">
-                No field workers found.
+            <Box sx={{ textAlign: 'center', py: 2 }}>
+              <Typography variant="body1" sx={{ mb: 1, fontWeight: 500 }}>
+                No personnel records found
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Click "Add Worker" to create a new field worker.
+                Click "Add Personnel" to add a new record
               </Typography>
             </Box>
           </Grid>
@@ -222,89 +222,92 @@ function FieldWorker({
                   height: '100%',
                   display: 'flex',
                   flexDirection: 'column',
-                  transition: 'transform 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: 4
-                  }
+                  boxShadow: 1
                 }}
               >
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Avatar
-                      sx={{
-                        bgcolor: '#2563eb',
-                        width: 56,
-                        height: 56,
-                        mr: 2
+                <CardContent sx={{ flexGrow: 1, pb: 1 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>
+                      {worker.name || 'Unnamed'}
+                    </Typography>
+                    <Typography 
+                      variant="caption"
+                      sx={{ 
+                        fontWeight: 500, 
+                        color: worker.status === 'Available' ? 'success.main' : 'warning.main'
                       }}
                     >
-                      {worker.name
-                        ? worker.name.split(' ').map(n => n[0]).join('')
-                        : '?'}
-                    </Avatar>
-                    <Box>
-                      <Typography variant="h6">{worker.name || 'Unnamed'}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        ID: {worker.workerId}
+                      {worker.status}
+                    </Typography>
+                  </Box>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    ID: {worker.workerId}
+                  </Typography>
+
+                                  <Divider sx={{ my: 0.5 }} />
+
+                  <Box sx={{ mt: 0.5 }}>
+                    <Typography variant="body2" sx={{ mb: 0.5, display: 'flex', alignItems: 'center' }}>
+                      <EmailIcon fontSize="small" sx={{ mr: 0.5, fontSize: '1rem' }} />
+                      <Box component="span" sx={{ fontSize: '0.875rem' }}>
+                        {worker.email || 'No email'}
+                      </Box>
+                    </Typography>
+
+                    <Typography variant="body2" sx={{ mb: 0.5, display: 'flex', alignItems: 'center' }}>
+                      <PhoneIcon fontSize="small" sx={{ mr: 0.5, fontSize: '1rem' }} />
+                      <Box component="span" sx={{ fontSize: '0.875rem' }}>
+                        {worker.profile?.phone || 'No phone'}
+                      </Box>
+                    </Typography>
+
+                    {(worker.profile?.personalEmail || worker.personalEmail) && (
+                      <Typography variant="body2" sx={{ mb: 0.5, display: 'flex', alignItems: 'center' }}>
+                        <EmailIcon fontSize="small" sx={{ mr: 0.5, fontSize: '1rem', color: 'text.secondary' }} />
+                        <Tooltip title="Personal email for daily updates">
+                          <Box component="span" sx={{ fontSize: '0.875rem' }}>
+                            {worker.profile?.personalEmail || worker.personalEmail}
+                          </Box>
+                        </Tooltip>
                       </Typography>
-                      <Chip
-                        size="small"
-                        label={worker.status || 'Available'}
-                        color={worker.status === 'Available' ? 'success' : worker.status === 'Busy' ? 'warning' : 'default'}
-                        sx={{ mt: 0.5 }}
-                      />
+                    )}
+
+                    <Box sx={{ mt: 0.5 }}>
+                      <Typography variant="body2" sx={{ mb: 0.5 }}>
+                        <Box component="span" sx={{ color: 'text.secondary', width: '5rem', display: 'inline-block' }}>Specialty:</Box>
+                        {worker.specialization || '-'}
+                      </Typography>
+
+                      <Typography variant="body2" sx={{ mb: 0.5 }}>
+                        <Box component="span" sx={{ color: 'text.secondary', width: '5rem', display: 'inline-block' }}>Region:</Box>
+                        {worker.region || '-'}
+                      </Typography>
+
+                      <Typography variant="body2">
+                        <Box component="span" sx={{ color: 'text.secondary', width: '5rem', display: 'inline-block' }}>Assigned:</Box>
+                        {worker.activeAssignments ?? 0} task(s)
+                      </Typography>
                     </Box>
                   </Box>
-
-                  <Divider sx={{ my: 1 }} />
-
-                  <Typography variant="body2" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
-                    <EmailIcon fontSize="small" sx={{ mr: 1 }} />
-                    {worker.email || 'No email'}
-                  </Typography>
-
-                  <Typography variant="body2" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
-                    <PhoneIcon fontSize="small" sx={{ mr: 1 }} />
-                    {worker.profile?.phone || 'No phone'}
-                  </Typography>
-
-                  {(worker.profile?.personalEmail || worker.personalEmail) && (
-                    <Typography variant="body2" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
-                      <EmailIcon fontSize="small" sx={{ mr: 1, color: 'secondary.main' }} />
-                      <Tooltip title="Personal email for daily updates">
-                        <span>{worker.profile?.personalEmail || worker.personalEmail} (Personal)</span>
-                      </Tooltip>
-                    </Typography>
-                  )}
-
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>Specialization:</strong> {worker.specialization || '-'}
-                  </Typography>
-
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>Region:</strong> {worker.region || '-'}
-                  </Typography>
-
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    <strong>Active Assignments:</strong> {worker.activeAssignments ?? 0}
-                  </Typography>
                 </CardContent>
-                <CardActions sx={{ justifyContent: 'space-between' }}>
+                <CardActions sx={{ justifyContent: 'space-between', pt: 0, pb: 1, px: 2 }}>
                   <Button
                     size="small"
-                    startIcon={<AssignmentIcon />}
+                    variant="text"
+                    startIcon={<AssignmentIcon sx={{ fontSize: '1rem' }} />}
                     onClick={() => onViewAssignments(worker.id)}
                     color="primary"
+                    sx={{ fontSize: '0.75rem' }}
                   >
-                    View Assignments ({worker.activeAssignments || 0})
+                    Assignments
                   </Button>
                   <Box>
                     <Tooltip title="Edit">
                       <IconButton size="small" onClick={() => handleDialogOpen('edit', worker)}>
                         <EditIcon fontSize="small" />
                       </IconButton>
-                    </Tooltip>                      <Tooltip title="Delete">
+                    </Tooltip>
+                    <Tooltip title="Delete">
                       <IconButton
                         size="small"
                         color="error"
@@ -323,7 +326,7 @@ function FieldWorker({
 
       {/* Add/Edit Worker Dialog */}
       <Dialog open={dialogOpen} onClose={handleDialogClose} maxWidth="sm" fullWidth>
-        <DialogTitle>{editMode ? 'Edit Field Worker' : 'Add New Field Worker'}</DialogTitle>
+        <DialogTitle>{editMode ? 'Edit Personnel' : 'Add New Personnel'}</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <TextField
@@ -345,7 +348,7 @@ function FieldWorker({
                 fullWidth
                 value={workerData.workerId}
                 onChange={handleInputChange}
-                placeholder="Unique identifier (e.g., FW001)"
+                placeholder="Unique identifier (FW001, etc.)"
                 required
                 error={!!errors.workerId}
                 helperText={errors.workerId}
@@ -381,8 +384,8 @@ function FieldWorker({
               fullWidth
               value={workerData.personalEmail}
               onChange={handleInputChange}
-              placeholder="Optional: For receiving daily task updates"
-              helperText="Daily updates about task assignments and damage reports will be sent to this email"
+              placeholder="Personal email address"
+              helperText="Daily assignment reports will be sent to this email"
             />
 
             <TextField
@@ -391,7 +394,7 @@ function FieldWorker({
               fullWidth
               value={workerData.specialization}
               onChange={handleInputChange}
-              placeholder="e.g., Electrical, Plumbing, Structural"
+              placeholder="Electrical, Plumbing, Structural, etc."
               required
               error={!!errors.specialization}
               helperText={errors.specialization}
@@ -403,7 +406,7 @@ function FieldWorker({
               fullWidth
               value={workerData.region}
               onChange={handleInputChange}
-              placeholder="e.g., North, South, East, West, Central"
+              placeholder="North, South, East, West, Central"
               required
               error={!!errors.region}
               helperText={errors.region}
@@ -427,27 +430,33 @@ function FieldWorker({
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleDialogClose}>Cancel</Button>
+          <Button onClick={handleDialogClose} size="small" variant="text">Cancel</Button>
           <Button
-            variant="contained"
+            variant="outlined"
             onClick={handleSubmit}
+            size="small"
+            color="primary"
           >
-            {editMode ? 'Save Changes' : 'Add Worker'}
+            {editMode ? 'Update Record' : 'Add Record'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Snackbar notifications */}
-      <Snackbar
+      {/* Snackbar notifications */}      <Snackbar
         open={snackbar.open}
-        autoHideDuration={6000}
+        autoHideDuration={5000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         <Alert 
           onClose={() => setSnackbar({ ...snackbar, open: false })} 
-          severity={snackbar.severity} 
-          sx={{ width: '100%' }}
+          severity={snackbar.severity}
+          variant="outlined"
+          sx={{ 
+            width: '100%',
+            '& .MuiAlert-icon': { fontSize: '1.2rem' },
+            '& .MuiAlert-message': { fontSize: '0.9rem' }
+          }}
         >
           {snackbar.message}
         </Alert>

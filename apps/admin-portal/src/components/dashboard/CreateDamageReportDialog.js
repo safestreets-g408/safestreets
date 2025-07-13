@@ -106,8 +106,9 @@ const CreateDamageReportDialog = ({
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: 3,
-          maxHeight: '90vh'
+          borderRadius: 1,
+          maxHeight: '90vh',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
         }
       }}
     >
@@ -116,24 +117,26 @@ const CreateDamageReportDialog = ({
         justifyContent: 'space-between', 
         alignItems: 'center',
         borderBottom: `1px solid ${theme.palette.divider}`,
-        backgroundColor: theme.palette.background.paper,
-        py: 2.5
+        py: 1.5,
+        px: 2.5,
+        bgcolor: theme.palette.background.paper
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <AssignmentIcon color="primary" />
-          <Typography variant="h5" sx={{ fontWeight: 600, color: theme.palette.primary.main }}>
+          <AssignmentIcon fontSize="small" sx={{ color: theme.palette.text.secondary }} />
+          <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
             Create Damage Report
           </Typography>
           {selectedAiReport && (
             <Typography 
               variant="caption" 
               sx={{ 
-                backgroundColor: theme.palette.mode === 'dark' ? theme.palette.primary.dark : theme.palette.primary.lighter || alpha(theme.palette.primary.main, 0.1), 
+                bgcolor: alpha(theme.palette.primary.main, 0.08),
                 color: theme.palette.primary.main, 
-                px: 1.5, 
-                py: 0.5, 
-                borderRadius: 1,
-                fontWeight: 500
+                px: 1, 
+                py: 0.25, 
+                borderRadius: 0.5,
+                fontWeight: 500,
+                fontSize: '0.7rem'
               }}
             >
               AI-Assisted
@@ -143,15 +146,13 @@ const CreateDamageReportDialog = ({
         <IconButton 
           onClick={onClose} 
           size="small"
-          sx={{ 
-            backgroundColor: theme.palette.background.paper,
-            '&:hover': { backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.background.paper, 0.9) : theme.palette.grey[100] }
-          }}
+          edge="end"
+          sx={{ color: theme.palette.text.secondary }}
         >
           <CloseIcon fontSize="small" />
         </IconButton>
       </DialogTitle>
-      <DialogContent sx={{ py: 3 }}>
+      <DialogContent sx={{ py: 2, px: 2.5 }}>
         {/* AI Detected Image Section */}
         {((selectedAiReport?.annotatedImageBase64 && 
            typeof selectedAiReport.annotatedImageBase64 === 'string' && 
@@ -160,16 +161,21 @@ const CreateDamageReportDialog = ({
            typeof selectedAiReport.annotatedImage === 'string' && 
            selectedAiReport.annotatedImage.length > 0)) && (
           <Box sx={{ 
-            mb: 3, 
-            p: 2, 
-            bgcolor: theme.palette.mode === 'dark' ? alpha(theme.palette.background.paper, 0.6) : theme.palette.grey[50], 
-            borderRadius: 2,
+            mb: 2, 
+            p: 1.5, 
+            bgcolor: alpha(theme.palette.background.paper, 0.5), 
+            borderRadius: 1,
             border: `1px solid ${theme.palette.divider}`
           }}>
-            <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, color: theme.palette.primary.main }}>
-              🤖 AI Detected Damage
+            <Typography variant="caption" sx={{ 
+              display: 'block', 
+              mb: 1, 
+              color: theme.palette.text.secondary,
+              fontWeight: 500
+            }}>
+              AI Detected Damage
             </Typography>
-            <Box sx={{ textAlign: 'center', mb: 1 }}>
+            <Box sx={{ textAlign: 'center', mb: 0.5 }}>
               <img
                 src={selectedAiReport.annotatedImageBase64 ? 
                   `data:image/jpeg;base64,${selectedAiReport.annotatedImageBase64}` :
@@ -180,17 +186,16 @@ const CreateDamageReportDialog = ({
                 alt="AI Detected Damage"
                 style={{ 
                   maxWidth: '100%', 
-                  maxHeight: '200px',
+                  maxHeight: '180px',
                   objectFit: 'contain',
-                  borderRadius: '8px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                  borderRadius: '4px'
                 }}
               />
             </Box>
             <Typography variant="caption" color="text.secondary" sx={{ 
               display: 'block', 
               textAlign: 'center',
-              fontStyle: 'italic'
+              fontSize: '0.7rem'
             }}>
               This image will be attached as the "before" image in your damage report
             </Typography>
@@ -198,18 +203,18 @@ const CreateDamageReportDialog = ({
         )}
         
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
+          <Alert severity="error" sx={{ mb: 2, py: 0.5, fontSize: '0.8rem' }}>
             {error}
           </Alert>
         )}
 
         {/* Form Section */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" sx={{ mb: 2, color: theme.palette.primary.main, fontWeight: 600 }}>
-            📋 Report Details
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1.5, color: theme.palette.text.primary, fontWeight: 500 }}>
+            Report Details
           </Typography>
           
-          <Grid container spacing={3}>
+          <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Region"
@@ -218,10 +223,15 @@ const CreateDamageReportDialog = ({
                 onChange={onFormChange}
                 fullWidth
                 required
+                size="small"
                 error={isFieldEmpty('region')}
                 helperText={isFieldEmpty('region') ? 'Region is required' : ''}
                 variant="outlined"
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                sx={{ 
+                  '& .MuiOutlinedInput-root': { borderRadius: 1 },
+                  '& .MuiInputLabel-root': { fontSize: '0.875rem' },
+                  '& .MuiInputBase-input': { fontSize: '0.875rem' }
+                }}
               />
             </Grid>
             
@@ -233,10 +243,15 @@ const CreateDamageReportDialog = ({
                 onChange={onFormChange}
                 fullWidth
                 required
+                size="small"
                 error={isFieldEmpty('location')}
                 helperText={isFieldEmpty('location') ? 'Location is required' : ''}
                 variant="outlined"
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                sx={{ 
+                  '& .MuiOutlinedInput-root': { borderRadius: 1 },
+                  '& .MuiInputLabel-root': { fontSize: '0.875rem' },
+                  '& .MuiInputBase-input': { fontSize: '0.875rem' }
+                }}
               />
             </Grid>
             
@@ -248,23 +263,29 @@ const CreateDamageReportDialog = ({
                 onChange={onFormChange}
                 fullWidth
                 required
+                size="small"
                 disabled={!!selectedAiReport}
                 error={isFieldEmpty('damageType')}
                 helperText={isFieldEmpty('damageType') ? 'Damage type is required' : (selectedAiReport ? 'Pre-filled by AI' : '')}
                 variant="outlined"
                 sx={{ 
-                  '& .MuiOutlinedInput-root': { borderRadius: 2 },
+                  '& .MuiOutlinedInput-root': { borderRadius: 1 },
+                  '& .MuiInputLabel-root': { fontSize: '0.875rem' },
+                  '& .MuiInputBase-input': { fontSize: '0.875rem' },
                   '& .MuiInputBase-input:disabled': { 
-                    backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.background.paper, 0.2) : theme.palette.action.disabledBackground,
+                    backgroundColor: alpha(theme.palette.action.disabledBackground, 0.5),
                     color: theme.palette.text.disabled
+                  },
+                  '& .MuiFormHelperText-root': {
+                    fontSize: '0.7rem'
                   }
                 }}
               />
             </Grid>
             
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth required error={isFieldEmpty('severity')}>
-                <InputLabel>Severity</InputLabel>
+              <FormControl fullWidth required error={isFieldEmpty('severity')} size="small">
+                <InputLabel sx={{ fontSize: '0.875rem' }}>Severity</InputLabel>
                 <Select
                   label="Severity"
                   name="severity"
@@ -272,21 +293,22 @@ const CreateDamageReportDialog = ({
                   onChange={onFormChange}
                   disabled={!!selectedAiReport}
                   sx={{ 
-                    borderRadius: 2,
+                    borderRadius: 1,
+                    fontSize: '0.875rem',
                     '& .MuiSelect-select:disabled': { 
-                      backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.background.paper, 0.2) : theme.palette.action.disabledBackground
+                      backgroundColor: alpha(theme.palette.action.disabledBackground, 0.5)
                     }
                   }}
                 >
-                  <MenuItem value="LOW">🟢 Low</MenuItem>
-                  <MenuItem value="MEDIUM">🟡 Medium</MenuItem>
-                  <MenuItem value="HIGH">🔴 High</MenuItem>
+                  <MenuItem value="LOW" sx={{ fontSize: '0.875rem' }}>Low</MenuItem>
+                  <MenuItem value="MEDIUM" sx={{ fontSize: '0.875rem' }}>Medium</MenuItem>
+                  <MenuItem value="HIGH" sx={{ fontSize: '0.875rem' }}>High</MenuItem>
                 </Select>
                 {isFieldEmpty('severity') && (
-                  <FormHelperText>Severity is required</FormHelperText>
+                  <FormHelperText sx={{ fontSize: '0.7rem' }}>Severity is required</FormHelperText>
                 )}
                 {selectedAiReport && !isFieldEmpty('severity') && (
-                  <FormHelperText sx={{ color: theme.palette.text.secondary }}>Pre-filled by AI</FormHelperText>
+                  <FormHelperText sx={{ color: theme.palette.text.secondary, fontSize: '0.7rem' }}>Pre-filled by AI</FormHelperText>
                 )}
               </FormControl>
             </Grid>
@@ -299,6 +321,7 @@ const CreateDamageReportDialog = ({
                 onChange={onFormChange}
                 fullWidth
                 required
+                size="small"
                 type="number"
                 InputProps={{ inputProps: { min: 1, max: 10 } }}
                 disabled={!!selectedAiReport}
@@ -306,29 +329,37 @@ const CreateDamageReportDialog = ({
                 helperText={isFieldEmpty('priority') ? 'Priority is required' : (selectedAiReport ? 'Pre-filled by AI' : '')}
                 variant="outlined"
                 sx={{ 
-                  '& .MuiOutlinedInput-root': { borderRadius: 2 },
+                  '& .MuiOutlinedInput-root': { borderRadius: 1 },
+                  '& .MuiInputLabel-root': { fontSize: '0.875rem' },
+                  '& .MuiInputBase-input': { fontSize: '0.875rem' },
                   '& .MuiInputBase-input:disabled': { 
-                    backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.background.paper, 0.2) : theme.palette.action.disabledBackground,
+                    backgroundColor: alpha(theme.palette.action.disabledBackground, 0.5),
                     color: theme.palette.text.disabled
+                  },
+                  '& .MuiFormHelperText-root': {
+                    fontSize: '0.7rem'
                   }
                 }}
               />
             </Grid>
             
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>👷 Assign to Field Worker</InputLabel>
+              <FormControl fullWidth size="small">
+                <InputLabel sx={{ fontSize: '0.875rem' }}>Assign to Field Worker</InputLabel>
                 <Select
-                  label="👷 Assign to Field Worker"
+                  label="Assign to Field Worker"
                   value={selectedFieldWorker}
                   onChange={onFieldWorkerChange}
-                  sx={{ borderRadius: 2 }}
+                  sx={{ 
+                    borderRadius: 1,
+                    fontSize: '0.875rem' 
+                  }}
                 >
-                  <MenuItem value="">
+                  <MenuItem value="" sx={{ fontSize: '0.875rem' }}>
                     <em>None (Unassigned)</em>
                   </MenuItem>
                   {fieldWorkers.map(worker => (
-                    <MenuItem key={worker._id} value={worker._id}>
+                    <MenuItem key={worker._id} value={worker._id} sx={{ fontSize: '0.875rem' }}>
                       {worker.name} - {worker.specialization}
                     </MenuItem>
                   ))}
@@ -339,24 +370,28 @@ const CreateDamageReportDialog = ({
         </Box>
 
         {/* Description Section */}
-        <Box>
-          <Typography variant="h6" sx={{ mb: 2, color: '#1976d2', fontWeight: 600 }}>
-            📝 Description
-            {aiLoading && <CircularProgress size={16} sx={{ ml: 1 }} />}
+        <Box sx={{ mt: 1 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1, color: theme.palette.text.primary, fontWeight: 500, display: 'flex', alignItems: 'center' }}>
+            Description
+            {aiLoading && <CircularProgress size={14} sx={{ ml: 1 }} />}
           </Typography>
           
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
             {aiLoading ? (
               <TextField
-                value="✨ Generating professional description..."
+                value="Generating professional description..."
                 disabled
                 fullWidth
                 multiline
-                rows={4}
+                rows={3}
+                size="small"
                 variant="outlined"
                 sx={{ 
-                  '& .MuiOutlinedInput-root': { borderRadius: 2 },
-                  '& .MuiInputBase-input': { fontStyle: 'italic' }
+                  '& .MuiOutlinedInput-root': { borderRadius: 1 },
+                  '& .MuiInputBase-input': { 
+                    fontStyle: 'italic',
+                    fontSize: '0.875rem'
+                  }
                 }}
               />
             ) : (
@@ -366,10 +401,14 @@ const CreateDamageReportDialog = ({
                 onChange={onFormChange}
                 fullWidth
                 multiline
-                rows={4}
+                rows={3}
+                size="small"
                 placeholder="Enter a detailed description of the damage or use the AI enhancement button below..."
                 variant="outlined"
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                sx={{ 
+                  '& .MuiOutlinedInput-root': { borderRadius: 1 },
+                  '& .MuiInputBase-input': { fontSize: '0.875rem' }
+                }}
               />
             )}
             
@@ -379,20 +418,22 @@ const CreateDamageReportDialog = ({
                 disabled={aiLoading || loading || !isFormValid}
                 variant="outlined"
                 color="primary"
-                startIcon={<AutoAwesomeIcon />}
-                size="medium"
+                startIcon={<AutoAwesomeIcon sx={{ fontSize: '0.8rem' }} />}
+                size="small"
                 sx={{ 
-                  borderRadius: 2,
+                  borderRadius: 1,
                   textTransform: 'none',
-                  fontWeight: 600
+                  fontWeight: 500,
+                  fontSize: '0.75rem',
+                  px: 1.5
                 }}
               >
-                ✨ Enhance with AI
+                Enhance with AI
               </Button>
             </Box>
             
             {aiError && (
-              <Alert severity="error" sx={{ borderRadius: 2 }}>
+              <Alert severity="error" sx={{ borderRadius: 1, py: 0.5, fontSize: '0.8rem' }}>
                 {aiError}
               </Alert>
             )}
@@ -400,21 +441,22 @@ const CreateDamageReportDialog = ({
         </Box>
       </DialogContent>
       <DialogActions sx={{ 
-        px: 3, 
-        py: 2.5, 
-        borderTop: '1px solid #e5e7eb',
-        backgroundColor: '#fafafa',
+        px: 2.5, 
+        py: 1.5, 
+        borderTop: `1px solid ${theme.palette.divider}`,
+        bgcolor: theme.palette.mode === 'dark' ? alpha(theme.palette.background.paper, 0.6) : alpha(theme.palette.grey[50], 0.8),
         gap: 1
       }}>
         <Button 
           onClick={onClose} 
           color="inherit"
-          size="large"
+          size="small"
           sx={{ 
-            borderRadius: 2,
+            borderRadius: 1,
             textTransform: 'none',
             fontWeight: 500,
-            px: 3
+            px: 2,
+            fontSize: '0.8rem'
           }}
         >
           Cancel
@@ -426,14 +468,15 @@ const CreateDamageReportDialog = ({
           }}
           variant="contained"
           disabled={loading || !isFormValid}
-          startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <AssignmentIcon />}
-          size="large"
+          startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
+          size="small"
           sx={{ 
-            borderRadius: 2,
+            borderRadius: 1,
             textTransform: 'none',
-            fontWeight: 600,
-            px: 3,
-            minWidth: 140
+            fontWeight: 500,
+            px: 2,
+            minWidth: 100,
+            fontSize: '0.8rem'
           }}
         >
           {loading ? 'Creating...' : 'Create Report'}

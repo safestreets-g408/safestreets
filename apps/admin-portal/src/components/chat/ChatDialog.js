@@ -64,25 +64,23 @@ const ChatDialog = ({ open, onClose }) => {
       fullWidth
       TransitionComponent={Transition}
       PaperProps={{
-        elevation: 24,
+        elevation: 8,
         sx: { 
           height: isMobile ? '100vh' : '85vh', 
           maxHeight: isMobile ? '100vh' : 850,
-          borderRadius: isMobile ? 0 : 8,
+          borderRadius: isMobile ? 0 : 1,
           overflow: 'hidden',
           background: theme.palette.background.paper,
-          boxShadow: '0 15px 50px rgba(15, 23, 42, 0.25)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
           border: '1px solid',
-          borderColor: alpha(theme.palette.primary.main, 0.15),
-          transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
-          transform: open ? 'scale(1)' : 'scale(0.95)',
+          borderColor: theme.palette.divider,
+          transform: open ? 'scale(1)' : 'scale(0.98)',
         }
       }}
       sx={{
         '& .MuiBackdrop-root': {
-          backdropFilter: 'blur(8px)',
-          backgroundColor: 'rgba(15, 23, 42, 0.5)',
-          transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          backdropFilter: 'blur(4px)',
+          backgroundColor: 'rgba(0, 0, 0, 0.4)',
         }
       }}
     >
@@ -90,60 +88,20 @@ const ChatDialog = ({ open, onClose }) => {
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'space-between',
-        pb: 1.5,
-        pt: 2,
-        px: 3,
-        background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
-        borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
-        boxShadow: '0 4px 16px rgba(139, 92, 246, 0.08)',
+        py: 1.5,
+        px: 2,
+        borderBottom: `1px solid ${theme.palette.divider}`,
+        bgcolor: theme.palette.background.paper,
         position: 'relative',
-        overflow: 'hidden',
-        '&:after': {
-          content: '""',
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: '2px',
-          background: 'linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%)',
-          opacity: 0.8,
-        }
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.8 }}>
-          <Box sx={{
-            width: 46,
-            height: 46,
-            borderRadius: '14px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-            boxShadow: '0 6px 16px rgba(139, 92, 246, 0.3)',
-            border: '2px solid rgba(255, 255, 255, 0.8)',
-            position: 'relative',
-            overflow: 'hidden',
-            '&:before': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: '50%',
-              background: 'rgba(255, 255, 255, 0.2)',
-            }
-          }}>
-            <ChatIcon sx={{ color: 'white', fontSize: 24 }} />
-          </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <ChatIcon fontSize="small" sx={{ color: theme.palette.text.secondary }} />
           <Box>
             <Typography 
-              variant="h6"
+              variant="subtitle2"
               sx={{
-                fontWeight: 700,
-                background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                letterSpacing: '-0.02em',
-                mb: 0.2,
+                fontWeight: 500,
+                color: theme.palette.text.primary,
               }}
             >
               Chat Support
@@ -181,26 +139,10 @@ const ChatDialog = ({ open, onClose }) => {
         <Grid container sx={{ height: '100%' }}>
           {/* Chat Rooms List */}
           <Grid item xs={12} md={4} lg={3} sx={{ 
-            borderRight: { md: `1px solid ${alpha(theme.palette.divider, 0.6)}` },
+            borderRight: { md: `1px solid ${theme.palette.divider}` },
             height: '100%',
             position: 'relative',
-            transition: 'all 0.3s ease',
-            boxShadow: { md: '4px 0 12px rgba(0, 0, 0, 0.03)' },
-            zIndex: 2,
           }}>
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 14,
-                left: 14,
-                right: 14,
-                bottom: 0,
-                borderRadius: 4,
-                background: 'rgba(139, 92, 246, 0.04)',
-                zIndex: 0,
-                boxShadow: 'inset 0 0 20px rgba(139, 92, 246, 0.03)',
-              }}
-            />
             <ChatRoomsList
               onSelectRoom={handleRoomSelect}
               selectedRoomId={selectedRoom?.tenantId}
@@ -211,22 +153,8 @@ const ChatDialog = ({ open, onClose }) => {
           <Grid item xs={12} md={8} lg={9} sx={{ 
             height: '100%',
             position: 'relative',
-            bgcolor: alpha(theme.palette.background.default, 0.5),
+            bgcolor: theme.palette.background.default,
           }}>
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 14,
-                left: 14,
-                right: 14,
-                bottom: 0,
-                borderRadius: 4,
-                background: 'rgba(59, 130, 246, 0.04)',
-                zIndex: 0,
-                display: selectedRoom ? 'block' : 'none',
-                boxShadow: 'inset 0 0 30px rgba(59, 130, 246, 0.02)',
-              }}
-            />
             {selectedRoom ? (
               <ChatWindow
                 tenantId={selectedRoom.tenantId}
@@ -235,7 +163,7 @@ const ChatDialog = ({ open, onClose }) => {
                 onClose={handleCloseChat}
               />
             ) : (
-              <Fade in={!selectedRoom} timeout={600}>
+              <Fade in={!selectedRoom} timeout={300}>
                 <Box
                   sx={{
                     height: '100%',
@@ -247,7 +175,6 @@ const ChatDialog = ({ open, onClose }) => {
                     p: 5,
                     position: 'relative',
                     zIndex: 1,
-                    background: 'radial-gradient(circle at center, rgba(139, 92, 246, 0.02) 0%, rgba(59, 130, 246, 0.01) 100%)',
                   }}
                 >
                   <Box sx={{

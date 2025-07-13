@@ -249,60 +249,54 @@ const Header = ({ onDrawerToggle }) => {
       sx={{
         width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
         ml: { md: `${DRAWER_WIDTH}px` },
-        background: theme.palette.background.appBar,
-        borderBottom: theme.palette.mode === 'dark' 
-          ? '0.5px solid rgba(255, 255, 255, 0.1)' 
-          : '0.5px solid #e5e7eb',
+        background: theme.palette.background.paper,
+        borderBottom: '1px solid',
+        borderColor: 'divider',
         color: theme.palette.text.primary,
         zIndex: theme.zIndex.drawer + 1,
-        borderRadius: '0 0 0px 0px',
-        height: '68px',
+        height: '60px',
       }}
     >
       <Toolbar sx={{ 
         justifyContent: 'space-between',
-        height: 64,
-        minHeight: 64,
-        px: { xs: 2, sm: 3 },
+        height: 60,
+        minHeight: 60,
+        px: { xs: 1.5, sm: 2 },
         gap: 1,
       }}>
         {/* Left Section */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
           <IconButton
-            color="primary"
             edge="start"
             onClick={onDrawerToggle}
             sx={{ 
               display: { md: 'none' },
-              color: '#374151',
-              '&:hover': {
-                backgroundColor: alpha('#374151', 0.04),
-              }
+              color: 'text.secondary',
+              padding: 0.75,
             }}
           >
-            <MenuIcon />
+            <MenuIcon fontSize="small" />
           </IconButton>
 
           <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-            <Typography variant="h5" sx={{ 
-              fontWeight: 600,
-              fontSize: '1.25rem',
-              color: '#111827',
+            <Typography variant="subtitle1" sx={{ 
+              fontWeight: 500,
+              fontSize: '1rem',
+              color: 'text.primary',
               mb: 0.25,
             }}>
               {getPageTitle()}
             </Typography>
             
             <Breadcrumbs
-              separator={<NavigateNextIcon fontSize="small" sx={{ color: theme.palette.text.secondary }} />}
-              sx={{ fontSize: '0.875rem' }}
+              separator={<NavigateNextIcon sx={{ fontSize: '0.75rem', color: 'text.secondary' }} />}
+              sx={{ fontSize: '0.75rem' }}
             >
               {getBreadcrumbs().map((breadcrumb, index) => (
                 index === getBreadcrumbs().length - 1 ? (
                   <Typography 
                     key={breadcrumb.path}
-                    color="text.secondary" 
-                    sx={{ fontSize: '0.875rem', fontWeight: 500, color: theme.palette.text.secondary }}
+                    sx={{ fontSize: '0.75rem', color: 'text.secondary' }}
                   >
                     {breadcrumb.label}
                   </Typography>
@@ -316,12 +310,11 @@ const Header = ({ onDrawerToggle }) => {
                       navigate(breadcrumb.path);
                     }}
                     sx={{ 
-                      fontSize: '0.875rem',
+                      fontSize: '0.75rem',
                       textDecoration: 'none',
-                      color: '#6b7280',
+                      color: 'text.secondary',
                       '&:hover': {
-                        textDecoration: 'underline',
-                        color: theme.palette.primary.main,
+                        color: 'primary.main',
                       }
                     }}
                   >
@@ -342,30 +335,28 @@ const Header = ({ onDrawerToggle }) => {
           }}
         >
           <Paper
+            elevation={0}
             sx={{
               display: 'flex',
               alignItems: 'center',
-              background: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f9fafb',
-              px: 2,
+              background: 'background.default',
+              px: 1.5,
               py: 0.5,
-              border: theme.palette.mode === 'dark' 
-                ? '1px solid rgba(255, 255, 255, 0.1)'
-                : '1px solid #d1d5db',
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 1,
               transition: 'all 0.15s ease',
               '&:hover': {
-                background: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#ffffff',
-                borderColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : '#9ca3af',
+                borderColor: 'action.active',
               },
               '&:focus-within': {
-                background: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#ffffff',
-                borderColor: theme.palette.primary.main,
-                boxShadow: `0 0 0 1px ${alpha(theme.palette.primary.main, 0.1)}`,
+                borderColor: 'primary.main',
               }
             }}
           >
-            <SearchIcon sx={{ color: theme.palette.text.secondary, mr: 1 }} />
+            <SearchIcon sx={{ color: 'text.secondary', fontSize: '1rem', mr: 0.75 }} />
             <InputBase
-              placeholder="Search across all pages..."
+              placeholder="Search..."
               value={searchValue}
               onChange={(e) => {
                 setSearchValue(e.target.value);
@@ -385,9 +376,9 @@ const Header = ({ onDrawerToggle }) => {
               inputRef={searchInputRef}
               sx={{ 
                 flex: 1,
-                fontSize: '0.875rem',
+                fontSize: '0.8125rem',
                 '& .MuiInputBase-input': {
-                  padding: '6px 0',
+                  padding: '4px 0',
                 }
               }}
               fullWidth
@@ -569,13 +560,12 @@ const Header = ({ onDrawerToggle }) => {
         </Box>
 
         {/* Right Section */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {/* Time */}
           {!isMobile && (
-            <Typography variant="body2" sx={{ 
-              color: '#6b7280',
-              fontWeight: 500,
-              mr: 2,
+            <Typography variant="caption" sx={{ 
+              color: 'text.secondary',
+              mr: 1.5,
             }}>
               {currentTime}
             </Typography>
@@ -584,50 +574,36 @@ const Header = ({ onDrawerToggle }) => {
           {/* Chat Notifications */}
           <Tooltip title="Chat Messages">
             <IconButton 
+              size="small"
               onClick={handleChatNotificationOpen}
               sx={{ 
-                color: '#374151',
-                mr: 1,
-                '&:hover': {
-                  backgroundColor: alpha('#374151', 0.04),
-                },
+                color: 'text.secondary',
+                padding: 0.75,
                 position: 'relative',
                 '&:after': totalUnreadMessages > 0 ? {
                   content: '""',
                   position: 'absolute',
-                  top: 12,
-                  right: 12,
-                  width: 8,
-                  height: 8,
-                  backgroundColor: '#3b82f6',
+                  top: 8,
+                  right: 8,
+                  width: 6,
+                  height: 6,
+                  backgroundColor: 'primary.main',
                   borderRadius: '50%',
-                  animation: 'pulse 1.5s infinite',
-                  boxShadow: '0 0 0 rgba(59, 130, 246, 0.4)',
-                  '@keyframes pulse': {
-                    '0%': {
-                      boxShadow: '0 0 0 0 rgba(59, 130, 246, 0.4)'
-                    },
-                    '70%': {
-                      boxShadow: '0 0 0 8px rgba(59, 130, 246, 0)'
-                    },
-                    '100%': {
-                      boxShadow: '0 0 0 0 rgba(59, 130, 246, 0)'
-                    }
-                  }
                 } : {}
               }}
             >
               <Badge 
-                badgeContent={totalUnreadMessages} 
+                badgeContent={totalUnreadMessages > 0 ? totalUnreadMessages : 0} 
                 color="primary"
                 sx={{
                   '& .MuiBadge-badge': {
-                    backgroundColor: '#3b82f6',
-                    color: 'white',
+                    fontSize: '0.65rem',
+                    height: 14,
+                    minWidth: 14,
                   }
                 }}
               >
-                <ChatIcon />
+                <ChatIcon sx={{ fontSize: '1.125rem' }} />
               </Badge>
             </IconButton>
           </Tooltip>
@@ -638,25 +614,25 @@ const Header = ({ onDrawerToggle }) => {
           {/* System Notifications */}
           <Tooltip title="Notifications">
             <IconButton 
+              size="small"
               onClick={handleNotificationOpen}
               sx={{ 
-                color: '#374151',
-                '&:hover': {
-                  backgroundColor: alpha('#374151', 0.04),
-                },
+                color: 'text.secondary',
+                padding: 0.75,
               }}
             >
               <Badge 
-                badgeContent={notifications.filter(n => n.unread).length} 
+                badgeContent={notifications.filter(n => n.unread).length > 0 ? notifications.filter(n => n.unread).length : 0} 
                 color="error"
                 sx={{
                   '& .MuiBadge-badge': {
-                    backgroundColor: '#dc2626',
-                    color: 'white',
+                    fontSize: '0.65rem',
+                    height: 14,
+                    minWidth: 14,
                   }
                 }}
               >
-                <NotificationsIcon />
+                <NotificationsIcon sx={{ fontSize: '1.125rem' }} />
               </Badge>
             </IconButton>
           </Tooltip>
@@ -664,22 +640,20 @@ const Header = ({ onDrawerToggle }) => {
           {/* Profile */}
           <Tooltip title="Profile">
             <IconButton
+              size="small"
               onClick={handleProfileMenuOpen}
               sx={{ 
-                ml: 1,
-                color: '#374151',
-                '&:hover': {
-                  backgroundColor: alpha('#374151', 0.04),
-                },
+                ml: 0.5,
+                p: 0.25,
               }}
             >
               <Avatar 
                 sx={{ 
-                  backgroundColor: theme.palette.primary.main,
-                  width: 32,
-                  height: 32,
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
+                  width: 28,
+                  height: 28,
+                  fontSize: '0.75rem',
+                  fontWeight: 500,
+                  bgcolor: 'primary.main',
                 }}
               >
                 AD
@@ -694,56 +668,58 @@ const Header = ({ onDrawerToggle }) => {
           open={Boolean(anchorEl)}
           onClose={handleProfileMenuClose}
           PaperProps={{
+            elevation: 1,
             sx: {
-              width: 280,
-              boxShadow: theme.shadows[4],
+              width: 240,
               mt: 1,
-              background: theme.palette.background.paper,
-              border: theme.palette.mode === 'dark' 
-                ? '1px solid rgba(255, 255, 255, 0.1)' 
-                : '1px solid #e5e7eb',
+              borderRadius: 1,
+              border: '1px solid',
+              borderColor: 'divider',
+              boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
             }
           }}
           transformOrigin={{ horizontal: 'right', vertical: 'top' }}
           anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
         >
           <Box sx={{ 
-            p: 3, 
+            p: 2, 
             textAlign: 'center', 
-            borderBottom: theme.palette.mode === 'dark' 
-              ? '1px solid rgba(255, 255, 255, 0.1)' 
-              : '1px solid #e5e7eb' 
+            borderBottom: '1px solid',
+            borderColor: 'divider'
           }}>
             <Avatar
               sx={{
-                width: 48,
-                height: 48,
-                margin: '0 auto 12px',
-                backgroundColor: '#2563eb',
-                fontSize: '1.25rem',
-                fontWeight: 600,
+                width: 40,
+                height: 40,
+                margin: '0 auto 8px',
+                bgcolor: 'primary.main',
+                fontSize: '0.875rem',
+                fontWeight: 500,
               }}
             >
               AD
             </Avatar>
-            <Typography variant="h6" sx={{ 
-              fontWeight: 600, 
-              mb: 0.5,
-              color: theme.palette.text.primary
+            <Typography variant="subtitle2" sx={{ 
+              fontWeight: 500, 
+              mb: 0.25,
             }}>
               Admin User
             </Typography>
-            <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
               admin@safestreets.com
             </Typography>
             <Chip 
               label="Administrator" 
-              size="small" 
+              size="small"
+              variant="outlined"
               sx={{ 
-                mt: 1,
-                backgroundColor: '#2563eb',
-                color: 'white',
+                mt: 0.75,
+                borderColor: 'primary.main',
+                color: 'primary.main',
+                height: '20px',
+                fontSize: '0.65rem',
                 fontWeight: 500,
+                '.MuiChip-label': { px: 1 }
               }} 
             />
           </Box>
@@ -751,21 +727,21 @@ const Header = ({ onDrawerToggle }) => {
           <MenuItem onClick={() => {
             handleProfileMenuClose();
             navigate('/profile');
-          }} sx={{ py: 1.5, px: 3 }}>
-            <ListItemIcon sx={{ color: theme.palette.text.secondary }}>
-              <AccountCircleIcon />
+          }} sx={{ py: 0.75, px: 2, minHeight: 'unset' }}>
+            <ListItemIcon sx={{ minWidth: 36 }}>
+              <AccountCircleIcon sx={{ fontSize: '1.125rem', color: 'text.secondary' }} />
             </ListItemIcon>
-            <Typography sx={{ color: theme.palette.text.primary }}>My Profile</Typography>
+            <Typography variant="body2">My Profile</Typography>
           </MenuItem>
           
           <MenuItem onClick={() => {
             handleProfileMenuClose();
             logout();
-          }} sx={{ py: 1.5, px: 3, color: '#dc2626' }}>
-            <ListItemIcon>
-              <LogoutIcon sx={{ color: '#dc2626' }} />
+          }} sx={{ py: 0.75, px: 2, minHeight: 'unset' }}>
+            <ListItemIcon sx={{ minWidth: 36 }}>
+              <LogoutIcon sx={{ fontSize: '1.125rem', color: 'error.main' }} />
             </ListItemIcon>
-            <Typography sx={{ color: '#dc2626' }}>Logout</Typography>
+            <Typography variant="body2" color="error.main">Logout</Typography>
           </MenuItem>
         </Menu>
 

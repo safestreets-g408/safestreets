@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTheme } from '@mui/material/styles';
 import {
   Box,
@@ -13,51 +13,130 @@ import {
   ListItemIcon,
   ListItemText,
   Zoom,
+  Chip,
 } from '@mui/material';
-import { CheckCircle } from '@mui/icons-material';
+import { CheckCircle, Code, Api, Smartphone, Psychology } from '@mui/icons-material';
+import { motion } from 'framer-motion';
 
 const ComponentCard = ({ component, index }) => {
   const theme = useTheme();
+  const [isHovered, setIsHovered] = useState(false);
+  
+  // Define tech stack colors
+  const getTechColors = () => ({
+    mobile: '#61DAFB', // React Native blue
+    ai: '#FF6B35', // AI orange
+    backend: '#68A063', // Node.js green
+    frontend: '#61DAFB', // React blue
+  });
+  
+  const techColors = getTechColors();
+  const techColor = techColors[component.type] || theme.palette.primary.main;
   
   return (
-    <Zoom in={true} style={{ transitionDelay: `${index * 100}ms` }}>
+    <Zoom in={true} style={{ transitionDelay: `${index * 150}ms` }}>
       <Card
+        component={motion.div}
+        whileHover={{ scale: 1.03, rotateY: 3 }}
         elevation={0}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         sx={{
           height: '100%',
-          borderRadius: '16px',
-          transition: 'all 0.3s ease',
-          bgcolor: alpha(theme.palette.background.paper, 0.8),
-          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          borderRadius: '20px',
+          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+          background: theme.palette.mode === 'dark'
+            ? `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.9)}, ${alpha(techColor, 0.05)})`
+            : `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.8)}, ${alpha(techColor, 0.03)})`,
+          border: theme.palette.mode === 'dark'
+            ? `1px solid ${alpha(techColor, 0.3)}`
+            : `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          backdropFilter: 'blur(10px)',
+          position: 'relative',
+          overflow: 'hidden',
           '&:hover': {
-            boxShadow: `0 10px 30px ${alpha(theme.palette.common.black, 0.1)}`,
-            transform: 'translateY(-6px)',
-            borderColor: alpha(theme.palette.primary.main, 0.2),
+            boxShadow: theme.palette.mode === 'dark'
+              ? `0 20px 50px ${alpha(techColor, 0.3)}`
+              : `0 20px 50px ${alpha(theme.palette.common.black, 0.12)}`,
+            transform: 'translateY(-10px)',
+            borderColor: alpha(techColor, 0.5),
+            '& .component-icon': {
+              transform: 'scale(1.2) rotate(10deg)',
+              color: techColor,
+            },
+            '& .tech-chip': {
+              transform: 'scale(1.05)',
+              backgroundColor: alpha(techColor, 0.2),
+            },
+          },
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: '-50%',
+            left: '-50%',
+            width: '200%',
+            height: '200%',
+            background: `conic-gradient(from 0deg, transparent, ${alpha(techColor, 0.1)}, transparent)`,
+            animation: isHovered ? 'rotate 3s linear infinite' : 'none',
+          },
+          '@keyframes rotate': {
+            '0%': { transform: 'rotate(0deg)' },
+            '100%': { transform: 'rotate(360deg)' },
           },
         }}
       >
-        <CardContent sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-            <Box sx={{ 
-              color: 'primary.main',
-              mr: 1.5
-            }}>
-              {component.icon}
+        <CardContent sx={{ p: 4, position: 'relative', zIndex: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box 
+                className="component-icon"
+                sx={{ 
+                  color: techColor,
+                  mr: 2,
+                  transition: 'all 0.3s ease',
+                  filter: `drop-shadow(0 4px 8px ${alpha(techColor, 0.3)})`,
+                }}
+              >
+                {component.icon}
+              </Box>
+              
+              <Typography
+                variant="h6"
+                fontWeight={700}
+                sx={{
+                  background: theme.palette.mode === 'dark'
+                    ? `linear-gradient(135deg, ${theme.palette.text.primary}, ${techColor})`
+                    : 'inherit',
+                  backgroundClip: theme.palette.mode === 'dark' ? 'text' : 'inherit',
+                  WebkitBackgroundClip: theme.palette.mode === 'dark' ? 'text' : 'inherit',
+                  WebkitTextFillColor: theme.palette.mode === 'dark' ? 'transparent' : 'inherit',
+                }}
+              >
+                {component.title}
+              </Typography>
             </Box>
             
-            <Typography
-              variant="h6"
-              fontWeight={700}
-            >
-              {component.title}
-            </Typography>
+            <Chip
+              className="tech-chip"
+              label={component.type}
+              size="small"
+              sx={{
+                backgroundColor: alpha(techColor, 0.1),
+                color: techColor,
+                fontWeight: 600,
+                fontSize: '0.7rem',
+                transition: 'all 0.3s ease',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+              }}
+            />
           </Box>
           
           <Typography
             variant="body2"
             color="text.secondary"
             gutterBottom
-            sx={{ mb: 2 }}
+            sx={{ mb: 3, lineHeight: 1.6 }}
           >
             {component.description}
           </Typography>
@@ -68,10 +147,26 @@ const ComponentCard = ({ component, index }) => {
                 key={i}
                 disableGutters
                 disablePadding
-                sx={{ py: 0.5 }}
+                sx={{ 
+                  py: 0.5,
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    transform: 'translateX(8px)',
+                    '& .feature-icon': {
+                      color: techColor,
+                    },
+                  },
+                }}
               >
                 <ListItemIcon sx={{ minWidth: 30 }}>
-                  <CheckCircle sx={{ fontSize: 18, color: 'primary.main' }} />
+                  <CheckCircle 
+                    className="feature-icon"
+                    sx={{ 
+                      fontSize: 18, 
+                      color: 'primary.main',
+                      transition: 'color 0.2s ease',
+                    }} 
+                  />
                 </ListItemIcon>
                 <ListItemText
                   primary={feature}

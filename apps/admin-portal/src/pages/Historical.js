@@ -4,7 +4,6 @@ import {
   Typography, 
   Grid, 
   Paper, 
-  TextField, 
   Button, 
   Box, 
   Card, 
@@ -17,10 +16,7 @@ import {
   CircularProgress,
   Tabs,
   Tab,
-  Divider,
   Chip,
-  IconButton,
-  Tooltip as MuiTooltip,
   Alert,
   Snackbar,
   useTheme
@@ -48,6 +44,10 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import ViewListIcon from '@mui/icons-material/ViewList';
+import ViewModuleIcon from '@mui/icons-material/ViewModule';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import ToggleButton from '@mui/material/ToggleButton';
 import { api } from '../utils/api';
 import { API_BASE_URL, API_ENDPOINTS, TOKEN_KEY } from '../config/constants';
 
@@ -61,6 +61,7 @@ const Historical = () => {
   const [reports, setReports] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
   const [view, setView] = useState('reports'); // 'reports', 'trends'
+  const [viewMode, setViewMode] = useState('card'); // 'card', 'list'
   const [trendData, setTrendData] = useState([]);
   const [regionData, setRegionData] = useState([]);
   const [severityData, setSeverityData] = useState([]);
@@ -91,10 +92,10 @@ const Historical = () => {
         setLoading(false);
       } catch (err) {
         console.error('Error fetching reports data:', err);
-        setError(err.message || 'Failed to fetch reports data');
+        setError(err.message || 'Failed to fetch reports data');      
         setSnackbar({
           open: true,
-          message: 'Error loading reports: ' + (err.message || 'Unknown error'),
+          message: 'Failed to load reports',
           severity: 'error'
         });
         setLoading(false);
@@ -244,7 +245,7 @@ const Historical = () => {
       
       setSnackbar({
         open: true,
-        message: `Found ${filteredData.length} reports matching your criteria`,
+        message: `${filteredData.length} matching reports found`,
         severity: 'success'
       });
       
@@ -254,7 +255,7 @@ const Historical = () => {
       setError(err.message || 'Failed to apply filters');
       setSnackbar({
         open: true,
-        message: 'Error filtering reports: ' + (err.message || 'Unknown error'),
+        message: 'Filter application failed',
         severity: 'error'
       });
       setLoading(false);
@@ -291,7 +292,7 @@ const Historical = () => {
     
     setSnackbar({
       open: true,
-      message: 'Report data exported successfully',
+      message: 'Data exported',
       severity: 'success'
     });
   };
@@ -337,7 +338,7 @@ const Historical = () => {
       setError(err.message || 'Failed to fetch report details');
       setSnackbar({
         open: true,
-        message: 'Error loading report details: ' + (err.message || 'Unknown error'),
+        message: 'Failed to load report details',
         severity: 'error'
       });
       setLoading(false);
@@ -377,9 +378,14 @@ const Historical = () => {
         label={status} 
         size="small" 
         sx={{ 
-          backgroundColor: STATUS_COLORS[status] || '#757575',
-          color: 'white',
-          fontWeight: 'bold'
+          backgroundColor: theme.palette.mode === 'dark' 
+            ? `${STATUS_COLORS[status]}22` // 22 = 13% opacity in hex
+            : `${STATUS_COLORS[status]}15`, // 15 = 8% opacity in hex
+          color: STATUS_COLORS[status] || '#757575',
+          fontWeight: 600,
+          height: 22,
+          fontSize: '0.7rem',
+          borderRadius: 1
         }} 
       />
     );
@@ -391,181 +397,314 @@ const Historical = () => {
         label={severity} 
         size="small" 
         sx={{ 
-          backgroundColor: SEVERITY_COLORS[severity] || '#757575',
-          color: 'white',
-          fontWeight: 'bold'
+          backgroundColor: theme.palette.mode === 'dark' 
+            ? `${SEVERITY_COLORS[severity]}22` // 22 = 13% opacity in hex
+            : `${SEVERITY_COLORS[severity]}15`, // 15 = 8% opacity in hex
+          color: SEVERITY_COLORS[severity] || '#757575',
+          fontWeight: 600,
+          height: 22,
+          fontSize: '0.7rem',
+          borderRadius: 1
         }} 
       />
     );
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: 2, mb: 4 }}>
       <Snackbar 
         open={snackbar.open} 
-        autoHideDuration={6000} 
+        autoHideDuration={4000} 
         onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         <Alert 
           onClose={handleCloseSnackbar} 
-          severity={snackbar.severity} 
-          sx={{ width: '100%' }}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: '100%', fontSize: '0.875rem', borderRadius: 1 }}
         >
           {snackbar.message}
         </Alert>
       </Snackbar>
       
-      <Paper sx={{ 
-        p: 3, 
-        mb: 3, 
-        borderRadius: 2, 
-        boxShadow: 3,
-        bgcolor: 'background.paper'
-      }}>
-        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-          <FilterAltIcon sx={{ mr: 1 }} />
-          Filter Reports
-        </Typography>
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={3}>
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <DatePicker
-                label="Start Date"
-                value={startDate}
-                onChange={(newValue) => setStartDate(newValue)}
-                renderInput={(params) => <TextField {...params} fullWidth />}
-                slotProps={{ textField: { fullWidth: true, variant: 'outlined' } }}
-              />
-            </LocalizationProvider>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <DatePicker
-                label="End Date"
-                value={endDate}
-                onChange={(newValue) => setEndDate(newValue)}
-                renderInput={(params) => <TextField {...params} fullWidth />}
-                slotProps={{ textField: { fullWidth: true, variant: 'outlined' } }}
-              />
-            </LocalizationProvider>
-          </Grid>
-          <Grid item xs={12} md={2}>
-            <FormControl fullWidth variant="outlined">
-              <InputLabel>Region</InputLabel>
-              <Select
-                value={region}
-                label="Region"
-                onChange={(e) => setRegion(e.target.value)}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Tabs 
+            value={view} 
+            onChange={(e, newValue) => setView(newValue)}
+            indicatorColor="primary"
+            textColor="primary"
+            variant="standard"
+            sx={{ 
+              minHeight: '32px', 
+              '& .MuiTab-root': { 
+                py: 0, 
+                minHeight: '32px', 
+                textTransform: 'none', 
+                fontSize: '0.85rem',
+                fontWeight: 500,
+                letterSpacing: '0.01em'
+              },
+              '& .Mui-selected': {
+                fontWeight: 600
+              },
+              '& .MuiTabs-indicator': {
+                height: 3,
+                borderTopLeftRadius: 3,
+                borderTopRightRadius: 3
+              }
+            }}
+          >
+            <Tab label="Reports" value="reports" />
+            <Tab label="Analysis" value="trends" />
+          </Tabs>
+        </Box>
+          
+        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+          {view === 'reports' && !selectedReport && (              
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.01)',
+              borderRadius: 2,
+              px: 1.5,
+              py: 0.5,
+              mr: 1.5,
+              boxShadow: theme.palette.mode === 'dark' ? '0 1px 3px rgba(0,0,0,0.2)' : '0 1px 2px rgba(0,0,0,0.05)'
+            }}>
+              <Typography variant="caption" sx={{ mr: 1.5, color: 'text.secondary', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                View
+              </Typography>
+              <ToggleButtonGroup
+                value={viewMode}
+                exclusive
+                onChange={(e, newMode) => newMode && setViewMode(newMode)}
+                size="small"
+                sx={{ 
+                  height: '28px',
+                  '& .MuiToggleButton-root': { 
+                    py: 0, 
+                    px: 1,
+                    border: 'none',
+                    borderRadius: 1.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    minWidth: '60px',
+                    '&.Mui-selected': {
+                      bgcolor: theme.palette.primary.main,
+                      color: '#fff',
+                      '&:hover': {
+                        bgcolor: theme.palette.primary.dark
+                      }
+                    },
+                    '&:hover': {
+                      bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.04)'
+                    }
+                  }
+                }}
               >
-                <MenuItem value="all">All Regions</MenuItem>
-                <MenuItem value="North">North</MenuItem>
-                <MenuItem value="South">South</MenuItem>
-                <MenuItem value="East">East</MenuItem>
-                <MenuItem value="West">West</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={2}>
-            <FormControl fullWidth variant="outlined">
-              <InputLabel>Damage Type</InputLabel>
-              <Select
-                value={damageType}
-                label="Damage Type"
-                onChange={(e) => setDamageType(e.target.value)}
-              >
-                <MenuItem value="all">All Types</MenuItem>
-                <MenuItem value="Water Damage">Water Damage</MenuItem>
-                <MenuItem value="Structural">Structural</MenuItem>
-                <MenuItem value="Electrical">Electrical</MenuItem>
-                <MenuItem value="Other">Other</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={2}>
-            <Box sx={{ display: 'flex', gap: 1 }}>
+                <ToggleButton value="card" aria-label="card view">
+                  <ViewModuleIcon sx={{ fontSize: '1rem', mr: 0.7 }} />
+                  <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 500 }}>Cards</Typography>
+                </ToggleButton>
+                <ToggleButton value="list" aria-label="list view">
+                  <ViewListIcon sx={{ fontSize: '1rem', mr: 0.7 }} />
+                  <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 500 }}>List</Typography>
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+          )}
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.01)',
+            borderRadius: 2,
+            px: 1.5,
+            py: 0.75,
+            boxShadow: theme.palette.mode === 'dark' ? '0 1px 3px rgba(0,0,0,0.2)' : '0 1px 2px rgba(0,0,0,0.05)'
+          }}>
+            <FilterAltIcon sx={{ fontSize: "1rem", color: theme.palette.primary.main, mr: 1 }} />
+            <Box component="form" sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DatePicker
+                  label="Start"
+                  value={startDate}
+                  onChange={(newValue) => setStartDate(newValue)}
+                  slotProps={{ 
+                    textField: { 
+                      size: 'small', 
+                      sx: { 
+                        width: '110px',
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: 1.5,
+                          backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#fff'
+                        }
+                      },
+                      InputLabelProps: { 
+                        shrink: true,
+                        sx: { fontSize: '0.85rem' } 
+                      } 
+                    } 
+                  }}
+                />
+              </LocalizationProvider>
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DatePicker
+                  label="End"
+                  value={endDate}
+                  onChange={(newValue) => setEndDate(newValue)}
+                  slotProps={{ 
+                    textField: { 
+                      size: 'small', 
+                      sx: { 
+                        width: '110px',
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: 1.5,
+                          backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#fff'
+                        }
+                      },
+                      InputLabelProps: { 
+                        shrink: true,
+                        sx: { fontSize: '0.85rem' } 
+                      } 
+                    } 
+                  }}
+                />
+              </LocalizationProvider>
+              <FormControl size="small" sx={{ 
+                minWidth: '100px',
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 1.5,
+                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#fff'
+                }
+              }}>
+                <InputLabel sx={{ fontSize: '0.85rem' }}>Region</InputLabel>
+                <Select
+                  value={region}
+                  label="Region"
+                  onChange={(e) => setRegion(e.target.value)}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: { borderRadius: 1.5, mt: 0.5 }
+                    }
+                  }}
+                >
+                  <MenuItem value="all">All</MenuItem>
+                  <MenuItem value="North">North</MenuItem>
+                  <MenuItem value="South">South</MenuItem>
+                  <MenuItem value="East">East</MenuItem>
+                  <MenuItem value="West">West</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl size="small" sx={{ 
+                minWidth: '100px',
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 1.5,
+                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#fff'
+                }
+              }}>
+                <InputLabel sx={{ fontSize: '0.85rem' }}>Type</InputLabel>
+                <Select
+                  value={damageType}
+                  label="Type"
+                  onChange={(e) => setDamageType(e.target.value)}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: { borderRadius: 1.5, mt: 0.5 }
+                    }
+                  }}
+                >
+                  <MenuItem value="all">All</MenuItem>
+                  <MenuItem value="Water Damage">Water</MenuItem>
+                  <MenuItem value="Structural">Structure</MenuItem>
+                  <MenuItem value="Electrical">Electric</MenuItem>
+                  <MenuItem value="Other">Other</MenuItem>
+                </Select>
+              </FormControl>
               <Button 
                 variant="contained" 
                 color="primary" 
-                fullWidth 
                 onClick={handleFilter}
                 disabled={loading}
-                sx={{ height: '56px', borderRadius: 2 }}
+                size="small"
+                sx={{ 
+                  height: '32px', 
+                  minWidth: '80px', 
+                  px: 2, 
+                  borderRadius: 1.5,
+                  fontWeight: 600,
+                  boxShadow: 'none',
+                  '&:hover': {
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                  }
+                }}
               >
-                {loading ? <CircularProgress size={24} /> : 'Apply Filters'}
+                {loading ? <CircularProgress size={14} color="inherit" /> : 'Apply'}
               </Button>
               <Button
                 variant="outlined"
                 color="secondary"
                 onClick={handleExportData}
                 disabled={loading || reports.length === 0}
-                sx={{ minWidth: 'auto', height: '56px', borderRadius: 2 }}
+                size="small"
+                sx={{ 
+                  minWidth: '40px', 
+                  height: '32px', 
+                  p: 1,
+                  borderRadius: 1.5,
+                  borderWidth: 1.5,
+                  '&:hover': {
+                    borderWidth: 1.5
+                  }
+                }}
               >
-                <FileDownloadIcon />
+                <FileDownloadIcon fontSize="small" />
               </Button>
             </Box>
-          </Grid>
-        </Grid>
-      </Paper>
-
-      <Box sx={{ mb: 3 }}>
-        <Tabs 
-          value={view} 
-          onChange={(e, newValue) => setView(newValue)}
-          indicatorColor="primary"
-          textColor="primary"
-          variant="fullWidth"
-          sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}
-        >
-          <Tab label="Archived Reports" value="reports" />
-          <Tab label="Trend Analysis" value="trends" />
-        </Tabs>
+          </Box>
+        </Box>
       </Box>
 
       {loading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-          <CircularProgress />
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+          <CircularProgress size={20} thickness={4} />
         </Box>
       )}
 
       {error && !loading && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert severity="error" variant="outlined" sx={{ mb: 2, py: 0.5, fontSize: '0.875rem' }}>
           {error}
         </Alert>
       )}
 
       {!loading && !error && reports.length === 0 && (
-        <Alert severity="info" sx={{ mb: 3 }}>
-          No reports found matching the criteria. Try changing your filters.
+        <Alert severity="info" variant="outlined" sx={{ mb: 2, py: 0.5, fontSize: '0.875rem' }}>
+          No matching reports found.
         </Alert>
       )}
 
       {!loading && view === 'reports' && (
         <>
           {selectedReport ? (
-            <Paper sx={{ 
-              p: 3, 
-              mb: 3, 
-              borderRadius: 2, 
-              boxShadow: 3,
-              bgcolor: 'background.paper'
-            }}>
-              <Button 
-                variant="outlined" 
-                sx={{ mb: 3 }}
-                onClick={() => setSelectedReport(null)}
-                startIcon={<ArrowBackIcon />}
-              >
-                Back to Reports
-              </Button>
-              <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>
-                Report #{selectedReport.reportId} - {selectedReport.location}
-              </Typography>
-              <Divider sx={{ mb: 3 }} />
-              <Grid container spacing={3}>
+            <Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Button 
+                  variant="text" 
+                  size="small"
+                  sx={{ mr: 1, p: 0, minWidth: 'auto' }}
+                  onClick={() => setSelectedReport(null)}
+                >
+                  <ArrowBackIcon fontSize="small" />
+                </Button>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  #{selectedReport.reportId} - {selectedReport.location}
+                </Typography>
+              </Box>
+              <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
-                  <Box sx={{ mb: 3, p: 2, bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f5f5f5', borderRadius: 2 }}>
-                    <Grid container spacing={2}>
+                  <Box sx={{ mb: 2, p: 0, bgcolor: 'transparent' }}>
+                    <Grid container spacing={1}>
                       <Grid item xs={6}>
                         <Typography variant="subtitle2" color="textSecondary">Date:</Typography>
                         <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
@@ -602,162 +741,279 @@ const Historical = () => {
                       )}
                     </Grid>
                   </Box>
-                  <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>Description:</Typography>
-                  <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                    <Typography paragraph>{selectedReport.description || 'No description provided.'}</Typography>
+                  <Typography variant="body2" sx={{ mt: 1, mb: 0.5, fontWeight: 500 }}>Description</Typography>
+                  <Paper variant="outlined" sx={{ p: 1, borderRadius: 0.5 }}>
+                    <Typography variant="caption">{selectedReport.description || 'No description provided.'}</Typography>
                   </Paper>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="h6" gutterBottom>Before/After Comparison</Typography>
+                  <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 500 }}>Before/After</Typography>
                   <Grid container spacing={2}>
                     <Grid item xs={6}>
-                      <Card sx={{ boxShadow: 3, borderRadius: 2, overflow: 'hidden' }}>
-                        <Box sx={{ position: 'relative', height: 200 }}>
+                      <Card sx={{ boxShadow: 0, borderRadius: 0.5, overflow: 'hidden', border: '1px solid', borderColor: theme.palette.divider }}>
+                        <Box sx={{ position: 'relative', height: 180, bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f5f5f5' }}>
                           <CardMedia
                             component="img"
-                            height="200"
+                            height="180"
                             image={selectedReport.beforeImage}
                             alt="Before repair"
                             sx={{ objectFit: 'cover' }}
                             onError={(e) => {
                               console.log('Before image load error');
                               e.target.onerror = null;
-                              e.target.src = 'https://via.placeholder.com/300x200?text=No+Before+Image';
+                              e.target.src = `https://via.placeholder.com/400x180/f0f0f0/999999?text=No+Before+Image`;
                             }}
                           />
                         </Box>
-                        <CardContent sx={{ bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f5f5f5' }}>
-                          <Typography variant="body2" sx={{ fontWeight: 'medium', textAlign: 'center' }}>Before Repair</Typography>
+                        <CardContent sx={{ py: 0.5, px: 1, bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#fafafa' }}>
+                          <Typography variant="caption" sx={{ fontSize: '0.7rem', textAlign: 'center', display: 'block' }}>Before</Typography>
                         </CardContent>
                       </Card>
                     </Grid>
                     <Grid item xs={6}>
-                      <Card sx={{ boxShadow: 3, borderRadius: 2, overflow: 'hidden' }}>
-                        <Box sx={{ position: 'relative', height: 200 }}>
+                      <Card sx={{ boxShadow: 0, borderRadius: 0.5, overflow: 'hidden', border: '1px solid', borderColor: theme.palette.divider }}>
+                        <Box sx={{ position: 'relative', height: 180, bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f5f5f5' }}>
                           <CardMedia
                             component="img"
-                            height="200"
+                            height="180"
                             image={selectedReport.afterImage}
                             alt="After repair"
                             sx={{ objectFit: 'cover' }}
                             onError={(e) => {
                               console.log('After image load error');
                               e.target.onerror = null;
-                              e.target.src = 'https://via.placeholder.com/300x200?text=No+After+Image';
+                              e.target.src = `https://via.placeholder.com/400x180/f0f0f0/999999?text=No+After+Image`;
                             }}
                           />
                         </Box>
-                        <CardContent sx={{ bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f5f5f5' }}>
-                          <Typography variant="body2" sx={{ fontWeight: 'medium', textAlign: 'center' }}>After Repair</Typography>
+                        <CardContent sx={{ py: 0.5, px: 1, bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#fafafa' }}>
+                          <Typography variant="caption" sx={{ fontSize: '0.7rem', textAlign: 'center', display: 'block' }}>After</Typography>
                         </CardContent>
                       </Card>
                     </Grid>
                   </Grid>
                 </Grid>
               </Grid>
-            </Paper>
+            </Box>
           ) : (
-            <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                Archived Reports
-              </Typography>
-              <Grid container spacing={3}>
-                {reports.map((report) => (
-                  <Grid item xs={12} md={4} key={report._id}>
-                    <Card 
+            <Box>
+              {viewMode === 'card' ? (
+                <Grid container spacing={2}>
+                  {reports.map((report) => (
+                    <Grid item xs={12} sm={6} md={4} key={report._id}>
+                      <Card 
+                        sx={{ 
+                          cursor: 'pointer', 
+                          transition: 'all 0.2s',
+                          borderRadius: 2,
+                          overflow: 'hidden',
+                          boxShadow: theme.palette.mode === 'dark' ? '0 3px 10px rgba(0,0,0,0.4)' : '0 2px 8px rgba(0,0,0,0.08)',
+                          border: 'none',
+                          height: '100%',
+                          '&:hover': {
+                            transform: 'translateY(-2px)',
+                            boxShadow: theme.palette.mode === 'dark' ? '0 5px 15px rgba(0,0,0,0.5)' : '0 4px 12px rgba(0,0,0,0.15)'
+                          }
+                        }} 
+                        onClick={() => viewReport(report.reportId)}
+                      >
+                        <Box sx={{ height: 160, position: 'relative', overflow: 'hidden' }}>
+                          <img 
+                            src={getAuthenticatedImageUrl(report.reportId, 'before')} 
+                            alt={report.location} 
+                            style={{ 
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              transition: 'transform 0.3s'
+                            }}
+                            onError={(e) => {
+                              console.log('Image load error for report:', report.reportId);
+                              e.target.onerror = null;
+                              e.target.src = `https://via.placeholder.com/300x160/f0f0f0/999999?text=No+Image`;
+                            }}
+                          />
+                          <Box sx={{ 
+                            position: 'absolute', 
+                            top: 10, 
+                            right: 10, 
+                            bgcolor: 'rgba(0,0,0,0.6)', 
+                            color: '#fff',
+                            borderRadius: 5,
+                            px: 1,
+                            py: 0.2,
+                            fontSize: '0.65rem'
+                          }}>
+                            #{report.reportId}
+                          </Box>
+                        </Box>
+                        <CardContent sx={{ py: 1.5, px: 2 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="body1" sx={{ fontWeight: 600, fontSize: '0.9rem' }}>
+                              {report.location}
+                            </Typography>
+                            <Typography color="textSecondary" variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 500 }}>
+                              {format(new Date(report.createdAt), 'MMM dd, yyyy')}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', gap: 0.7, flexWrap: 'wrap', mt: 1.5 }}>
+                            <Chip 
+                              label={report.damageType} 
+                              size="small" 
+                              sx={{ 
+                                height: 22,
+                                fontSize: '0.7rem',
+                                fontWeight: 500,
+                                bgcolor: theme.palette.primary.main,
+                                color: '#fff',
+                                borderRadius: 1
+                              }} 
+                            />
+                            {getStatusChip(report.status)}
+                            {getSeverityChip(report.severity)}
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              ) : (
+                <Box sx={{ 
+                  borderRadius: 2,
+                  overflow: 'hidden',
+                  boxShadow: theme.palette.mode === 'dark' ? '0 3px 10px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.05)'
+                }}>
+                  {reports.map((report, index) => (
+                    <Box 
+                      key={report._id}
                       sx={{ 
-                        cursor: 'pointer', 
-                        transition: 'transform 0.2s, box-shadow 0.2s',
-                        borderRadius: 2,
-                        overflow: 'hidden',
+                        display: 'flex', 
+                        p: 1.5,
+                        cursor: 'pointer',
+                        borderBottom: index < reports.length - 1 ? '1px solid' : 'none',
+                        borderColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)',
+                        bgcolor: theme.palette.mode === 'dark' ? 'rgba(0, 0, 0, 0.2)' : '#fff',
+                        transition: 'all 0.2s',
                         '&:hover': {
-                          transform: 'translateY(-4px)',
-                          boxShadow: 6
+                          bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
+                          transform: 'translateX(2px)'
                         }
-                      }} 
+                      }}
                       onClick={() => viewReport(report.reportId)}
                     >
-                      <Box sx={{ height: 140, bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Box sx={{ 
+                        width: 80, 
+                        height: 80, 
+                        mr: 2, 
+                        overflow: 'hidden', 
+                        flexShrink: 0, 
+                        borderRadius: 1.5, 
+                        boxShadow: '0 2px 5px rgba(0,0,0,0.15)'
+                      }}>
                         <img 
                           src={getAuthenticatedImageUrl(report.reportId, 'before')} 
-                          alt={report.location} 
+                          alt={report.location}
                           style={{ 
-                            maxHeight: '100%', 
-                            maxWidth: '100%', 
-                            objectFit: 'cover',
-                            width: '100%' 
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover' 
                           }}
                           onError={(e) => {
-                            console.log('Image load error for report:', report.reportId);
                             e.target.onerror = null;
-                            e.target.src = 'https://via.placeholder.com/300x200?text=No+Image';
+                            e.target.src = `https://via.placeholder.com/80x80/f0f0f0/999999?text=No+Image`;
                           }}
                         />
                       </Box>
-                      <CardContent>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                      <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="body1" sx={{ fontWeight: 600, fontSize: '0.9rem' }}>
                             {report.location}
                           </Typography>
-                          <MuiTooltip title="View details">
-                            <IconButton size="small" color="primary">
-                              <VisibilityIcon />
-                            </IconButton>
-                          </MuiTooltip>
+                          <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+                            borderRadius: 4,
+                            px: 1,
+                            py: 0.3
+                          }}>
+                            <Typography color="textSecondary" variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 500 }}>
+                              {format(new Date(report.createdAt), 'MMM dd, yyyy')}
+                            </Typography>
+                          </Box>
                         </Box>
-                        <Typography color="textSecondary" variant="body2" sx={{ mb: 1 }}>
-                          ID: #{report.reportId} | {format(new Date(report.createdAt), 'yyyy-MM-dd')}
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
-                          <Chip 
-                            label={report.damageType} 
-                            size="small" 
-                            sx={{ 
-                              bgcolor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.15)' : '#e3f2fd', 
-                              color: theme.palette.primary.main
-                            }} 
-                          />
-                          {getStatusChip(report.status)}
-                          {getSeverityChip(report.severity)}
+                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                          <Typography variant="caption" sx={{ 
+                            color: theme.palette.primary.main, 
+                            mr: 1.5, 
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            bgcolor: theme.palette.mode === 'dark' ? 'rgba(25, 118, 210, 0.15)' : 'rgba(25, 118, 210, 0.1)',
+                            px: 0.8,
+                            py: 0.2,
+                            borderRadius: 1
+                          }}>
+                            #{report.reportId}
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 0.8 }}>
+                            <Chip 
+                              label={report.damageType} 
+                              size="small" 
+                              sx={{ 
+                                height: 22,
+                                fontSize: '0.7rem',
+                                fontWeight: 500,
+                                bgcolor: theme.palette.primary.main,
+                                color: '#fff',
+                                borderRadius: 1
+                              }} 
+                            />
+                            {getStatusChip(report.status)}
+                            {getSeverityChip(report.severity)}
+                          </Box>
                         </Box>
-                        <Typography variant="body2" sx={{ 
-                          mt: 1, 
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
+                        <Box sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 30,
+                          height: 30,
+                          borderRadius: '50%',
+                          bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+                          transition: 'all 0.2s',
+                          '&:hover': {
+                            bgcolor: theme.palette.primary.main,
+                            color: '#fff'
+                          }
                         }}>
-                          {report.description || 'No description provided.'}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            </Paper>
+                          <VisibilityIcon sx={{ fontSize: '1.1rem' }} />
+                        </Box>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Box>
           )}
         </>
       )}
 
       {!loading && view === 'trends' && (
-        <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
-          <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', color: theme.palette.primary.main, mb: 3 }}>
-            Damage Analysis Dashboard
+        <Box>
+          <Typography variant="body2" sx={{ fontWeight: 500, mb: 1, color: theme.palette.text.secondary, fontSize: '0.8rem' }}>
+            Damage Analysis
           </Typography>
-          <Grid container spacing={4}>
+          <Grid container spacing={2}>
             <Grid item xs={12} md={8}>
-              <Paper sx={{ 
-                p: 2, 
-                borderRadius: 2, 
-                boxShadow: 1, 
-                mb: 3,
-                bgcolor: 'background.paper' 
+              <Box sx={{ 
+                mb: 2
               }}>
-                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
-                  Damage Type Trends by Month
+                <Typography variant="caption" sx={{ fontWeight: 500, mb: 0.5, display: 'block', color: theme.palette.text.secondary }}>
+                  Monthly Damage Types
                 </Typography>
-                <Box sx={{ height: 350, width: '100%' }}>
+                <Box sx={{ height: 300, width: '100%' }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={trendData}
@@ -775,11 +1031,11 @@ const Historical = () => {
                     </BarChart>
                   </ResponsiveContainer>
                 </Box>
-              </Paper>
+              </Box>
               
-              <Paper sx={{ p: 2, borderRadius: 2, boxShadow: 1 }}>
-                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
-                  Severity Trends Over Time
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="caption" sx={{ fontWeight: 500, mb: 0.5, display: 'block', color: theme.palette.text.secondary }}>
+                  Severity Trends
                 </Typography>
                 <Box sx={{ height: 300, width: '100%' }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -798,18 +1054,12 @@ const Historical = () => {
                     </LineChart>
                   </ResponsiveContainer>
                 </Box>
-              </Paper>
+              </Box>
             </Grid>
             <Grid item xs={12} md={4}>
-              <Paper sx={{ 
-                p: 2, 
-                borderRadius: 2, 
-                boxShadow: 1, 
-                mb: 3,
-                bgcolor: 'background.paper' 
-              }}>
-                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
-                  Repairs by Region
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="caption" sx={{ fontWeight: 500, mb: 0.5, display: 'block', color: theme.palette.text.secondary }}>
+                  Regional Distribution
                 </Typography>
                 <Box sx={{ height: 300, width: '100%' }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -832,64 +1082,93 @@ const Historical = () => {
                     </PieChart>
                   </ResponsiveContainer>
                 </Box>
-              </Paper>
+              </Box>
               
-              <Paper sx={{ p: 2, borderRadius: 2, boxShadow: 1 }}>
-                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
-                  Key Statistics
+              <Box>
+                <Typography variant="caption" sx={{ fontWeight: 500, mb: 0.5, display: 'block', color: theme.palette.text.secondary }}>
+                  Summary
                 </Typography>
-                <Box sx={{ p: 2 }}>
+                <Paper variant="outlined" sx={{ 
+                  p: 1.5, 
+                  borderRadius: 0.5,
+                  borderColor: theme.palette.divider,
+                  bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.01)'
+                }}>
                   <Grid container spacing={2}>
                     <Grid item xs={6}>
-                      <Paper sx={{ 
-                        p: 2, 
-                        bgcolor: theme.palette.mode === 'dark' ? 'rgba(33, 150, 243, 0.15)' : '#e3f2fd',
-                        borderRadius: 2, 
-                        textAlign: 'center' 
+                      <Box sx={{ 
+                        p: 1.5, 
+                        bgcolor: theme.palette.mode === 'dark' ? 'rgba(33, 150, 243, 0.08)' : '#f5f9ff',
+                        borderRadius: 0.5, 
+                        textAlign: 'center',
+                        border: '1px solid',
+                        borderColor: theme.palette.mode === 'dark' ? 'rgba(33, 150, 243, 0.2)' : 'rgba(33, 150, 243, 0.1)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center'
                       }}>
-                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>{stats.totalReports}</Typography>
-                        <Typography variant="body2">Total Reports</Typography>
-                      </Paper>
+                        <Typography variant="body2" sx={{ fontSize: '0.7rem', color: theme.palette.text.secondary, mb: 0.5 }}>Total Reports</Typography>
+                        <Typography variant="h5" sx={{ fontWeight: 500, color: theme.palette.primary.main, lineHeight: 1 }}>{stats.totalReports}</Typography>
+                      </Box>
                     </Grid>
                     <Grid item xs={6}>
-                      <Paper sx={{ 
-                        p: 2, 
-                        bgcolor: theme.palette.mode === 'dark' ? 'rgba(76, 175, 80, 0.15)' : '#e8f5e9',
-                        borderRadius: 2, 
-                        textAlign: 'center' 
+                      <Box sx={{ 
+                        p: 1.5, 
+                        bgcolor: theme.palette.mode === 'dark' ? 'rgba(76, 175, 80, 0.08)' : '#f5fff7',
+                        borderRadius: 0.5, 
+                        textAlign: 'center',
+                        border: '1px solid',
+                        borderColor: theme.palette.mode === 'dark' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(76, 175, 80, 0.1)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center'
                       }}>
-                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: theme.palette.success.main }}>{stats.repaired}</Typography>
-                        <Typography variant="body2">Repaired</Typography>
-                      </Paper>
+                        <Typography variant="body2" sx={{ fontSize: '0.7rem', color: theme.palette.text.secondary, mb: 0.5 }}>Repaired</Typography>
+                        <Typography variant="h5" sx={{ fontWeight: 500, color: theme.palette.success.main, lineHeight: 1 }}>{stats.repaired}</Typography>
+                      </Box>
                     </Grid>
                     <Grid item xs={6}>
-                      <Paper sx={{ 
-                        p: 2, 
-                        bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 152, 0, 0.15)' : '#fff3e0',
-                        borderRadius: 2, 
-                        textAlign: 'center' 
+                      <Box sx={{ 
+                        p: 1.5, 
+                        bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 152, 0, 0.08)' : '#fffbf2',
+                        borderRadius: 0.5, 
+                        textAlign: 'center',
+                        border: '1px solid',
+                        borderColor: theme.palette.mode === 'dark' ? 'rgba(255, 152, 0, 0.2)' : 'rgba(255, 152, 0, 0.1)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center'
                       }}>
-                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: theme.palette.warning.main }}>{stats.inProgress}</Typography>
-                        <Typography variant="body2">In Progress</Typography>
-                      </Paper>
+                        <Typography variant="body2" sx={{ fontSize: '0.7rem', color: theme.palette.text.secondary, mb: 0.5 }}>In Progress</Typography>
+                        <Typography variant="h5" sx={{ fontWeight: 500, color: theme.palette.warning.main, lineHeight: 1 }}>{stats.inProgress}</Typography>
+                      </Box>
                     </Grid>
                     <Grid item xs={6}>
-                      <Paper sx={{ 
-                        p: 2, 
-                        bgcolor: theme.palette.mode === 'dark' ? 'rgba(244, 67, 54, 0.15)' : '#ffebee',
-                        borderRadius: 2, 
-                        textAlign: 'center' 
+                      <Box sx={{ 
+                        p: 1.5, 
+                        bgcolor: theme.palette.mode === 'dark' ? 'rgba(244, 67, 54, 0.08)' : '#fff8f7',
+                        borderRadius: 0.5, 
+                        textAlign: 'center',
+                        border: '1px solid',
+                        borderColor: theme.palette.mode === 'dark' ? 'rgba(244, 67, 54, 0.2)' : 'rgba(244, 67, 54, 0.1)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center'
                       }}>
-                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: theme.palette.error.main }}>{stats.highSeverity}</Typography>
-                        <Typography variant="body2">High Severity</Typography>
-                      </Paper>
+                        <Typography variant="body2" sx={{ fontSize: '0.7rem', color: theme.palette.text.secondary, mb: 0.5 }}>Critical</Typography>
+                        <Typography variant="h5" sx={{ fontWeight: 500, color: theme.palette.error.main, lineHeight: 1 }}>{stats.highSeverity}</Typography>
+                      </Box>
                     </Grid>
                   </Grid>
-                </Box>
-              </Paper>
+                </Paper>
+              </Box>
             </Grid>
           </Grid>
-        </Paper>
+        </Box>
       )}
     </Container>
   );

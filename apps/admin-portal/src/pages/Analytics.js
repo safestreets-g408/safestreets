@@ -256,63 +256,53 @@ function Analytics() {
       elevation={0}
       sx={{ 
         height: '100%', 
-        borderRadius: 2, 
-        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-        transition: 'box-shadow 0.2s',
+        borderRadius: 1, 
         overflow: 'hidden',
         border: `1px solid ${colors.border}`,
-        backgroundColor: colors.surface,
-        '&:hover': {
-          boxShadow: '0 4px 8px rgba(0, 0, 0, 0.15)'
-        }
+        backgroundColor: colors.surface
       }}
     >
       <CardHeader
         avatar={
-          <Avatar sx={{ 
-            bgcolor: colors.primary,
-            color: 'white',
-            width: 40,
-            height: 40
-          }}>
-            {icon}
-          </Avatar>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            {icon && (
+              <Box 
+                component="span" 
+                sx={{ 
+                  color: 'text.secondary',
+                  mr: 1.5,
+                  display: 'flex'
+                }}
+              >
+                {icon}
+              </Box>
+            )}
+          </Box>
         }
         action={
           <Box>
-            <IconButton size="small" sx={{ mr: 1, color: colors.secondary }}>
-              <RefreshIcon fontSize="small" />
-            </IconButton>
-            <IconButton 
-              size="small"
-              onClick={onExport}
-              sx={{ 
-                bgcolor: colors.primary,
-                color: 'white',
-                '&:hover': {
-                  bgcolor: colors.primaryDark,
-                }
-              }}
-            >
+            <IconButton size="small" onClick={onExport}>
               <DownloadIcon fontSize="small" />
             </IconButton>
           </Box>
         }
         title={
           <Typography 
-            variant="h6" 
-            fontWeight="600"
+            variant="subtitle1" 
+            fontWeight="500"
             color={colors.text.primary}
+            sx={{ fontSize: '0.95rem' }}
           >
             {title}
           </Typography>
         }
         sx={{ 
-          pb: 1,
+          py: 1.5,
+          px: 2,
           borderBottom: `1px solid ${colors.border}`
         }}
       />
-      <CardContent sx={{ pt: 2, height: 'calc(100% - 72px)' }}>
+      <CardContent sx={{ pt: 2, px: 2, height: 'calc(100% - 56px)' }}>
         <Box sx={{ height: '100%' }}>
           {children}
         </Box>
@@ -321,14 +311,26 @@ function Analytics() {
   );
 
   return (
-    <Box>
+    <Box sx={{ py: 1 }}>
         
-        <Box sx={{ mb: 4, display: 'flex', justifyContent: 'flex-end' }}>
-          <FormControl 
+        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography 
+            variant="subtitle1"
             sx={{ 
-              minWidth: 200,
+              fontWeight: 500,
+              fontSize: '1rem',
+              color: 'text.primary'
+            }}
+          >
+            Analytics Overview
+          </Typography>
+          <FormControl 
+            size="small"
+            sx={{ 
+              minWidth: 180,
               '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
+                borderRadius: 1,
+                fontSize: '0.9rem',
                 '&:hover fieldset': {
                   borderColor: colors.primary,
                 },
@@ -351,12 +353,20 @@ function Analytics() {
         </Box>
         
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-            <CircularProgress />
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+            <CircularProgress size={30} thickness={4} sx={{ color: 'primary.main' }} />
           </Box>
         ) : error ? (
-          <Box sx={{ textAlign: 'center', color: colors.error, p: 3 }}>
-            <Typography>{error}</Typography>
+          <Box sx={{ 
+            textAlign: 'center', 
+            color: 'error.main', 
+            p: 3, 
+            border: '1px solid', 
+            borderColor: 'error.light', 
+            borderRadius: 1, 
+            bgcolor: 'rgba(244, 67, 54, 0.05)'
+          }}>
+            <Typography variant="body2">{error}</Typography>
           </Box>
         ) : (
           <Grid container spacing={3}>
@@ -372,29 +382,31 @@ function Analytics() {
                   <AreaChart data={analyticsData.dailyTrends}>
                     <defs>
                       <linearGradient id="colorReports" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={colors.primary} stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor={colors.primary} stopOpacity={0.1}/>
+                        <stop offset="5%" stopColor={colors.primary} stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor={colors.primary} stopOpacity={0.05}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={colors.border} />
-                    <XAxis dataKey="date" stroke={colors.text.secondary} />
-                    <YAxis stroke={colors.text.secondary} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={colors.border} vertical={false} />
+                    <XAxis dataKey="date" stroke={colors.text.secondary} fontSize={11} tickMargin={8} />
+                    <YAxis stroke={colors.text.secondary} fontSize={11} tickMargin={8} />
                     <Tooltip 
                       contentStyle={{ 
-                        borderRadius: 8, 
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                        border: 'none'
+                        borderRadius: 2, 
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+                        border: '1px solid',
+                        borderColor: colors.border,
+                        fontSize: '0.85rem'
                       }} 
                     />
-                    <Legend />
+                    <Legend wrapperStyle={{ fontSize: '0.85rem' }} />
                     <Area 
                       type="monotone" 
                       dataKey="reports" 
                       stroke={colors.primary} 
                       fillOpacity={1}
                       fill="url(#colorReports)"
-                      strokeWidth={3}
-                      activeDot={{ r: 8, strokeWidth: 0, fill: colors.primaryDark }}
+                      strokeWidth={2}
+                      activeDot={{ r: 6, strokeWidth: 0, fill: colors.primaryDark }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -417,9 +429,9 @@ function Analytics() {
                       cy="50%"
                       labelLine={false}
                       label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={90}
+                      outerRadius={80}
                       innerRadius={40}
-                      paddingAngle={2}
+                      paddingAngle={1}
                       fill="#8884d8"
                       dataKey="value"
                     >
@@ -428,16 +440,25 @@ function Analytics() {
                           key={`cell-${index}`} 
                           fill={entry.color} 
                           stroke={colors.surface}
-                          strokeWidth={2}
+                          strokeWidth={1}
                         />
                       ))}
                     </Pie>
                     <Tooltip 
                       contentStyle={{ 
-                        borderRadius: 8, 
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                        border: 'none'
+                        borderRadius: 2, 
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+                        border: '1px solid',
+                        borderColor: colors.border,
+                        fontSize: '0.85rem'
                       }}
+                      formatter={(value) => [`${value}%`]}
+                    />
+                    <Legend
+                      layout="horizontal"
+                      verticalAlign="bottom"
+                      align="center"
+                      wrapperStyle={{ fontSize: '0.85rem', paddingTop: '10px' }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -453,27 +474,44 @@ function Analytics() {
                 onExport={() => exportData('zones')}
               >
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analyticsData.affectedZones}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={colors.border} />
-                    <XAxis dataKey="name" stroke={colors.text.secondary} />
-                    <YAxis stroke={colors.text.secondary} />
+                  <BarChart data={analyticsData.affectedZones} barSize={20}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={colors.border} vertical={false} />
+                    <XAxis 
+                      dataKey="name" 
+                      stroke={colors.text.secondary} 
+                      fontSize={11} 
+                      tickMargin={8}
+                    />
+                    <YAxis 
+                      stroke={colors.text.secondary} 
+                      fontSize={11}
+                      tickMargin={8}
+                    />
                     <Tooltip 
                       contentStyle={{ 
-                        borderRadius: 8, 
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                        border: 'none'
+                        borderRadius: 2, 
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+                        border: '1px solid',
+                        borderColor: colors.border,
+                        fontSize: '0.85rem'
                       }}
                     />
-                    <Legend />
+                    <Legend 
+                      wrapperStyle={{ 
+                        fontSize: '0.85rem',
+                        paddingTop: '10px'
+                      }} 
+                    />
                     <Bar 
                       dataKey="reports" 
                       name="Number of Reports"
-                      radius={[4, 4, 0, 0]}
+                      radius={[2, 2, 0, 0]}
                     >
                       {analyticsData.affectedZones.map((entry, index) => (
                         <Cell 
-                          key={`cell-${index}`} 
+                          key={`cell-${index}`}
                           fill={colors.primary} 
+                          fillOpacity={0.7}
                         />
                       ))}
                     </Bar>
@@ -491,27 +529,47 @@ function Analytics() {
                 onExport={() => exportData('types')}
               >
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analyticsData.damageTypes} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke={colors.border} />
-                    <XAxis type="number" stroke={colors.text.secondary} />
-                    <YAxis dataKey="name" type="category" width={100} stroke={colors.text.secondary} />
+                  <BarChart data={analyticsData.damageTypes} layout="vertical" barSize={20}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={colors.border} horizontal={false} />
+                    <XAxis 
+                      type="number" 
+                      stroke={colors.text.secondary} 
+                      fontSize={11}
+                      tickMargin={8}
+                    />
+                    <YAxis 
+                      dataKey="name" 
+                      type="category" 
+                      width={100} 
+                      stroke={colors.text.secondary} 
+                      fontSize={11}
+                      tickMargin={8}
+                    />
                     <Tooltip 
                       contentStyle={{ 
-                        borderRadius: 8, 
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                        border: 'none'
+                        borderRadius: 2, 
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+                        border: '1px solid',
+                        borderColor: colors.border,
+                        fontSize: '0.85rem'
                       }}
                     />
-                    <Legend />
+                    <Legend 
+                      wrapperStyle={{ 
+                        fontSize: '0.85rem',
+                        paddingTop: '10px'
+                      }} 
+                    />
                     <Bar 
                       dataKey="value" 
                       name="Number of Reports"
-                      radius={[0, 4, 4, 0]}
+                      radius={[0, 2, 2, 0]}
                     >
                       {analyticsData.damageTypes.map((entry, index) => (
                         <Cell 
                           key={`cell-${index}`} 
-                          fill={colors.secondary} 
+                          fill={colors.secondary}
+                          fillOpacity={0.7}
                         />
                       ))}
                     </Bar>
@@ -538,9 +596,9 @@ function Analytics() {
                           cy="50%"
                           labelLine={false}
                           label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          outerRadius={90}
+                          outerRadius={80}
                           innerRadius={40}
-                          paddingAngle={2}
+                          paddingAngle={1}
                           fill="#8884d8"
                           dataKey="value"
                         >
@@ -549,43 +607,59 @@ function Analytics() {
                               key={`cell-${index}`} 
                               fill={entry.color} 
                               stroke={colors.surface}
-                              strokeWidth={2}
+                              strokeWidth={1}
                             />
                           ))}
                         </Pie>
                         <Tooltip 
                           contentStyle={{ 
-                            borderRadius: 8, 
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                            border: 'none'
+                            borderRadius: 2, 
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+                            border: '1px solid',
+                            borderColor: colors.border,
+                            fontSize: '0.85rem'
                           }}
+                          formatter={(value) => [`${value}%`]}
                         />
-                        <Legend />
+                        <Legend
+                          layout="horizontal"
+                          verticalAlign="bottom"
+                          align="center"
+                          wrapperStyle={{ fontSize: '0.85rem', paddingTop: '10px' }}
+                        />
                       </PieChart>
                     </ResponsiveContainer>
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                       {analyticsData.repairStatus.map((status, index) => (
-                        <Box sx={{ mb: 2.5 }} key={status.name}>
+                        <Box sx={{ mb: 2 }} key={status.name}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                             <Typography 
-                              variant="body1" 
-                              fontWeight="500" 
-                              color={colors.text.primary}
+                              variant="body2" 
+                              sx={{ 
+                                color: 'text.primary',
+                                fontSize: '0.85rem'
+                              }}
                             >
                               {status.name}
                             </Typography>
-                            <Typography variant="body1" fontWeight="bold">
+                            <Typography 
+                              variant="body2" 
+                              sx={{ 
+                                fontWeight: 500,
+                                fontSize: '0.85rem'
+                              }}
+                            >
                               {status.value}%
                             </Typography>
                           </Box>
                           <Box 
                             sx={{ 
                               width: '100%', 
-                              height: 10, 
-                              bgcolor: colors.border, 
-                              borderRadius: 2,
+                              height: 6, 
+                              bgcolor: 'background.default', 
+                              borderRadius: 0.5,
                               overflow: 'hidden'
                             }}
                           >
@@ -593,8 +667,7 @@ function Analytics() {
                               sx={{ 
                                 width: `${status.value}%`, 
                                 height: '100%', 
-                                bgcolor: status.color, 
-                                borderRadius: 2
+                                bgcolor: status.color
                               }} 
                             />
                           </Box>
