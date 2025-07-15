@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const MANUAL_OVERRIDE_IP = '192.168.23.177'; 
 const API_PORT = '5030';
-// We'll use the API_BASE_URL from line 111
+const PRODUCTION_API_URL = 'https://safestreets-backend.onrender.com/api';
 
 // Function to validate URL and check if it's reachable
 export const testApiConnection = async (url, timeout = 5000) => {
@@ -30,7 +30,16 @@ export const testApiConnection = async (url, timeout = 5000) => {
 // Function to get the appropriate base URL
 export const getBaseUrl = async () => {
   try {
-    // Try to get the stored custom URL first
+    // Try the production URL first
+    const isProductionReachable = await testApiConnection(PRODUCTION_API_URL);
+    if (isProductionReachable) {
+      console.log('Production API URL is reachable');
+      return PRODUCTION_API_URL;
+    } else {
+      console.log('Production API URL is not reachable, checking alternatives');
+    }
+
+    // Try to get the stored custom URL next
     const storedUrl = await AsyncStorage.getItem('custom_api_url');
     if (storedUrl) {
       console.log('Found custom API URL in storage:', storedUrl);
@@ -45,7 +54,7 @@ export const getBaseUrl = async () => {
       }
     }
   } catch (error) {
-    console.error('Error reading or testing custom API URL:', error);
+    console.error('Error reading or testing API URLs:', error);
   }
 
   // Get the Expo host URL when running in Expo Go
@@ -99,7 +108,7 @@ export const getBaseUrl = async () => {
     }
   } else {
     // Production URL
-    baseUrl = 'https://api.safestreets-prod.com/api';
+    baseUrl = PRODUCTION_API_URL;
   }
 
   console.log('Using API base URL:', baseUrl);
@@ -108,7 +117,7 @@ export const getBaseUrl = async () => {
 
 // This is the default URL configuration
 // It will be updated at runtime by getBaseUrl()
-export let API_BASE_URL = `http://${MANUAL_OVERRIDE_IP}:${API_PORT}/api`;
+export let API_BASE_URL = PRODUCTION_API_URL;
 
 // Set a custom API URL (can be called from settings screen)
 export const setCustomApiUrl = async (url) => {
