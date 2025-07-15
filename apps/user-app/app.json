@@ -4,7 +4,7 @@
     "slug": "user-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/road.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -19,7 +19,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/road.png",
         "backgroundColor": "#ffffff"
       },
       "jsEngine": "hermes",
@@ -27,7 +27,7 @@
       "googleServicesFile": "./google-services.json"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/road.png"
     },
     "plugins": [
       "react-native-vision-camera",
