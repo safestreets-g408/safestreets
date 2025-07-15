@@ -1,10 +1,10 @@
 # SafeStreets - AI-Powered Road Damage Detection & Management System
 
-## 🌟 Overview
+## Overview
 
 SafeStreets is an innovative end-to-end solution that revolutionizes road maintenance operations through artificial intelligence and modern technology. The system combines mobile image capture, Vision Transformer (ViT) machine learning models, and intuitive management dashboards to streamline the entire process from damage detection to repair completion.
 
-## 🏗️ System Architecture
+## System Architecture
 
 The SafeStreets platform consists of five interconnected components:
 
@@ -18,20 +18,20 @@ The SafeStreets platform consists of five interconnected components:
 4. **🖥️ Admin Portal** - React-based web dashboard with Material-UI
 5. **📊 Analytics Engine** - Real-time data processing and insights
 
-## ✨ Key Features
+## Key Features
 
-- 📷 Advanced road damage detection using AI
-- 🤖 AI-powered road damage report summary generation using Google Gemini
-- � Gemini-powered AI chat assistant for both admin and field workers
-- �📍 Automatic GPS location tagging
-- 🔐 Secure authentication for administrators and field workers
-- 📊 Comprehensive analytics dashboard
-- 📝 Task assignment and tracking for repair teams
-- 📱 Cross-platform mobile app for field workers
-- 🖥️ Feature-rich admin web portal
-- 🏢 Multi-tenant architecture for multiple organizations
+- Advanced road damage detection using AI
+- AI-powered road damage report summary generation using Google Gemini
+- Gemini-powered AI chat assistant for both admin and field workers
+- Automatic GPS location tagging
+- Secure authentication for administrators and field workers
+- Comprehensive analytics dashboard
+- Task assignment and tracking for repair teams
+- Cross-platform mobile app for field workers
+- Feature-rich admin web portal
+- Multi-tenant architecture for multiple organizations
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 ### Core Technologies
 - **Frontend**: React.js, React Native, Material-UI, Expo
@@ -40,7 +40,7 @@ The SafeStreets platform consists of five interconnected components:
 - **Authentication**: JWT, bcryptjs
 - **DevOps**: Git, npm/yarn, Nodemon, dotenv
 
-## 🤖 AI Features
+## AI Features
 
 ### Vision Transformer (ViT) for Image Classification
 The system uses a Vision Transformer model to detect and classify road damage from uploaded images into 8 different damage categories.
@@ -72,7 +72,7 @@ Powered by Gemini 1.5 Pro, SafeStreets offers intelligent chat assistance for bo
 
 The AI Assistant contextually adapts to each user's role, providing relevant information and maintaining conversation history for continuous support.
 
-## 🚀 Quick Start Guide
+## Quick Start Guide
 
 ### Prerequisites
 
@@ -82,12 +82,12 @@ The AI Assistant contextually adapts to each user's role, providing relevant inf
 - **Redis** (for caching)
 - **Expo CLI** - `npm install -g @expo/cli`
 
-### 📦 Installation
+### Installation
 
 1. Clone the repository and navigate to the project folder
 2. Set up each component by following the detailed installation instructions in the [setup documentation](./docs/setup-guide.md)
 
-### 🏃‍♂️ Running the System
+### Running the System
 
 #### Using the Start Script
 ```bash
@@ -120,7 +120,7 @@ cd ai_models_server && python app.py
 # Select "Start User App"
 ```
 
-## 📚 Documentation
+## Documentation
 
 For detailed documentation on various aspects of the project, please refer to:
 
@@ -139,7 +139,7 @@ For detailed documentation on various aspects of the project, please refer to:
 - [Features Overview](./docs/features.md) - Comprehensive feature list
 
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 safestreets/
