@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "5030:5030"
+    env_file:
+      - .env
+    volumes:
+      - ./uploads:/usr/src/app/uploads
+      - ./results:/usr/src/app/results 
