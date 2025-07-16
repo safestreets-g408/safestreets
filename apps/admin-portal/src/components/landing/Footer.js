@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTheme } from '@mui/material/styles';
 import {
   Box,
@@ -9,17 +9,82 @@ import {
   IconButton,
   Divider,
   alpha,
+  TextField,
+  Button,
+  Snackbar,
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import {
   LinkedIn,
   GitHub,
   Email,
+  Send as SendIcon
 } from '@mui/icons-material';
+import axios from 'axios';
+import config from '../../config';
 
 const Footer = () => {
   const theme = useTheme();
-  
   const currentYear = new Date().getFullYear();
+  
+  // State for newsletter subscription
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
+  
+  // Handle form submission
+  const handleSubscribe = async (e) => {
+    e.preventDefault();
+    
+    // Simple email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setSnackbar({
+        open: true,
+        message: 'Please enter a valid email address',
+        severity: 'error'
+      });
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      // Get the API base URL from config
+      const API_BASE_URL = config.backend.baseURL;
+      
+      // Send subscription request
+      const response = await axios.post(`${API_BASE_URL}/api/admin/subscribe-newsletter`, { email });
+      
+      setSnackbar({
+        open: true,
+        message: response.data.message || 'Successfully subscribed to newsletter!',
+        severity: 'success'
+      });
+      
+      // Clear the form
+      setEmail('');
+    } catch (error) {
+      console.error('Newsletter subscription error:', error);
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.message || 'Failed to subscribe. Please try again later.',
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Handle snackbar close
+  const handleCloseSnackbar = () => {
+    setSnackbar(prev => ({ ...prev, open: false }));
+  };
   
   return (
     <Box
@@ -204,56 +269,47 @@ const Footer = () => {
             
             <Box
               component="form"
+              onSubmit={handleSubscribe}
               sx={{
                 display: 'flex',
                 alignItems: 'center',
                 position: 'relative',
               }}
             >
-              <Box
-                component="input"
-                type="email"
+              <TextField
+                fullWidth
                 placeholder="Enter your email"
+                variant="outlined"
+                type="email"
+                size="small"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={loading}
                 sx={{
-                  width: '100%',
-                  p: 1.5,
-                  pl: 2,
-                  pr: '110px',
-                  borderRadius: '10px',
-                  border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
-                  bgcolor: 'background.paper',
-                  fontSize: '0.875rem',
-                  transition: 'all 0.2s',
-                  '&:focus': {
-                    outline: 'none',
-                    borderColor: theme.palette.primary.main,
-                    boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.2)}`,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '8px',
+                    pr: '110px',
                   },
                 }}
               />
-              <Box
-                component="button"
+              <Button
                 type="submit"
+                variant="contained"
+                disabled={loading}
+                startIcon={loading ? <CircularProgress size={20} /> : <SendIcon />}
                 sx={{
                   position: 'absolute',
                   right: 5,
-                  py: 0.9,
-                  px: 2,
-                  borderRadius: '8px',
-                  bgcolor: 'primary.main',
-                  color: 'white',
+                  height: 'calc(100% - 10px)',
+                  borderRadius: '6px',
                   fontWeight: 600,
-                  fontSize: '0.8125rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  '&:hover': {
-                    bgcolor: 'primary.dark',
-                  },
+                  textTransform: 'none',
+                  whiteSpace: 'nowrap',
                 }}
               >
-                Subscribe
-              </Box>
+                {loading ? 'Subscribing...' : 'Subscribe'}
+              </Button>
             </Box>
           </Grid>
         </Grid>
@@ -293,6 +349,23 @@ const Footer = () => {
           </Grid>
         </Grid>
       </Container>
+      
+      {/* Snackbar for notifications */}
+      <Snackbar 
+        open={snackbar.open} 
+        autoHideDuration={6000} 
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={handleCloseSnackbar} 
+          severity={snackbar.severity} 
+          sx={{ width: '100%' }}
+          variant="filled"
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

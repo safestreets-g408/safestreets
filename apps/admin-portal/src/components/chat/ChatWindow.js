@@ -13,7 +13,6 @@ import {
   InputAdornment,
   CircularProgress,
   Alert,
-  Skeleton,
   Menu,
   MenuItem
 } from '@mui/material';
@@ -207,10 +206,6 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
     if (!socket) return;
 
     const handleNewMessage = (message) => {
-      console.log('ChatWindow: Received new_message event:', message);
-      console.log('ChatWindow: Message properties:', JSON.stringify(message, null, 2));
-      console.log('ChatWindow: Current chat context - tenantId:', tenantId, 'roomType:', roomType, 'roomId:', roomId);
-      
       // Enhanced message filtering for different chat types
       const currentTenantIdStr = tenantId ? tenantId.toString() : '';
       const currentRoomIdStr = roomId ? roomId.toString() : '';
@@ -222,7 +217,6 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
         isForThisChat = 
           (message.chatId && message.chatId.toString() === currentRoomIdStr) ||
           (message.roomId && message.roomId.toString() === currentRoomIdStr);
-        console.log('Field worker chat check:', isForThisChat, 'message.chatId:', message.chatId, 'expected roomId:', roomId);
       } else {
         // For regular tenant chats, match by tenantId
         isForThisChat = 
@@ -232,30 +226,13 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
           (message.adminId && message.fromFieldWorker && user && 
             (message.adminId === user._id || message.adminId === user.id)) || // Direct message to this admin
           (message.chatId && typeof message.chatId === 'string' && message.chatId.includes(tenantId));
-        console.log('Regular tenant chat check:', isForThisChat, 'message.tenantId:', message.tenantId, 'expected tenantId:', tenantId);
-      }
-      
-      // For debugging
-      if (!isForThisChat) {
-        console.log(`ChatWindow: Message doesn't match current chat context`);
-        console.log('ChatWindow: Message details for debugging:', {
-          messageChatId: message.chatId,
-          messageTenantId: message.tenantId,
-          messageRoomId: message.roomId,
-          currentTenantId: tenantId,
-          currentRoomId: roomId,
-          currentRoomType: roomType
-        });
       }
       
       if (isForThisChat) {
-        console.log('ChatWindow: Adding message to chat:', message);
-        
         // Check for duplicate messages
         setMessages(prev => {
           const existingMessage = prev.find(msg => msg._id === message._id);
           if (existingMessage) {
-            console.log('ChatWindow: Duplicate message detected, skipping');
             return prev;
           }
           return [...prev, message];
@@ -302,8 +279,6 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
 
   // Safe message renderer
   const renderMessageContent = useCallback((message, messageType) => {
-    console.log('Rendering message:', message, 'Type:', messageType); // Debug log
-    
     if (!message) return 'No message content';
     
     // Handle text messages that contain report data (with our special prefix)
@@ -344,9 +319,6 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
         justifyContent: 'center',
         height: '100%',
         p: 3,
-        bgcolor: theme.palette.mode === 'dark'
-          ? alpha(theme.palette.background.paper, 0.8)
-          : 'rgba(255, 255, 255, 0.9)',
       }}
     >
       <Box
@@ -357,45 +329,15 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
           gap: 3,
           px: 4,
           py: 5,
-          borderRadius: 3,
           maxWidth: 400,
-          background: theme.palette.mode === 'dark'
-            ? alpha(theme.palette.error.dark, 0.1)
-            : 'rgba(239, 68, 68, 0.05)',
-          border: `1px solid ${theme.palette.mode === 'dark'
-            ? alpha(theme.palette.error.main, 0.3)
-            : 'rgba(239, 68, 68, 0.2)'}`,
-          boxShadow: theme.palette.mode === 'dark'
-            ? `0 4px 15px ${alpha(theme.palette.error.dark, 0.15)}`
-            : '0 4px 15px rgba(239, 68, 68, 0.1)',
         }}
       >
-        <Box
-          sx={{
-            width: 70,
-            height: 70,
-            borderRadius: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            bgcolor: theme.palette.mode === 'dark'
-              ? alpha(theme.palette.error.dark, 0.15)
-              : 'rgba(239, 68, 68, 0.1)',
-            border: `1px solid ${theme.palette.mode === 'dark'
-              ? alpha(theme.palette.error.main, 0.3)
-              : 'rgba(239, 68, 68, 0.2)'}`,
-            boxShadow: theme.palette.mode === 'dark'
-              ? `0 2px 10px ${alpha(theme.palette.error.dark, 0.15)}`
-              : '0 2px 10px rgba(239, 68, 68, 0.1)',
-          }}
-        >
-          <RefreshIcon 
-            sx={{ 
-              color: theme.palette.error.main, 
-              fontSize: 36,
-            }} 
-          />
-        </Box>
+        <RefreshIcon 
+          sx={{ 
+            color: theme.palette.error.main, 
+            fontSize: 36,
+          }} 
+        />
         
         <Box sx={{ textAlign: 'center' }}>
           <Typography 
@@ -424,25 +366,7 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
             size="large"
             onClick={() => loadMessages()}
             sx={{ 
-              bgcolor: theme.palette.mode === 'dark'
-                ? alpha(theme.palette.primary.dark, 0.15)
-                : 'rgba(139, 92, 246, 0.1)',
-              color: '#6d28d9',
-              width: 60,
-              height: 60,
-              border: `1px solid ${theme.palette.mode === 'dark'
-                ? alpha(theme.palette.primary.main, 0.3)
-                : 'rgba(139, 92, 246, 0.2)'}`,
-              '&:hover': { 
-                bgcolor: theme.palette.mode === 'dark'
-                  ? alpha(theme.palette.primary.dark, 0.25)
-                  : 'rgba(139, 92, 246, 0.15)',
-                transform: 'scale(1.05)',
-                boxShadow: theme.palette.mode === 'dark'
-                  ? `0 4px 12px ${alpha(theme.palette.primary.dark, 0.2)}`
-                  : '0 4px 12px rgba(139, 92, 246, 0.15)',
-              },
-              transition: 'all 0.2s ease-in-out'
+              color: theme.palette.primary.main,
             }}
           >
             <RefreshIcon sx={{ fontSize: 28 }} />
@@ -460,98 +384,21 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
           height: '100%', 
           display: 'flex', 
           flexDirection: 'column',
-          borderRadius: 3,
           overflow: 'hidden',
-          border: '1px solid rgba(255, 255, 255, 0.8)',
-          bgcolor: 'rgba(255, 255, 255, 0.8)',
-          backdropFilter: 'blur(10px)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
           position: 'relative',
         }}
       >
-        {/* Header Skeleton */}
         <Box sx={{ 
-          p: 3, 
-          background: theme.palette.mode === 'dark'
-            ? alpha(theme.palette.primary.dark, 0.1)
-            : 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%)',
-          borderBottom: `1px solid ${theme.palette.mode === 'dark'
-            ? alpha(theme.palette.primary.dark, 0.2)
-            : 'rgba(139, 92, 246, 0.15)'}`,
+          p: 2, 
+          borderBottom: `1px solid ${theme.palette.divider}`,
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'space-between' 
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Skeleton variant="circular" width={48} height={48} animation="wave" />
-            <Box>
-              <Skeleton variant="rectangular" width={180} height={24} sx={{ borderRadius: 1, mb: 1 }} animation="wave" />
-              <Skeleton variant="rectangular" width={120} height={16} sx={{ borderRadius: 1 }} animation="wave" />
-            </Box>
+            <CircularProgress size={24} />
+            <Typography variant="body1">Loading conversation...</Typography>
           </Box>
-          <Skeleton variant="circular" width={36} height={36} animation="wave" />
-        </Box>
-        
-        {/* Messages Area Skeleton */}
-        <Box sx={{ 
-          flex: 1, 
-          p: 3,
-          display: 'flex',
-          flexDirection: 'column',
-          background: theme.palette.mode === 'dark'
-            ? alpha(theme.palette.background.default, 0.5)
-            : 'linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(249, 250, 251, 0.95) 100%)',
-        }}>
-          <Box 
-            sx={{ 
-              display: 'flex', 
-              justifyContent: 'center', 
-              alignItems: 'center',
-              height: '100%',
-              flexDirection: 'column',
-              gap: 3,
-            }}
-          >
-            <CircularProgress 
-              size={60} 
-              thickness={4}
-              sx={{ 
-                color: '#8b5cf6',
-                opacity: 0.5,
-              }} 
-            />
-            <Typography 
-              variant="body1" 
-              sx={{ 
-                color: '#6b7280', 
-                fontWeight: 500,
-                opacity: 0.7,
-              }}
-            >
-              Loading conversation...
-            </Typography>
-          </Box>
-        </Box>
-        
-        {/* Input Skeleton */}
-        <Box sx={{ 
-          p: 3, 
-          borderTop: '1px solid rgba(226, 232, 240, 0.8)',
-          background: 'rgba(249, 250, 251, 0.8)',
-        }}>
-          <Skeleton 
-            variant="rectangular" 
-            height={54} 
-            sx={{ 
-              borderRadius: '24px',
-              animation: "pulse 1.5s infinite ease-in-out",
-              '@keyframes pulse': {
-                '0%': { opacity: 0.6 },
-                '50%': { opacity: 0.8 },
-                '100%': { opacity: 0.6 },
-              }
-            }} 
-          />
         </Box>
       </Paper>
     );
@@ -566,13 +413,7 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
           height: '100%', 
           display: 'flex', 
           flexDirection: 'column',
-          borderRadius: 3,
           overflow: 'hidden',
-          border: '1px solid rgba(255, 255, 255, 0.8)',
-          bgcolor: 'rgba(255, 255, 255, 0.8)',
-          backdropFilter: 'blur(10px)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
-          position: 'relative',
         }}
       >
         {renderErrorState()}
@@ -587,107 +428,36 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
         height: '100%', 
         display: 'flex', 
         flexDirection: 'column',
-        borderRadius: 3,
         overflow: 'hidden',
-        border: `1px solid ${theme.palette.mode === 'dark' 
-          ? alpha(theme.palette.background.paper, 0.8) 
-          : 'rgba(255, 255, 255, 0.8)'}`,
-        bgcolor: theme.palette.mode === 'dark' 
-          ? alpha(theme.palette.background.paper, 0.8)
-          : 'rgba(255, 255, 255, 0.8)',
-        backdropFilter: 'blur(10px)',
-        boxShadow: theme.palette.mode === 'dark' 
-          ? `0 8px 32px ${alpha(theme.palette.common.black, 0.2)}`
-          : '0 8px 32px rgba(0, 0, 0, 0.08)',
       }}
     >
-      {/* Enhanced Header */}
+      {/* Header */}
       <Box sx={{ 
-        p: 3, 
-        background: theme.palette.mode === 'dark'
-          ? alpha(theme.palette.primary.dark, 0.1)
-          : 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%)',
-        borderBottom: `1px solid ${theme.palette.mode === 'dark'
-          ? alpha(theme.palette.primary.dark, 0.2)
-          : 'rgba(139, 92, 246, 0.15)'}`,
+        p: 2, 
+        borderBottom: `1px solid ${theme.palette.divider}`,
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'space-between' 
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box sx={{
-            position: 'relative',
-          }}>
-            <Avatar 
-              sx={{ 
-                bgcolor: 'primary.main',
-                background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-                width: 48,
-                height: 48,
-                boxShadow: '0 5px 15px rgba(139, 92, 246, 0.25)',
-              }}
-            >
-              <PersonIcon />
-            </Avatar>
-            <Box sx={{
-              position: 'absolute',
-              bottom: -2,
-              right: -2,
-              width: 14,
-              height: 14,
-              borderRadius: '50%',
-              bgcolor: theme.palette.success.main,
-              border: `2px solid ${theme.palette.mode === 'dark' ? theme.palette.background.paper : 'white'}`,
-              boxShadow: '0 2px 5px rgba(16, 185, 129, 0.3)',
-            }} />
-          </Box>
+          <Avatar 
+            sx={{ 
+              bgcolor: theme.palette.primary.main,
+            }}
+          >
+            <PersonIcon />
+          </Avatar>
           <Box>
-            <Typography variant="h6" sx={{ 
-              fontWeight: 700,                color: theme.palette.text.primary,
-              lineHeight: 1.3, 
-            }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
               {user.role === 'super-admin' ? tenantName : (contactName || 'Super Administrator')}
             </Typography>
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 1 
-            }}>
-              <Box sx={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                bgcolor: theme.palette.success.main,
-              }} />
-              <Typography variant="caption" sx={{ 
-                color: '#6b7280', 
-                fontSize: '0.8rem',
-                fontWeight: 500,
-              }}>
-                {user.role === 'super-admin' ? 'Tenant Admin Chat' : 'Support Chat'} • Online
-              </Typography>
-            </Box>
+            <Typography variant="caption" color="text.secondary">
+              {user.role === 'super-admin' ? 'Tenant Admin Chat' : 'Support Chat'} • Online
+            </Typography>
           </Box>
         </Box>
-        <IconButton 
-          onClick={onClose}
-          sx={{ 
-            bgcolor: theme.palette.mode === 'dark' 
-              ? alpha(theme.palette.background.paper, 0.8) 
-              : 'rgba(255, 255, 255, 0.8)',
-            boxShadow: theme.palette.mode === 'dark'
-              ? `0 2px 8px ${alpha(theme.palette.common.black, 0.2)}`
-              : '0 2px 8px rgba(0, 0, 0, 0.05)',
-            '&:hover': { 
-              bgcolor: theme.palette.mode === 'dark'
-                ? alpha(theme.palette.background.paper, 0.95)
-                : 'rgba(255, 255, 255, 0.95)',
-              transform: 'scale(1.05)'
-            },
-            transition: 'all 0.2s ease-in-out'
-          }}
-        >
-          <CloseIcon sx={{ color: theme.palette.text.secondary }} />
+        <IconButton onClick={onClose}>
+          <CloseIcon />
         </IconButton>
       </Box>
 
@@ -697,24 +467,21 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
         sx={{ 
           flex: 1, 
           overflow: 'auto', 
-          p: 3,
+          p: 2,
           display: 'flex',
           flexDirection: 'column',
-          background: theme.palette.mode === 'dark'
-            ? alpha(theme.palette.background.default, 0.5)
-            : 'linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(249, 250, 251, 0.95) 100%)',
+          bgcolor: theme.palette.background.default,
           '&::-webkit-scrollbar': {
             width: '6px',
           },
           '&::-webkit-scrollbar-track': {
             background: 'rgba(0, 0, 0, 0.03)',
-            borderRadius: '3px',
           },
           '&::-webkit-scrollbar-thumb': {
-            background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(139, 92, 246, 0.3) 100%)',
+            background: alpha(theme.palette.primary.main, 0.2),
             borderRadius: '3px',
             '&:hover': {
-              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.5) 0%, rgba(139, 92, 246, 0.5) 100%)',
+              background: alpha(theme.palette.primary.main, 0.3),
             },
           },
         }}
@@ -727,10 +494,7 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
       >
         {loadingMore && (
           <Box display="flex" justifyContent="center" p={2}>
-            <CircularProgress size={28} sx={{ 
-              color: '#8b5cf6',
-              opacity: 0.7,
-            }} />
+            <CircularProgress size={24} />
           </Box>
         )}
 
@@ -756,23 +520,13 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    mb: 2, 
-                    mt: index > 0 ? 2 : 0,
+                    mb: 1, 
                     width: '100%',
-                    position: 'relative',
                   }}>
                     <Typography 
                       variant="caption" 
-                      sx={{ 
-                        color: theme.palette.mode === 'dark' ? theme.palette.text.secondary : '#6b7280', 
-                        mb: 0,
-                        fontSize: '0.75rem',
-                        fontWeight: 500,
-                        px: 2,
-                        py: 0.5,
-                        borderRadius: '12px',
-                        bgcolor: 'rgba(139, 92, 246, 0.08)',
-                      }}
+                      color="text.secondary"
+                      sx={{ fontSize: '0.75rem' }}
                     >
                       {formatMessageTime(message.createdAt)}
                     </Typography>
@@ -783,50 +537,27 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
                   sx={{
                     maxWidth: '75%',
                     bgcolor: isOwn 
-                      ? 'primary.main'
-                      : theme.palette.mode === 'dark' 
-                        ? alpha(theme.palette.background.paper, 0.7)
-                        : 'rgba(255, 255, 255, 0.9)',
+                      ? theme.palette.primary.main
+                      : theme.palette.background.paper,
                     color: isOwn ? 'white' : 'text.primary',
                     p: 2,
-                    borderRadius: isOwn ? '20px 4px 20px 20px' : '4px 20px 20px 20px',
+                    borderRadius: 2,
                     display: 'flex',
                     flexDirection: 'column',
                     gap: 1,
-                    boxShadow: isOwn 
-                      ? theme.palette.mode === 'dark'
-                        ? `0 5px 15px ${alpha(theme.palette.primary.main, 0.3)}`
-                        : '0 5px 15px rgba(139, 92, 246, 0.25)'
-                      : theme.palette.mode === 'dark'
-                        ? `0 3px 10px ${alpha(theme.palette.common.black, 0.2)}`
-                        : '0 3px 10px rgba(0, 0, 0, 0.05)',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                     border: isOwn 
                       ? 'none' 
-                      : `1px solid ${theme.palette.mode === 'dark'
-                          ? alpha(theme.palette.divider, 0.5)
-                          : 'rgba(226, 232, 240, 0.8)'}`,
-                    background: isOwn 
-                      ? 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)' 
-                      : theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.background.paper, 0.7)
-                        : 'rgba(255, 255, 255, 0.9)',
-                    backdropFilter: 'blur(10px)',
-                    position: 'relative',
+                      : `1px solid ${theme.palette.divider}`,
                   }}
                 >
                   {!isOwn && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75 }}>
-                      {message.senderRole === 'super_admin' ? (
-                        <AdminIcon sx={{ fontSize: 16, color: '#8b5cf6' }} />
-                      ) : (
-                        <PersonIcon sx={{ fontSize: 16, color: '#3b82f6' }} />
-                      )}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                       <Typography variant="caption" sx={{ 
-                        fontWeight: 700, 
+                        fontWeight: 600, 
                         color: message.senderRole === 'super_admin' 
-                          ? theme.palette.mode === 'dark' ? theme.palette.primary.light : '#8b5cf6' 
-                          : theme.palette.mode === 'dark' ? theme.palette.primary.light : '#3b82f6',
-                        fontSize: '0.8rem',
+                          ? theme.palette.primary.main
+                          : theme.palette.primary.main,
                       }}>
                         {renderSenderName(message.senderName)}
                       </Typography>
@@ -836,19 +567,9 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
                         sx={{ 
                           height: 20, 
                           fontSize: '0.65rem',
-                          bgcolor: message.senderRole === 'super_admin' 
-                            ? theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.15) : 'rgba(139, 92, 246, 0.1)'
-                            : theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.15) : 'rgba(59, 130, 246, 0.1)',
-                          color: message.senderRole === 'super_admin'
-                            ? theme.palette.mode === 'dark' ? theme.palette.primary.light : '#8b5cf6'
-                            : theme.palette.mode === 'dark' ? theme.palette.primary.light : '#3b82f6',
-                          border: `1px solid ${message.senderRole === 'super_admin' 
-                            ? theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.3) : 'rgba(139, 92, 246, 0.3)'
-                            : theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.3) : 'rgba(59, 130, 246, 0.3)'}`,
-                          fontWeight: 600,
-                          '& .MuiChip-label': {
-                            px: 1,
-                          }
+                          bgcolor: alpha(theme.palette.primary.main, 0.1),
+                          color: theme.palette.primary.main,
+                          fontWeight: 500,
                         }}
                       />
                     </Box>
@@ -857,12 +578,11 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
                   <Box sx={{ 
                     fontSize: '0.95rem', 
                     lineHeight: 1.5,
-                    fontWeight: isOwn ? 400 : 400, 
                   }}>
                     {renderMessageContent(message.message, message.messageType)}
                   </Box>
 
-                  {/* Message actions for reporting */}
+                  {/* Message actions */}
                   <Box sx={{ 
                     position: 'absolute',
                     top: 8,
@@ -877,12 +597,7 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
                         e.stopPropagation();
                         setMoreMenuAnchorEl(e.currentTarget);
                       }}
-                      sx={{ 
-                        color: 'rgba(0, 0, 0, 0.54)',
-                        '&:hover': {
-                          color: '#8b5cf6',
-                        },
-                      }}
+                      sx={{ color: 'text.secondary' }}
                     >
                       <MoreVertIcon fontSize="small" />
                     </IconButton>
@@ -890,27 +605,12 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
                       anchorEl={moreMenuAnchorEl}
                       open={Boolean(moreMenuAnchorEl)}
                       onClose={() => setMoreMenuAnchorEl(null)}
-                      PaperProps={{
-                        elevation: 0,
-                        sx: {
-                          bgcolor: 'white',
-                          borderRadius: 2,
-                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                          mt: 1,
-                        },
-                      }}
                     >
                       <MenuItem 
                         onClick={(e) => {
                           e.stopPropagation();
                           handleOpenReportSelector();
                           setMoreMenuAnchorEl(null);
-                        }}
-                        sx={{ 
-                          color: 'text.primary',
-                          '&:hover': {
-                            bgcolor: 'rgba(139, 92, 246, 0.1)',
-                          },
                         }}
                       >
                         <AssignmentIcon fontSize="small" sx={{ mr: 1 }} />
@@ -924,70 +624,20 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
           })}
         </List>
 
-        {/* Typing indicator with modern styling */}
+        {/* Typing indicator */}
         {typingUsers.length > 0 && (
           <Box sx={{ 
-            px: 3, 
-            py: 2,
-            background: 'rgba(255, 255, 255, 0.9)',
-            backdropFilter: 'blur(10px)',
-            borderRadius: '16px',
-            margin: '8px 16px',
-            border: '1px solid rgba(226, 232, 240, 0.8)',
+            px: 2, 
+            py: 1,
             display: 'flex',
             alignItems: 'center',
-            gap: 2,
+            gap: 1,
             maxWidth: '250px',
           }}>
-            <Box sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-            }}>
-              <Box sx={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                bgcolor: '#8b5cf6',
-                animation: 'pulse1 1s infinite',
-                '@keyframes pulse1': {
-                  '0%, 100%': { opacity: 0.3 },
-                  '50%': { opacity: 1 }
-                }
-              }} />
-              <Box sx={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                bgcolor: '#8b5cf6',
-                animation: 'pulse2 1s infinite',
-                animationDelay: '0.2s',
-                '@keyframes pulse2': {
-                  '0%, 100%': { opacity: 0.3 },
-                  '50%': { opacity: 1 }
-                }
-              }} />
-              <Box sx={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                bgcolor: '#8b5cf6',
-                animation: 'pulse3 1s infinite',
-                animationDelay: '0.4s',
-                '@keyframes pulse3': {
-                  '0%, 100%': { opacity: 0.3 },
-                  '50%': { opacity: 1 }
-                }
-              }} />
-            </Box>
             <Typography 
               variant="caption" 
-              sx={{ 
-                color: '#6d28d9', 
-                fontStyle: 'italic',
-                fontSize: '0.85rem',
-                fontWeight: 500,
-              }}
+              color="text.secondary"
+              sx={{ fontStyle: 'italic' }}
             >
               {typingUsers.join(', ')} {typingUsers.length === 1 ? 'is' : 'are'} typing...
             </Typography>
@@ -1002,41 +652,17 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
         <Alert 
           severity="error" 
           onClose={() => setError(null)} 
-          sx={{ 
-            m: 2,
-            borderRadius: 3,
-            border: `1px solid ${theme.palette.mode === 'dark' 
-              ? alpha(theme.palette.error.main, 0.3) 
-              : 'rgba(239, 68, 68, 0.2)'}`,
-            boxShadow: theme.palette.mode === 'dark'
-              ? `0 4px 12px ${alpha(theme.palette.error.main, 0.2)}`
-              : '0 4px 12px rgba(239, 68, 68, 0.1)',
-            backgroundColor: theme.palette.mode === 'dark' 
-              ? alpha(theme.palette.error.dark, 0.2)
-              : undefined,
-            '& .MuiAlert-message': {
-              fontSize: '0.9rem',
-              fontWeight: 500,
-            },
-            '& .MuiAlert-icon': {
-              color: theme.palette.error.main
-            }
-          }}
+          sx={{ m: 2 }}
         >
           {error}
         </Alert>
       )}
 
-      {/* Enhanced Message input */}
+      {/* Message input */}
       <Box sx={{ 
-        p: 3, 
-        borderTop: `1px solid ${theme.palette.mode === 'dark' 
-          ? alpha(theme.palette.divider, 0.6) 
-          : 'rgba(226, 232, 240, 0.8)'}`,
-        background: theme.palette.mode === 'dark'
-          ? alpha(theme.palette.background.paper, 0.8)
-          : 'rgba(249, 250, 251, 0.8)',
-        backdropFilter: 'blur(10px)',
+        p: 2, 
+        borderTop: `1px solid ${theme.palette.divider}`,
+        bgcolor: theme.palette.background.paper,
       }}>
         <TextField
           fullWidth
@@ -1055,80 +681,15 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
           disabled={sending}
           multiline
           maxRows={4}
-          sx={{
-            '& .MuiOutlinedInput-root': {
-              borderRadius: '24px',
-              bgcolor: theme.palette.mode === 'dark' 
-                ? alpha(theme.palette.background.default, 0.6) 
-                : 'white',
-              boxShadow: theme.palette.mode === 'dark'
-                ? `0 2px 12px ${alpha(theme.palette.common.black, 0.15)}`
-                : '0 2px 12px rgba(0, 0, 0, 0.04)',
-              border: `1px solid ${theme.palette.mode === 'dark'
-                ? alpha(theme.palette.divider, 0.6)
-                : 'rgba(226, 232, 240, 0.8)'}`,
-              '& fieldset': {
-                borderColor: 'transparent',
-              },
-              '&:hover fieldset': {
-                borderColor: '#8b5cf6',
-              },
-              '&.Mui-focused fieldset': {
-                borderColor: '#8b5cf6',
-                borderWidth: '1px',
-              },
-              '&:hover': {
-                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.06)',
-              },
-            },
-            '& .MuiOutlinedInput-input': {
-              fontSize: '0.95rem',
-              padding: '14px 20px',
-              '&::placeholder': {
-                opacity: 0.6,
-                fontStyle: 'italic',
-              },
-            },
-          }}
+          variant="outlined"
+          size="small"
           InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <IconButton
-                  onClick={(e) => handleMoreMenuOpen(e)}
-                  size="small"
-                  sx={{
-                    color: '#6b7280',
-                    '&:hover': { color: '#8bcf6' },
-                  }}
-                >
-                  <MoreVertIcon />
-                </IconButton>
-              </InputAdornment>
-            ),
             endAdornment: (
               <InputAdornment position="end">
                 <IconButton
                   onClick={handleSendMessage}
                   disabled={!newMessage.trim() || sending}
-                  size="large"
-                  sx={{
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-                    color: 'white',
-                    width: 44,
-                    height: 44,
-                    mr: 0.5,
-                    boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
-                    transition: 'all 0.2s ease-in-out',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 6px 15px rgba(139, 92, 246, 0.4)',
-                      background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
-                    },
-                    '&.Mui-disabled': {
-                      bgcolor: 'rgba(203, 213, 225, 0.8)',
-                      color: 'rgba(148, 163, 184, 0.8)',
-                    },
-                  }}
+                  color="primary"
                 >
                   {sending ? <CircularProgress size={24} color="inherit" /> : <SendIcon />}
                 </IconButton>
@@ -1142,43 +703,14 @@ const ChatWindow = ({ tenantId, tenantName, contactName, roomType, roomId, onClo
           anchorEl={moreMenuAnchorEl}
           open={Boolean(moreMenuAnchorEl)}
           onClose={handleMoreMenuClose}
-          PaperProps={{
-            elevation: 3,
-            sx: {
-              borderRadius: 2,
-              minWidth: 180,
-              boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-            }
-          }}
         >
-          <MenuItem 
-            onClick={handleOpenReportSelector}
-            sx={{ 
-              py: 1.5, 
-              px: 2,
-              '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.08)' },
-            }}
-          >
-            <AssignmentIcon 
-              sx={{ 
-                color: '#3b82f6',
-                mr: 1,
-                fontSize: '1.2rem'
-              }} 
-            />
+          <MenuItem onClick={handleOpenReportSelector}>
+            <AssignmentIcon sx={{ mr: 1 }} />
             <Typography variant="body2">Share Damage Report</Typography>
           </MenuItem>
         </Menu>
       </Box>
       
-      {/* Report Selector Dialog */}
-      <ReportSelectorDialog
-        open={reportSelectorOpen}
-        onClose={() => setReportSelectorOpen(false)}
-        onSelectReport={handleSelectReport}
-        tenantId={tenantId}
-      />
-
       {/* Report Selector Dialog */}
       <ReportSelectorDialog
         open={reportSelectorOpen}
