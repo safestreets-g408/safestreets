@@ -77,7 +77,7 @@ function Repair() {
               profile: worker.profile || {},
               // The backend now calculates active assignments correctly
               activeAssignments: worker.activeAssignments || 0,
-              status: worker.status || (worker.activeAssignments >= 3 ? 'Busy' : 'Available')
+              status: typeof worker.status === 'object' ? 'Available' : worker.status || (worker.activeAssignments >= 3 ? 'Busy' : 'Available')
             }));
             
             // Set workers data

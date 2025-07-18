@@ -63,7 +63,7 @@ function FieldWorker({
         personalEmail: worker.profile?.personalEmail || worker.personalEmail || '',
         specialization: worker.specialization || '',
         region: worker.region || '',
-        status: worker.status || 'Available'
+        status: typeof worker.status === 'object' ? 'Available' : worker.status || 'Available'
       });
     } else {
       setWorkerData(resetWorkerData());
@@ -234,10 +234,10 @@ function FieldWorker({
                       variant="caption"
                       sx={{ 
                         fontWeight: 500, 
-                        color: worker.status === 'Available' ? 'success.main' : 'warning.main'
+                        color: typeof worker.status === 'object' || worker.status === 'Available' ? 'success.main' : 'warning.main'
                       }}
                     >
-                      {worker.status}
+                      {typeof worker.status === 'object' ? 'Available' : worker.status}
                     </Typography>
                   </Box>
                   <Typography variant="caption" color="text.secondary" display="block">
