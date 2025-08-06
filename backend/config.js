@@ -28,7 +28,7 @@ module.exports = {
   
   // AI Models server configuration
   aiModels: {
-    url: process.env.AI_MODELS_SERVER_URL || 'http://localhost:5000',
+    url: process.env.AI_MODELS_SERVER_URL || 'http://127.0.0.1:5000',
     timeout: process.env.AI_REQUEST_TIMEOUT || 30000, // 30 seconds
   },
   

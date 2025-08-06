@@ -1,118 +1,207 @@
-# Road Damage Detection and Management System
+# SafeStreets - Road Damage Detection and Management System
 
-This document outlines the architecture and features of a road damage detection and management system, designed to streamline maintenance operations.
+This document outlines the implemented features of the SafeStreets system, designed to streamline road maintenance operations through AI-powered damage detection and management.
 
-## 1. Mobile Application (for Maintenance Teams)
+## 1. Mobile Application (for Field Workers)
 
 * **Image Capture:**
-    * Field workers can capture images of road damages using their mobile devices.
+    * Field workers can capture images of road damages using their mobile devices' camera
+    * Support for both camera capture and gallery image selection
+    * Camera screen with real-time location tagging
+
 * **GPS Tagging:**
-    * Automatic GPS location tagging is embedded within each captured image.
+    * Automatic GPS location tagging with high-accuracy positioning
+    * Reverse geocoding to provide detailed address information
+    * Fallback mechanisms for different accuracy levels
+
 * **Damage Submission:**
-    * Images and GPS coordinates are securely transmitted to the backend server via an API.
+    * Images and GPS coordinates are securely transmitted to the backend server
+    * Automatic AI analysis of submitted images
+    * Progress tracking during submission
+
+* **Road Validation:**
+    * AI-based validation to ensure images contain actual road surfaces
+    * Prevents submission of irrelevant images
+
 * **Status Tracking:**
-    * Users can view the history of their submitted reports, including their current status (pending/resolved).
-* **Offline Support (Optional):**
-    * The application can store images offline and synchronize them with the server when an internet connection is available.
+    * Field workers can view the history of their submitted reports
+    * Real-time status updates (pending/in-progress/resolved)
+    * Detailed view of assigned repair tasks
 
-## 2. AI-Powered Damage Detection (Vision Transformer Model)
+* **Notifications System:**
+    * Real-time push notifications for new assignments
+    * Task reminders and status updates
+    * Toast notifications with interactive elements
 
-* **Image Classification:**
-    * The system employs a Vision Transformer (ViT) model to classify road damages into the following categories:
+* **Chat System:**
+    * Direct communication with administrators
+    * Support for image sharing in chat
+    * Chat notifications and badges
+
+## 2. AI-Powered Damage Detection
+
+* **Multi-Model Architecture:**
+    * Vision Transformer (ViT) for damage classification
+    * YOLO object detection (v8 with v5 fallback) for damage localization
+    * CNN-based road surface classifier for image validation
+    * Google Gemini for natural language report generation
+
+* **Damage Classification:**
+    * Identifies multiple damage types including:
         * Potholes
         * Surface cracks
         * Alligator cracking
         * Erosion/wear
+
 * **Severity Assessment:**
-    * The model assesses the severity of the damage based on factors such as:
-        * Crack width
-        * Area size
-        * Damage density
+    * AI-based assessment of damage severity
+    * Considers factors like crack width, area size, and damage density
+    * Provides standardized severity levels (Low/Medium/High/Critical)
+
+* **Visual Damage Localization:**
+    * Bounding box identification of damage areas
+    * Annotated image generation for visual reference
+    * Confidence scores for detected damages
+
 * **Text Summary Generation:**
-    * The system generates a concise text summary of the damage, including:
-        * Type: (e.g., Pothole)
-        * Severity: (e.g., High)
-        * Priority: (e.g., Urgent)
-        * Action: (e.g., Immediate repair suggested)
-* **Performance Optimization:**
-    * Preprocessing techniques are used to enhance image quality for better ViT performance.
-    * Configurable confidence thresholds are implemented.
+    * AI-generated natural language descriptions using Google Gemini
+    * Structured damage reports with:
+        * Damage type and classification
+        * Severity assessment
+        * Priority recommendations
+        * Suggested actions
+    * Caching system for efficient report generation
 
-## 3. Backend (Node.js + Express + MongoDB)
+* **Fallback Mechanisms:**
+    * Robust error handling for AI model failures
+    * Graceful degradation when specific models are unavailable
+    * Alternative processing paths for different scenarios
 
-* **Image API:**
-    * Handles the reception, storage, and processing of uploaded images.
-* **ViT API Trigger:**
-    * Sends images to the machine learning model and parses the response.
-* **Database Management:**
-    * Manages user data, images, classification results, summaries, and repair history using MongoDB.
+## 3. Backend Server
+
+* **API Architecture:**
+    * RESTful API endpoints for all system operations
+    * Express.js server with modular route structure
+    * MongoDB database for document storage
+    * Socket.IO for real-time communications
+
+* **Multi-Tenant Architecture:**
+    * Complete tenant isolation for data security
+    * Role-based access control across tenants
+    * Super-admin capabilities for global management
+
+* **Authentication System:**
+    * JWT-based authentication for both admins and field workers
+    * Token expiration and refresh mechanisms
+    * Role-based middleware for route protection
+
+* **Image Processing:**
+    * Secure image upload and storage
+    * Integration with AI Models Server
+    * Result processing and database storage
+
+* **Task Assignment:**
+    * Admin assignment of repair tasks to field workers
+    * Geographic matching based on worker regions
+    * Maximum assignment limits to prevent overloading
+
 * **Email Automation:**
-    * Generates and sends detailed reports to assigned administrators or authorities, including:
-        * Image
-        * Summary
-        * Location
-* **Task Assignment API:**
-    * Admin users can assign tasks to repair teams through the dashboard.
+    * Daily status updates to field workers
+    * Notification emails for high-priority damages
+    * HTML email templates with responsive design
 
-## 4. Web Dashboard (React + MUI)
+* **Caching System:**
+    * Redis-based caching for performance optimization
+    * JWT cache for efficient token validation
+    * Graceful fallback when Redis is unavailable
 
-* **Admin Login Panel:**
-    * Secure login for administrative access.
-* **Visual Reports:**
-    * Displays a list of reported damages with filtering options (date, severity, region, damage type).
-* **Map View (Mapbox / Leaflet):**
-    * Presents a location-based heatmap of reported damages.
-* **Analytics & Insights:**
-    * Provides daily/weekly trends, severity distribution, and identifies most-affected zones.
-* **Repair Management:**
-    * Allows administrators to assign tasks to field workers and update the status of repairs (pending, in-progress, resolved).
-* **Historical Analysis:**
-    * Enables viewing of old damage reports, comparing before/after photos, and analyzing repair frequency by location.
+## 4. Admin Portal (Web Dashboard)
 
-## 5. Field Worker Management
+* **Modern UI:**
+    * React-based frontend with Material-UI components
+    * Responsive design for different screen sizes
+    * Dark/light theme support
 
-* **Field Worker Profiles:**
-    * Comprehensive profile management for field workers
-    * Work details: name, worker ID, specialization, region
-    * Contact details: work email, personal email, phone number
-    * Performance metrics: active assignments, completed reports
+* **Authentication:**
+    * Secure login system for administrators
+    * Protected routes with role-based access
+    * Session management
 
-* **Assignment Management:**
-    * Track active assignments per worker
-    * View detailed assignment information
-    * Enforce maximum assignment limits to prevent overloading
-    * Geographic assignment matching based on worker's region
+* **Dashboard:**
+    * Overview of key metrics and statistics
+    * Recent reports with severity indicators
+    * Quick action buttons for common tasks
+    * Activity feed for system events
 
-* **Daily Updates:**
-    * Automated daily email updates to field workers
-    * Modern, responsive HTML email templates
-    * Personalized assignment summaries
-    * Status tracking and prioritization
+* **Report Management:**
+    * Comprehensive list of damage reports
+    * Filtering by date, severity, region, and type
+    * Detailed view of individual reports
+    * Report status management
 
-## 6. Notifications & Alerts
+* **Map Visualization:**
+    * Geographic display of damage reports
+    * Clustering for areas with multiple reports
+    * Interactive markers with report details
 
-* **Email Notifications:**
-    * Daily status updates to field workers via personal email
-    * Sends email alerts to administrators for new high-priority damage reports
-    * Configurable notification preferences
-    * Responsive HTML templates with status color-coding
+* **Field Worker Management:**
+    * Worker profile management
+    * Assignment tracking and allocation
+    * Performance metrics and workload balancing
 
-* **Push Notifications:**
-    * Real-time alerts to field teams for new assignments
-    * Status update notifications
-    * Priority-based notification system
+* **Chat System:**
+    * Direct communication with field workers
+    * Support for image sharing
+    * Chat history and notification system
 
-* **Task Reminders:**
-    * Sends reminders for tasks that are pending beyond a specified deadline
-    * Escalation alerts for overdue high-priority tasks
+* **AI Integration:**
+    * AI-generated report review and approval
+    * Manual override capabilities
+    * AI chat interface for damage analysis
 
-## 7. Security & Access Control
+## 5. AI Models Server
 
-* **JWT Authentication:**
-    * Uses JSON Web Tokens (JWT) for secure authentication of users and administrators.
-* **Role-Based Access:**
-    * Defines different access levels based on user roles:
-        * Maintenance Team: Upload images only.
-        * Admin: Full dashboard access, task assignment, report viewing.
-* **Data Validation & Sanitization:**
-    * Implements data validation and sanitization techniques for uploaded data to prevent security vulnerabilities.
+* **Flask Application:**
+    * Python-based server for AI model hosting
+    * RESTful API for model interaction
+    * Efficient model loading and management
+
+* **Model Management:**
+    * Centralized model loading and status tracking
+    * Version compatibility handling
+    * Error recovery and fallback mechanisms
+
+* **Image Processing Pipeline:**
+    * Road surface validation
+    * Damage detection and classification
+    * Result annotation and visualization
+    * Summary generation
+
+* **API Integration:**
+    * Secure communication with backend server
+    * Standardized response formats
+    * Error handling and logging
+
+## 6. Security Features
+
+* **Authentication:**
+    * JWT-based authentication system
+    * Secure password handling with bcrypt
+    * Token expiration and refresh mechanisms
+
+* **Authorization:**
+    * Role-based access control
+    * Tenant isolation middleware
+    * API endpoint protection
+
+* **Data Security:**
+    * Input validation and sanitization
+    * Protection against common web vulnerabilities
+    * Secure file handling
+
+* **Access Management:**
+    * Access request system for new users
+    * Admin approval workflow
+    * User role management
+
+This document reflects the current implementation of the SafeStreets system based on the actual codebase.

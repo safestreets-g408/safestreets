@@ -15,7 +15,11 @@
     "ios": {
       "supportsTablet": true,
       "jsEngine": "hermes",
-      "bundleIdentifier": "com.safestreets.userapp"
+      "bundleIdentifier": "com.safestreets.userapp",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -36,7 +40,9 @@
         {
           "icon": "./assets/notification-icon.png",
           "color": "#ffffff",
-          "sounds": ["./assets/notification-sound.wav"]
+          "sounds": [
+            "./assets/notification-sound.wav"
+          ]
         }
       ]
     ],
